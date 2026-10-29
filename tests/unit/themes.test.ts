@@ -116,7 +116,7 @@ describe('add', () => {
 
 describe('report', () => {
   it('prints strike data for humans and refuses under NIGHT_RUN=1', () => {
-    expect(themes.report({ dir, env: {} }).text).toMatch(/pool size: 20/);
+    expect(themes.report({ dir, env: {} }).text).toMatch(/pool size: \d+/);
     expect(() => themes.report({ dir, env: { NIGHT_RUN: '1' } })).toThrow(/human only/);
   });
   it('the CLI refuses report when NIGHT_RUN=1', () => {

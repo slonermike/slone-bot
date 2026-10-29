@@ -1,5 +1,26 @@
 {
-  "lastRollDate": null,
-  "lastResolveDate": null,
-  "rollHistory": []
+  "lastRollDate": "2026-10-29",
+  "lastResolveDate": "2026-10-29",
+  "rollHistory": [
+    {
+      "date": "2026-10-29",
+      "ids": [
+        "t017",
+        "t010",
+        "t018"
+      ]
+    }
+  ],
+  "used": [
+    {
+      "id": "t017",
+      "text": "Things get stuck, and unsticking them is the fun",
+      "type": "system",
+      "date": "2026-10-29"
+    }
+  ],
+  "adds": {
+    "2026-10-29": 2
+  },
+  "events": []
 }

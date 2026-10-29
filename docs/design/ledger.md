@@ -6,3 +6,4 @@ Format: `YYYY-MM-DD | slug | mode | atoms: a, b | theme: <short> | wildcard: <sh
 
 ## Nights
 (none yet; the `_demo` smoke-test prototype is not logged)
+2026-10-29 | 2026-10-29-unjam | systemic | atoms: p-speed-ramp, d-curator-mode | theme: things get stuck, unsticking is the fun | wildcard: none | verdict: pending

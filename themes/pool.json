@@ -85,8 +85,13 @@
     "text": "Every success makes the next problem bigger",
     "type": "system",
     "source": "seed",
-    "strikes": 0,
-    "reasons": [],
+    "strikes": 1,
+    "reasons": [
+      {
+        "date": "2026-10-29",
+        "text": "Escalation-by-success is already covered by the speed-ramp atom; this one gives a more physical, toy-like verb"
+      }
+    ],
     "used": null
   },
   {
@@ -144,21 +149,17 @@
     "used": null
   },
   {
-    "id": "t017",
-    "text": "Things get stuck, and unsticking them is the fun",
-    "type": "system",
-    "source": "seed",
-    "strikes": 0,
-    "reasons": [],
-    "used": null
-  },
-  {
     "id": "t018",
     "text": "Time only moves when something breaks",
     "type": "constraint",
     "source": "seed",
-    "strikes": 0,
-    "reasons": [],
+    "strikes": 1,
+    "reasons": [
+      {
+        "date": "2026-10-29",
+        "text": "Time-freezes-until-breakage fights the speed-ramp atom and the short-run pacing; reinterpreting it would muddy the core verb"
+      }
+    ],
     "used": null
   },
   {
@@ -175,6 +176,24 @@
     "text": "A toy box with a countdown",
     "type": "world",
     "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t021",
+    "text": "The reward is whatever was waiting behind the obstacle",
+    "type": "system",
+    "source": "postmortem",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t022",
+    "text": "You choose which problem arrives next, and tighter problems pay more",
+    "type": "constraint",
+    "source": "postmortem",
     "strikes": 0,
     "reasons": [],
     "used": null

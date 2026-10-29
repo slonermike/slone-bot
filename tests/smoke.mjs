@@ -46,8 +46,13 @@ try {
   const L = await newPage(browser);
   await L.page.goto(srv.url + '/');
   await L.page.waitForSelector('.card', { timeout: 10000 });
-  const cardText = await L.page.textContent('.card');
-  check('launcher shows the demo card', /Demo Ball/.test(cardText ?? ''));
+  const cardTexts = await L.page.locator('.card').allTextContents();
+  check('launcher shows the demo card', cardTexts.some((t) => /Demo Ball/.test(t)));
+  // other nights' prototypes may be listed too: move the focus to the demo card before launching it
+  for (let i = 0; i < 8 && !/Demo Ball/.test((await L.page.textContent('.card.focus')) ?? ''); i++) {
+    await L.page.keyboard.press(i % 2 === 0 ? 'ArrowRight' : 'ArrowDown');
+    await L.page.waitForTimeout(150);
+  }
   await L.page.screenshot({ path: path.join(OUT, 'screens/launcher.png') });
 
   // launch with the gamepad (A)

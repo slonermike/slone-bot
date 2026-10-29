@@ -61,3 +61,11 @@ Entry template is in `docs/design/04-feedback-and-postmortem.md` section 5.
 - Lesson: Loops cover nearly everything because ongoing player action cannot be mapped to a length of time. A one-shot is a stinger of a couple of measures that accents an event (level beaten, you died), not a short song.   Status: one data point
 - Evidence: Slone: "We need loops for most scenarios because ongoing player action is not mappable to a length of time. One shots would typically just be a couple measures meant to accent a big thing having happened. You beat the level. You died. Etc."
 - Applied to the music generator (loops for songs; `composeStinger` for events) in `docs/design/06-music-craft.md`. Earlier in the same session: not every song should be an earworm, and a vibe can be any tempo (frantic included). Both one data point.
+
+## 2026-10-29 2026-10-29-unjam
+- Lesson: A jam needs a cooldown after it is cleared. Without it the freed blobs re-wedge in the same step and the verb feels like whack-a-mole; with a short clear window the pile floods through and the release is the payoff.   Status: one data point
+- Evidence: bots (sim): before the clear window greedy delivered about 85 blobs in 120 s with a jam every 3 s; after it, about 360 with 33 floods on two of three seeds.
+- Proposed Bible change: section 6, "release needs room": when a game's verb is clearing an obstruction, make the moment right after the clear generous, so tension turns into visible relief. (Slone decides)
+- Lesson: A curator choice (two generated options, risk for reward) is cheap to build as a short pause between waves, and gives the speed-ramp a human hand on the dial.   Status: one data point
+- Evidence: built, not yet played; whether the choice mattered is feedback question 3.
+- Proposed atoms: v-clear-obstruction: the main verb removes a blockage and the backed-up flow rushes through as the reward.

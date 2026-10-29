@@ -1,0 +1,65 @@
+{
+  "night": "2026-10-29-unjam",
+  "seed": 1,
+  "bot": "realtime-greedy",
+  "mode": "systemic",
+  "simSeconds": 12.62,
+  "wallMs": 0,
+  "timescale": 1,
+  "outcome": "timeout",
+  "metrics": {
+    "runLength": 12.62,
+    "deaths": 0,
+    "firstPressureSimSec": 0,
+    "restartDelaySimSec": 0,
+    "mainVerbCount": 0,
+    "decisionsPerMinute": 0,
+    "idleSurvivalSec": 12.62,
+    "scoreOrProgress": 4,
+    "variance": 0,
+    "delivered": 4,
+    "jams": 1,
+    "frees": 0,
+    "floods": 0,
+    "maxCombo": 3,
+    "burst": 0,
+    "stalled": 10,
+    "lives": 3,
+    "maxLives": 3,
+    "layer": 1,
+    "waves": 0,
+    "runs": 1,
+    "surges": 0,
+    "blobs": 19,
+    "survivalSec": 12.62
+  },
+  "perf": {
+    "avgFrameMs": 186.46,
+    "p95FrameMs": 349.9,
+    "fps": 5.36,
+    "particleMax": 15,
+    "effectsOn": true
+  },
+  "feel": {
+    "inputToVisualMs": 0,
+    "inputToAudioMs": 0,
+    "eventsFired": {
+      "run-start": 1,
+      "deliver": 4,
+      "wedge": 1
+    },
+    "shakePeak": 0.22,
+    "hitStopFrames": 0
+  },
+  "errors": [],
+  "balance": {
+    "baseSpawn": 1.5,
+    "spawnRamp": 0.06,
+    "jamChance": 1,
+    "burstRate": 1,
+    "popPower": 1,
+    "flushFill": 1,
+    "flushSeconds": 5,
+    "lives": 3
+  }
+}
