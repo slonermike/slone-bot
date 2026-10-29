@@ -3,7 +3,7 @@ import { defineSound, play } from '../../audio/index.ts';
 import { music } from '../../audio/music.ts';
 import { glyph, stickGlyph } from '../../core/glyphs.ts';
 import type { Prototype, PrototypeModule, SimEvent, View } from '../../core/types.ts';
-import { flash, hitStop, numberPop, punch, shake, SquashStretch, Trail, lerpColor, tweens, ease, vfx } from '../../juice/index.ts';
+import { flash, hitStop, numberPop as rawPop, punch, shake, SquashStretch, Trail, lerpColor, tweens, ease, vfx } from '../../juice/index.ts';
 import { degenerateHolderBot, greedyBot } from './bots.ts';
 import { buildUnjamMusic, partsFor } from './music.ts';
 import { Shards } from './shards.ts';
@@ -49,6 +49,15 @@ function ringPoly(g: Graphics, x: number, y: number, r: number, thick: number, s
   if (r <= thick) return;
   g.poly(ngon(x, y, r, sides, rot)).fill({ color, alpha });
   g.poly(ngon(x, y, r - thick, sides, rot)).cut();
+}
+
+/** Floating text with a heavy dark outline so gold and orange words stay readable over the orange sky, the sun and gold blobs. */
+function numberPop(parent: Container, text: string | number, x: number, y: number, opts: { color?: number; size?: number; rise?: number; ms?: number } = {}): Text {
+  const t = rawPop(parent, text, x, y, opts);
+  t.style.fontFamily = FONT;
+  t.style.fontWeight = '900';
+  t.style.stroke = { color: PAL.sil, width: Math.max(9, (opts.size ?? 36) * 0.24), join: 'round' };
+  return t;
 }
 
 function fmtTime(s: number): string {
@@ -280,14 +289,14 @@ function createPrototype(): Prototype {
       meterLabel.position.set(PAD + 8, 740);
       prompt = txt(64, PAL.gold, { stroke: { color: PAL.sil, width: 10 } });
       prompt.anchor.set(0.5);
-      prompt.position.set(760, 690);
+      prompt.position.set(690, 690);
       prompt.visible = false;
-      comboText = txt(60, PAL.gold, { stroke: { color: PAL.sil, width: 10 } });
+      comboText = txt(52, PAL.gold, { stroke: { color: PAL.sil, width: 10 } });
       comboText.anchor.set(1, 0.5);
-      comboText.position.set(1250, 640);
+      comboText.position.set(1250, 700);
       multText = txt(26, PAL.sil);
       multText.anchor.set(1, 0);
-      multText.position.set(1236, 128);
+      multText.position.set(1250, 128);
       unlockText = txt(24, PAL.gold);
       unlockText.position.set(PAD, 662);
       hint = txt(26, PAL.gold);
@@ -527,7 +536,7 @@ function createPrototype(): Prototype {
       }
       if (sim.ready && Math.floor(clock * 6) % 2 === 0) hud.poly(slab(PAD - 14, 730, 572, 60, 20)).fill({ color: PAL.gold, alpha: 0.3 });
       hud.poly(slab(1030, 8, 240, 112, 20)).fill({ color: PAL.sil, alpha: 0.92 });
-      if (sim.mult > 1) hud.poly(slab(1000, 122, 270, 38, 14)).fill(PAL.orange);
+      if (sim.mult > 1) hud.poly(slab(985, 122, 285, 38, 14)).fill(PAL.orange);
       prompt.visible = sim.ready && !sim.over && !sim.choosing;
       if (prompt.visible) {
         prompt.scale.set(1 + 0.1 * Math.sin(clock * 11));
@@ -537,7 +546,7 @@ function createPrototype(): Prototype {
       comboPunch *= 0.85;
       comboText.text = sim.combo >= 3 ? `FLOW x${sim.combo}` : '';
       comboText.scale.set(1 + comboPunch);
-      comboText.tint = sim.combo >= 20 ? PAL.orange : PAL.gold;
+      comboText.tint = PAL.gold;
       const m = sim.mult > 1 ? `GATE BONUS x${sim.mult.toFixed(2)}` : '';
       if (multText.text !== m) multText.text = m;
 
@@ -602,7 +611,7 @@ function createPrototype(): Prototype {
           punch(botBody, 0.15 + 0.2 * p);
           if (p > 0.9) hitStop(2);
           eyes.setMood(freed > 0 ? 'happy' : 'neutral', 0.8);
-          if (freed === 0 && p > 0.5) numberPop(world, 'no budge', ex, ey - 50, { color: PAL.violet, size: 28, ms: 600 });
+          if (freed === 0 && p > 0.5) numberPop(world, 'no budge', ex, ey - 50, { color: PAL.gold, size: 28, ms: 600 });
           break;
         }
         case 'unjam': {
