@@ -10,6 +10,7 @@ Target feeling: specific emotion or fantasy (not "fun")
 Mode: content-driven (5-10 min) | systemic (endless, polish 1-2 mechanics)
 Theme: <text>   Why picked: one line
 Atoms: <id>, <id>      Wildcard: <text or none>
+Look (from `node scripts/night-state.mjs look`; override at most one dimension, say which and why): palette, shapes, rendering, framing, ui. Then the 3 to 5 hex colors you will actually use and one sentence on what the game looks like at rest.
 Loop (4 lines): win/reward | obstacle/pressure | fail state and recovery | player actions
 Core verb: what the player does, and why it is a toy before it is a game
 Pressure source: what pushes back, and how it ramps
