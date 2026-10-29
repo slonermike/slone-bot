@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "prototypes": [
+    {
+      "slug": "_demo",
+      "title": "Demo Ball",
+      "date": "2026-10-29",
+      "question": "Does pushing a ball around feel good before anything else happens? (Scaffold smoke test.)",
+      "targetFeeling": "a small, springy toy that talks back",
+      "mode": "systemic",
+      "tags": [
+        "f-toy-movement",
+        "f-juice-forward",
+        "p-rising-tide"
+      ],
+      "theme": "Scaffold smoke test (not a themed night)",
+      "wildcard": null,
+      "juiceLayers": [
+        "shake",
+        "squashStretch",
+        "particles",
+        "hitStop",
+        "flash",
+        "trails",
+        "eyes",
+        "audio"
+      ],
+      "metrics": [
+        "runLength",
+        "deaths",
+        "firstPressureSimSec",
+        "idleSurvivalSec",
+        "mainVerbCount",
+        "scoreOrProgress"
+      ],
+      "assets": [],
+      "buildStatus": "ok",
+      "feedbackStatus": "needs-feedback",
+      "sizeKB": 669,
+      "thumbnail": "thumb.png"
+    }
+  ]
+}
