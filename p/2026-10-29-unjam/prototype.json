@@ -1,0 +1,52 @@
+{
+  "slug": "2026-10-29-unjam",
+  "title": "Unjam",
+  "date": "2026-10-29",
+  "question": "Is the pop-and-whoosh of freeing a jam a toy worth repeating, and does choosing the next hazard from two generated layouts feel like steering the pressure?",
+  "targetFeeling": "relief: the plunger-pop after a held breath",
+  "mode": "systemic",
+  "tags": [
+    "p-speed-ramp",
+    "d-curator-mode",
+    "v-push-pull"
+  ],
+  "theme": "Things get stuck, and unsticking them is the fun",
+  "wildcard": null,
+  "juiceLayers": [
+    "shake",
+    "squashStretch",
+    "particles",
+    "hitStop",
+    "flash",
+    "trails",
+    "eyes",
+    "audio"
+  ],
+  "metrics": [
+    "runLength",
+    "deaths",
+    "firstPressureSimSec",
+    "idleSurvivalSec",
+    "mainVerbCount",
+    "scoreOrProgress",
+    "delivered",
+    "jams",
+    "frees",
+    "floods",
+    "maxCombo",
+    "burst",
+    "stalled",
+    "lives",
+    "layer",
+    "waves",
+    "runs",
+    "surges",
+    "blobs",
+    "survivalSec"
+  ],
+  "assets": [],
+  "buildStatus": "broken",
+  "feedbackStatus": "needs-feedback",
+  "sizeKB": 0,
+  "thumbnail": ""
+}
