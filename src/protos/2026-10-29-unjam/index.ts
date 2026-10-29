@@ -3,42 +3,72 @@ import { defineSound, play } from '../../audio/index.ts';
 import { music } from '../../audio/music.ts';
 import { glyph, stickGlyph } from '../../core/glyphs.ts';
 import type { Prototype, PrototypeModule, SimEvent, View } from '../../core/types.ts';
-import {
-  Eyes, flash, hitStop, numberPop, Particles, punch, shake, SquashStretch, Trail, lerpColor, tweens, ease, vfx,
-} from '../../juice/index.ts';
+import { flash, hitStop, numberPop, punch, shake, SquashStretch, Trail, lerpColor, tweens, ease, vfx } from '../../juice/index.ts';
 import { degenerateHolderBot, greedyBot } from './bots.ts';
 import { buildUnjamMusic, partsFor } from './music.ts';
+import { Shards } from './shards.ts';
 import { BALANCE, BASKET_X, BOT_R, CH, KIND_R, LAYER_NAMES, UNLOCK_AT, UnjamSim, WALL_HALF } from './sim.ts';
 
-const FONT = 'system-ui, sans-serif';
+// Look: sunset / hard polygons / flat fills (see the brief). Every color in the game comes from these five.
+const PAL = {
+  sil: 0x1a0d2e, // dark silhouette
+  violet: 0x6a2c91,
+  magenta: 0xe83f7a,
+  orange: 0xff8a3d,
+  gold: 0xffd36e,
+};
+const mix = (a: number, b: number, t: number) => lerpColor(a, b, t);
+const FLOOR = mix(PAL.sil, PAL.violet, 0.3);
+const KIND_COLOR = [PAL.gold, PAL.orange, mix(PAL.violet, PAL.gold, 0.55)];
+const FONT = '"Arial Black", Impact, "Helvetica Neue", system-ui, sans-serif';
 const PAD = 40;
-const KIND_COLOR = [0x4cc9f0, 0xffd166, 0xc79bff];
 const POP_WORDS = ['POP!', 'SHLOOP!', 'UNCLOG!', 'WHOOSH!', 'BLORP!'];
+const SKY = [0.22, 0.3, 0.4, 0.52, 0.66, 0.82, 1];
 
-function hsl(h: number, s = 0.85, l = 0.6): number {
-  const a = s * Math.min(l, 1 - l);
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12;
-    return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
-  };
-  return (Math.round(f(0) * 255) << 16) | (Math.round(f(8) * 255) << 8) | Math.round(f(4) * 255);
+/** Palette cycle for the flush: flat color changes, no gradients. */
+function cycle(t: number): number {
+  const c = [PAL.gold, PAL.orange, PAL.magenta, PAL.violet];
+  return c[Math.floor(t * 8) % c.length]!;
+}
+
+function ngon(cx: number, cy: number, r: number, n: number, rot = 0): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = rot + (i / n) * Math.PI * 2;
+    out.push(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+  }
+  return out;
+}
+function chamfer(x: number, y: number, w: number, h: number, c: number): number[] {
+  return [x + c, y, x + w - c, y, x + w, y + c, x + w, y + h - c, x + w - c, y + h, x + c, y + h, x, y + h - c, x, y + c];
+}
+function slab(x: number, y: number, w: number, h: number, skew = 14): number[] {
+  return [x + skew, y, x + w + skew, y, x + w, y + h, x, y + h];
+}
+function ringPoly(g: Graphics, x: number, y: number, r: number, thick: number, sides: number, rot: number, color: number, alpha: number): void {
+  if (r <= thick) return;
+  g.poly(ngon(x, y, r, sides, rot)).fill({ color, alpha });
+  g.poly(ngon(x, y, r - thick, sides, rot)).cut();
 }
 
 function fmtTime(s: number): string {
   return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 }
 
+type Mood = 'neutral' | 'happy' | 'worried' | 'frown';
+
 function createPrototype(): Prototype {
   const sim = new UnjamSim();
   let tune: ReturnType<typeof buildUnjamMusic>;
-  let particles: Particles;
+  let particles: Shards;
   let ss: SquashStretch;
   let trail: Trail;
-  let eyes: Eyes;
   let botBody: Container;
   let botGfx: Graphics;
+  let faceGfx: Graphics;
   let botGlow: Graphics;
   let aura: Graphics;
+  let backdrop: Graphics;
   let pipe: Graphics;
   let gateGfx: Graphics;
   let blobGfx: Graphics;
@@ -50,6 +80,7 @@ function createPrototype(): Prototype {
   let flashOverlay: Graphics;
   let hud: Graphics;
   let scoreText: Text;
+  let scoreLabel: Text;
   let comboText: Text;
   let multText: Text;
   let prompt: Text;
@@ -73,10 +104,24 @@ function createPrototype(): Prototype {
   let flushTick = 0;
   let flushNote = 0;
   let chargeTick = 0;
-  interface Ring { r: number; a: number; x: number; y: number; color: number }
+  // the bot's visor face: a mood the events set, which fades back to neutral
+  const eyes = {
+    mood: 'neutral' as Mood,
+    t: 0,
+    lx: 0,
+    ly: 0,
+    setMood(m: Mood, seconds: number) { this.mood = m; this.t = seconds; },
+    lookAt(dx: number, dy: number) {
+      const d = Math.hypot(dx, dy) || 1;
+      this.lx = (dx / d) * Math.min(1, d / 200);
+      this.ly = (dy / d) * Math.min(1, d / 200);
+    },
+    update(dt: number) { if (this.t > 0 && (this.t -= dt) <= 0) this.mood = 'neutral'; },
+  };
+  interface Ring { r: number; a: number; x: number; y: number; color: number; rot: number }
   const rings: Ring[] = [];
   const addRing = (x: number, y: number, color: number, max = 400, ms = 600, delay = 0) => {
-    const ring: Ring = { r: 16, a: 0, x, y, color };
+    const ring: Ring = { r: 16, a: 0, x, y, color, rot: vfx() * 3 };
     rings.push(ring);
     tweens.to(ring, { a: 1 }, 1, ease.linear, { delay });
     tweens.to(ring, { r: max }, ms, ease.outCubic, { delay });
@@ -89,6 +134,8 @@ function createPrototype(): Prototype {
   const arpeggio = (notes: number[], gap: number, base = 1, volume = 0.7, wave = 'chime') => {
     notes.forEach((n, i) => later(i * gap, () => play(wave, { pitch: base * Math.pow(2, n / 12), volume })));
   };
+  const txt = (size: number, fill: number, extra: Record<string, unknown> = {}) =>
+    new Text({ text: '', style: { fontFamily: FONT, fontWeight: '900', fontSize: size, fill, ...extra } });
 
   const proto: Prototype = {
     meta: sim.meta,
@@ -130,27 +177,30 @@ function createPrototype(): Prototype {
       defineSound('layer', { wave: 'saw', freq: 160, slide: 1.2, attack: 0.004, sustain: 0.18, decay: 0.4, lowpass: 1800, vibratoDepth: 0.03, vibratoSpeed: 12, volume: 0.5 });
       defineSound('clank', { wave: 'square', freq: 320, slide: -1.5, attack: 0.001, sustain: 0.03, decay: 0.2, crush: 5, transient: 0.6, lowpass: 1500, volume: 0.5 });
 
+      backdrop = new Graphics();
       pipe = new Graphics();
-      world.addChild(pipe);
+      world.addChild(backdrop, pipe);
       blobGfx = new Graphics();
       gateGfx = new Graphics();
       blobLayer = new Container();
-      world.addChild(blobLayer, blobGfx, gateGfx);
-      // one baked texture per blob kind and mood (calm, wedged): sprites are far cheaper than redrawing 150 vector blobs every frame
+      world.addChild(blobGfx, blobLayer, gateGfx);
+      // one baked texture per blob kind and mood (calm, wedged): sprites are far cheaper than redrawing 150 polygons every frame.
+      // Kinds differ by silhouette: diamond (plain), hexagon (fat), triangle (sticky). A faceted inner shard gives each a flat highlight.
+      const sides = [4, 6, 3];
       for (let k = 0; k < 3; k++) {
-        const r = KIND_R[k]!;
+        const r = KIND_R[k]! + 2;
         blobTex[k] = [false, true].map((stuck) => {
-          const col = stuck ? lerpColor(KIND_COLOR[k]!, 0xff5d73, 0.6) : KIND_COLOR[k]!;
+          const col = stuck ? PAL.magenta : KIND_COLOR[k]!;
           const g = new Graphics();
-          g.circle(0, 0, r).fill(col).stroke({ width: 3, color: lerpColor(col, 0x000000, 0.35) });
-          if (k === 2) g.circle(0, 0, r * 0.55).stroke({ width: 2, color: 0xffffff, alpha: 0.5 });
-          const er = r * 0.2 * (stuck ? 1.5 : 1.1);
-          const look = stuck ? 0 : 1.5;
-          g.circle(-r * 0.32, -r * 0.12, er).fill(0xffffff);
-          g.circle(r * 0.32, -r * 0.12, er).fill(0xffffff);
-          g.circle(-r * 0.32 + look, -r * 0.12, er * 0.5).fill(0x101020);
-          g.circle(r * 0.32 + look, -r * 0.12, er * 0.5).fill(0x101020);
-          if (stuck) g.moveTo(-r * 0.3, r * 0.4).lineTo(r * 0.3, r * 0.4).stroke({ width: 2, color: 0x101020 });
+          const rot = k === 2 ? 0 : Math.PI / 4;
+          const pts = ngon(0, 0, r, sides[k]!, rot);
+          g.poly(pts).fill(col);
+          // flat shading: the lower facets are a darker tone of the same fill, the core is a lighter shard
+          const lower: number[] = [0, 0];
+          for (let i = 0; i < pts.length; i += 2) if (pts[i + 1]! > 0.01) lower.push(pts[i]!, pts[i + 1]!);
+          if (lower.length >= 6) g.poly(lower).fill(mix(col, PAL.sil, 0.3));
+          g.poly(ngon(0, 0, r * 0.38, sides[k]!, rot)).fill(stuck ? PAL.gold : mix(col, PAL.gold, 0.6));
+          if (stuck) g.poly([-r * 0.5, -r * 0.1, -r * 0.1, -r * 0.35, -r * 0.1, -r * 0.05]).fill(PAL.sil).poly([r * 0.5, -r * 0.1, r * 0.1, -r * 0.35, r * 0.1, -r * 0.05]).fill(PAL.sil);
           const holder = new Container();
           holder.addChild(g);
           const t = (view.app as Application).renderer.generateTexture({ target: holder, resolution: 2, frame: g.getLocalBounds().rectangle });
@@ -158,27 +208,30 @@ function createPrototype(): Prototype {
           return t;
         });
       }
-      trail = new Trail(world, { color: 0xffb347, width: 20, alpha: 0.4 });
+
+      trail = new Trail(world, { color: PAL.orange, width: 20, alpha: 0.45 });
       shock = new Graphics();
       chargeGfx = new Graphics();
       aura = new Graphics();
       world.addChild(shock, chargeGfx, aura);
       botBody = new Container();
-      botGfx = new Graphics().circle(0, 0, BOT_R).fill(0xff9f45).stroke({ width: 4, color: 0xb35f12 });
-      botGfx.rect(-8, -BOT_R - 12, 16, 12).fill(0x8a5a2b); // the plunger handle
-      botGlow = new Graphics().circle(0, 0, BOT_R).fill(0xffffff);
+      botGfx = new Graphics();
+      // the drone: hexagonal magenta body, a gold cup on a dark handle (the plunger), a visor drawn each frame
+      botGfx.poly([-8, -BOT_R - 20, 8, -BOT_R - 20, 8, -BOT_R + 2, -8, -BOT_R + 2]).fill(PAL.sil);
+      botGfx.poly([-20, -BOT_R - 28, 20, -BOT_R - 28, 12, -BOT_R - 14, -12, -BOT_R - 14]).fill(PAL.gold);
+      botGfx.poly(ngon(0, 0, BOT_R + 4, 6, Math.PI / 6)).fill(PAL.magenta);
+      botGfx.poly([-BOT_R - 4, 0, -BOT_R * 0.5, -BOT_R - 1, BOT_R * 0.5, -BOT_R - 1, 0, 2]).fill(mix(PAL.magenta, PAL.gold, 0.3));
+      faceGfx = new Graphics();
+      botGlow = new Graphics().poly(ngon(0, 0, BOT_R + 4, 6, Math.PI / 6)).fill(PAL.gold);
       botGlow.alpha = 0;
-      eyes = new Eyes({ size: 6, gap: 15 });
-      eyes.container.position.set(0, -2);
-      botBody.addChild(botGfx, botGlow, eyes.container);
+      botBody.addChild(botGfx, faceGfx, botGlow);
       world.addChild(botBody);
       ss = new SquashStretch(botBody);
 
-      particles = new Particles(world);
+      particles = new Shards(world);
       view.onFrame((dt) => {
         particles.update(dt);
         eyes.update(dt);
-        // the charge hum: a rising tick, one semitone-ish step per tick, so you hear the pop gathering
         if (sim.charging) {
           chargeTick -= dt;
           if (chargeTick <= 0) {
@@ -188,9 +241,8 @@ function createPrototype(): Prototype {
           }
         }
         if (sim.surging) {
-          const c = hsl(clock * 400 + vfx() * 60);
-          particles.emit('confetti', botBody.x, botBody.y, { count: 2, size: 0.9, color: c, angle: sim.heading + Math.PI, spread: 1.2 });
-          particles.emit('sparks', botBody.x, botBody.y, { count: 1, color: hsl(clock * 400 + 180), speed: 0.7 });
+          particles.emit('confetti', botBody.x, botBody.y, { count: 2, size: 0.9, color: cycle(clock * 3 + vfx()), angle: sim.heading + Math.PI, spread: 1.2 });
+          particles.emit('sparks', botBody.x, botBody.y, { count: 1, color: cycle(clock * 3 + 2), speed: 0.7 });
           flushTick -= dt;
           if (flushTick <= 0) {
             flushTick = 0.16;
@@ -199,50 +251,49 @@ function createPrototype(): Prototype {
             flushNote++;
           }
         }
-        // sloshing water bubbles drift along the pipe so a moving current is readable
+        // drifting shards along the current so the flow direction is readable
         tickT -= dt;
         if (tickT <= 0 && !sim.over) {
           tickT = sim.surging ? 0.03 : 0.22;
-          particles.emit('dust', CH.left + 10, CH.top + 20 + vfx() * (CH.bottom - CH.top - 40), { count: 1, color: 0x7fd8ff, size: 0.8, angle: 0, spread: 0.2, speed: sim.surging ? 2.4 : 0.9 });
+          particles.emit('dust', CH.left + 10, CH.top + 20 + vfx() * (CH.bottom - CH.top - 40), { count: 1, color: PAL.violet, size: 0.8, angle: 0, spread: 0.2, speed: sim.surging ? 2.4 : 0.9 });
         }
       });
 
-      flashOverlay = new Graphics().rect(0, 0, 1280, 800).fill(0xffffff);
+      flashOverlay = new Graphics().rect(0, 0, 1280, 800).fill(PAL.gold);
       flashOverlay.alpha = 0;
       ui.addChild(flashOverlay);
 
       hud = new Graphics();
       ui.addChild(hud);
-      pressureLabel = new Text({ text: 'PRESSURE', style: { fontFamily: FONT, fontWeight: '800', fontSize: 26, fill: 0xf4f1ea } });
-      pressureLabel.position.set(PAD, 8);
-      ui.addChild(pressureLabel);
-      const meterLabel = new Text({ text: 'FLUSH', style: { fontFamily: FONT, fontWeight: '800', fontSize: 22, fill: 0x8f8fb8 } });
-      meterLabel.position.set(408, 756);
-      ui.addChild(meterLabel);
-      prompt = new Text({ text: '', style: { fontFamily: FONT, fontWeight: '900', fontSize: 58, fill: 0xfff3b0, stroke: { color: 0x101020, width: 8 } } });
-      prompt.anchor.set(0.5);
-      prompt.position.set(640, 650);
-      prompt.visible = false;
-      ui.addChild(prompt);
-      scoreText = new Text({ text: 'Score 0', style: { fontFamily: FONT, fontWeight: '800', fontSize: 32, fill: 0x06d6a0 } });
+      pressureLabel = txt(30, PAL.gold);
+      pressureLabel.text = 'PRESSURE';
+      pressureLabel.position.set(PAD + 8, 10);
+      scoreLabel = txt(24, PAL.orange);
+      scoreLabel.text = 'SCORE';
+      scoreLabel.anchor.set(1, 0);
+      scoreLabel.position.set(1250, 6);
+      scoreText = txt(66, PAL.gold, { stroke: { color: PAL.sil, width: 10 } });
       scoreText.anchor.set(1, 0);
-      scoreText.position.set(1280 - PAD, 6);
-      ui.addChild(scoreText);
-      comboText = new Text({ text: '', style: { fontFamily: FONT, fontWeight: '900', fontSize: 44, fill: 0xfff3b0, stroke: { color: 0x101020, width: 6 } } });
+      scoreText.position.set(1250, 26);
+      const meterLabel = txt(28, PAL.gold);
+      meterLabel.text = 'FLUSH';
+      meterLabel.position.set(PAD + 8, 740);
+      prompt = txt(64, PAL.gold, { stroke: { color: PAL.sil, width: 10 } });
+      prompt.anchor.set(0.5);
+      prompt.position.set(760, 690);
+      prompt.visible = false;
+      comboText = txt(60, PAL.gold, { stroke: { color: PAL.sil, width: 10 } });
       comboText.anchor.set(1, 0.5);
-      comboText.position.set(1240, 200);
-      ui.addChild(comboText);
-      multText = new Text({ text: '', style: { fontFamily: FONT, fontWeight: '800', fontSize: 26, fill: 0xffd166 } });
+      comboText.position.set(1250, 640);
+      multText = txt(26, PAL.sil);
       multText.anchor.set(1, 0);
-      multText.position.set(1240, 44);
-      ui.addChild(multText);
-      unlockText = new Text({ text: '', style: { fontFamily: FONT, fontWeight: '700', fontSize: 24, fill: 0x8f8fb8 } });
-      unlockText.position.set(PAD, 590);
-      ui.addChild(unlockText);
-      hint = new Text({ text: '', style: { fontFamily: FONT, fontWeight: '600', fontSize: 26, fill: 0x8f8fb8 } });
+      multText.position.set(1236, 128);
+      unlockText = txt(24, PAL.gold);
+      unlockText.position.set(PAD, 662);
+      hint = txt(26, PAL.gold);
       hint.anchor.set(1, 1);
-      hint.position.set(1240, 796);
-      ui.addChild(hint);
+      hint.position.set(1250, 790);
+      ui.addChild(pressureLabel, scoreLabel, scoreText, meterLabel, prompt, comboText, multText, unlockText, hint);
       view.onFrame(() => {
         const parts = [`${stickGlyph('left')}: fly`, `${glyph('a')}: hold, release to pop`];
         if (sim.pullUnlocked) parts.push(`${glyph('x')}: pull`);
@@ -252,7 +303,7 @@ function createPrototype(): Prototype {
         if (prompt.text !== pr) prompt.text = pr;
         const p = `${glyph('a').toUpperCase()} to go again`;
         if (resultPrompt && resultPrompt.text !== p) resultPrompt.text = p;
-        const u = sim.pullUnlocked ? '' : `Deliver ${UNLOCK_AT} blobs to unlock a new move  (${Math.min(UNLOCK_AT, sim.delivered)}/${UNLOCK_AT})`;
+        const u = sim.pullUnlocked ? '' : `Deliver ${UNLOCK_AT} to unlock a new move  (${Math.min(UNLOCK_AT, sim.delivered)}/${UNLOCK_AT})`;
         if (unlockText.text !== u) unlockText.text = u;
         if (choiceHint) {
           const c = `${stickGlyph('left')}: pick    ${glyph('a')}: confirm`;
@@ -265,15 +316,15 @@ function createPrototype(): Prototype {
       choice.visible = false;
       choiceG = new Graphics();
       choice.addChild(choiceG);
-      choiceTitle = new Text({ text: '', style: { fontFamily: FONT, fontWeight: '900', fontSize: 46, fill: 0xf4f1ea, stroke: { color: 0x101020, width: 6 } } });
+      choiceTitle = txt(46, PAL.gold, { stroke: { color: PAL.sil, width: 10 } });
       choiceTitle.anchor.set(0.5);
       choiceTitle.position.set(640, 90);
-      choiceHint = new Text({ text: '', style: { fontFamily: FONT, fontWeight: '700', fontSize: 28, fill: 0xffd166 } });
+      choiceHint = txt(30, PAL.gold);
       choiceHint.anchor.set(0.5);
-      choiceHint.position.set(640, 700);
+      choiceHint.position.set(640, 705);
       choice.addChild(choiceTitle, choiceHint);
       for (let i = 0; i < 2; i++) {
-        const t = new Text({ text: '', style: { fontFamily: FONT, fontWeight: '800', fontSize: 34, fill: 0xf4f1ea, align: 'center' } });
+        const t = txt(36, PAL.gold, { align: 'center' });
         t.anchor.set(0.5);
         t.position.set(i === 0 ? 330 : 950, 560);
         choice.addChild(t);
@@ -283,14 +334,18 @@ function createPrototype(): Prototype {
 
       result = new Container();
       result.visible = false;
-      result.addChild(new Graphics().rect(0, 0, 1280, 800).fill({ color: 0x07070d, alpha: 0.78 }));
-      const title = new Text({ text: 'THE PIPE BURST', style: { fontFamily: FONT, fontWeight: '900', fontSize: 92, fill: 0xff5d73, stroke: { color: 0x101020, width: 8 } } });
+      const rg = new Graphics();
+      rg.rect(0, 0, 1280, 800).fill({ color: PAL.sil, alpha: 0.82 });
+      rg.poly(slab(120, 190, 1040, 130, 40)).fill(PAL.magenta);
+      result.addChild(rg);
+      const title = txt(88, PAL.gold, { stroke: { color: PAL.sil, width: 10 } });
+      title.text = 'THE PIPE BURST';
       title.anchor.set(0.5);
-      title.position.set(640, 270);
-      resultStats = new Text({ text: '', style: { fontFamily: FONT, fontWeight: '700', fontSize: 38, fill: 0xf4f1ea, align: 'center' } });
+      title.position.set(660, 255);
+      resultStats = txt(36, PAL.gold, { align: 'center' });
       resultStats.anchor.set(0.5);
       resultStats.position.set(640, 410);
-      resultPrompt = new Text({ text: '', style: { fontFamily: FONT, fontWeight: '800', fontSize: 40, fill: 0xffd166 } });
+      resultPrompt = txt(44, PAL.orange);
       resultPrompt.anchor.set(0.5);
       resultPrompt.position.set(640, 540);
       result.addChild(title, resultStats, resultPrompt);
@@ -309,44 +364,82 @@ function createPrototype(): Prototype {
       trail.draw();
       const surging = sim.surging;
       const burstN = Math.min(1, sim.burst / 100);
-      const edge = surging ? hsl(clock * 300) : lerpColor(0x4cc9f0, 0xff5d73, burstN);
-      trail.color = surging ? hsl(clock * 500 + 90) : 0xffb347;
+      const edge = surging ? cycle(clock * 4) : mix(PAL.gold, PAL.magenta, burstN);
+      trail.color = surging ? cycle(clock * 5 + 1) : PAL.orange;
       trail.width = surging ? 34 : 20;
-      botGlow.alpha = surging ? 0.55 + 0.25 * Math.sin(clock * 12) : 0;
-      if (surging) botGlow.tint = hsl(clock * 600);
+      botGlow.alpha = surging ? (Math.floor(clock * 14) % 2 ? 0.6 : 0.2) : 0;
 
-      // the pipe
-      pipe.clear();
-      pipe.rect(0, 0, 1280, 800).fill(0x0e1822);
-      pipe.roundRect(CH.left - 10, CH.top - 14, CH.right - CH.left + 20, CH.bottom - CH.top + 28, 18).fill(surging ? lerpColor(0x15293a, hsl(clock * 200, 0.5, 0.2), 0.8) : lerpColor(0x15293a, 0x3a1b2a, burstN * 0.7)).stroke({ width: 6, color: edge });
-      // basket
-      pipe.roundRect(BASKET_X, CH.top - 6, CH.right - BASKET_X + 6, CH.bottom - CH.top + 12, 14).fill({ color: 0x06d6a0, alpha: 0.22 }).stroke({ width: 4, color: 0x06d6a0 });
-      pipe.roundRect(CH.left - 10, CH.top + 30, 56, CH.bottom - CH.top - 60, 10).fill({ color: 0x4cc9f0, alpha: 0.18 });
-      // flow chevrons
-      for (let i = 0; i < 14; i++) {
-        const cx = ((i * 90 + clock * (surging ? 380 : 120)) % 1200) + 50;
-        pipe.moveTo(cx, CH.top + 8).lineTo(cx + 12, CH.top + 16).lineTo(cx, CH.top + 24).stroke({ width: 3, color: 0x2a4a63, alpha: 0.7 });
-        pipe.moveTo(cx, CH.bottom - 24).lineTo(cx + 12, CH.bottom - 16).lineTo(cx, CH.bottom - 8).stroke({ width: 3, color: 0x2a4a63, alpha: 0.7 });
+      // the visor face: two angular slits whose tilt shows the mood
+      faceGfx.clear();
+      faceGfx.poly([-17, -8, 17, -8, 13, 8, -13, 8]).fill(PAL.sil);
+      const tilt = eyes.mood === 'happy' ? -5 : eyes.mood === 'frown' ? 5 : eyes.mood === 'worried' ? 3 : 0;
+      const open = eyes.mood === 'worried' ? 8 : 6;
+      for (const s of [-1, 1]) {
+        const ex = s * 7 + eyes.lx * 3;
+        const ey = eyes.ly * 2;
+        faceGfx.poly([ex - 4, ey - open / 2 + tilt * s * -0.4, ex + 4, ey - open / 2 - tilt * s * -0.4, ex + 4, ey + open / 2, ex - 4, ey + open / 2]).fill(PAL.gold);
       }
 
-      // gates: hazard-striped walls that slide away during the flush
+      // backdrop: flat sky bands that deepen with pressure, a faceted sun, angular skyline and aqueduct legs
+      backdrop.clear();
+      const base = [PAL.sil, PAL.violet, PAL.magenta, PAL.orange];
+      for (let i = 0; i < SKY.length; i++) {
+        const top = i === 0 ? 0 : SKY[i - 1]! * 640;
+        const f = SKY[i]!;
+        let c = f < 0.5 ? mix(PAL.sil, PAL.violet, f * 2) : mix(PAL.violet, PAL.magenta, (f - 0.5) * 1.6);
+        if (f > 0.8) c = mix(PAL.magenta, PAL.orange, (f - 0.8) * 5);
+        c = mix(c, PAL.sil, burstN * 0.45);
+        if (surging) c = mix(c, base[(i + Math.floor(clock * 6)) % 4]!, 0.5);
+        backdrop.rect(0, top, 1280, f * 640 - top + 1).fill(c);
+      }
+      const sunC = surging ? cycle(clock * 3) : mix(PAL.gold, PAL.magenta, burstN * 0.8);
+      const sunR = 130 + burstN * 40 + Math.sin(clock * 2) * 3;
+      backdrop.poly(ngon(330, 600, sunR, 8, Math.PI / 8)).fill(sunC);
+      for (let i = 0; i < 4; i++) backdrop.rect(330 - sunR, 560 + i * 18, sunR * 2, 5 + i * 2).fill(mix(PAL.magenta, PAL.orange, 0.5));
+      backdrop.rect(0, 640, 1280, 160).fill(PAL.sil);
+      backdrop.poly([0, 640, 90, 600, 200, 640]).fill(mix(PAL.sil, PAL.violet, 0.2));
+      backdrop.poly([760, 640, 900, 575, 1010, 640]).fill(mix(PAL.sil, PAL.violet, 0.2));
+      backdrop.poly([1000, 640, 1130, 590, 1280, 640]).fill(mix(PAL.sil, PAL.violet, 0.2));
+      for (let i = 0; i < 9; i++) backdrop.poly([80 + i * 150, CH.bottom + 14, 120 + i * 150, CH.bottom + 14, 134 + i * 150, 640, 66 + i * 150, 640]).fill(mix(PAL.sil, PAL.violet, 0.12));
+
+      // the pipe: a dark chamfered slab with a flat floor, rim bars that shift from gold to magenta with pressure
+      pipe.clear();
+      pipe.poly(chamfer(CH.left - 14, CH.top - 18, CH.right - CH.left + 28, CH.bottom - CH.top + 36, 22)).fill(PAL.sil);
+      pipe.poly(chamfer(CH.left - 2, CH.top - 4, CH.right - CH.left + 4, CH.bottom - CH.top + 8, 14)).fill(surging ? mix(FLOOR, cycle(clock * 2), 0.25) : mix(FLOOR, PAL.magenta, burstN * 0.3));
+      pipe.rect(CH.left + 6, CH.top - 14, CH.right - CH.left - 12, 8).fill(edge);
+      pipe.rect(CH.left + 6, CH.bottom + 6, CH.right - CH.left - 12, 8).fill(edge);
+      // basket: a notched slab at the right
+      pipe.poly([BASKET_X, CH.top - 4, CH.right - 2, CH.top - 4, CH.right - 2, CH.bottom + 4, BASKET_X, CH.bottom + 4, BASKET_X + 36, (CH.top + CH.bottom) / 2]).fill(mix(PAL.violet, PAL.gold, 0.4));
+      // source: a stack of faceted slots at the left
+      for (let i = 0; i < 3; i++) pipe.poly(slab(CH.left + 2, CH.top + 30 + i * 80, 40, 56, 14)).fill(mix(FLOOR, PAL.gold, 0.22));
+      // flow chevrons as flat triangles
+      for (let i = 0; i < 14; i++) {
+        const cx = ((i * 90 + clock * (surging ? 380 : 120)) % 1200) + 50;
+        pipe.poly([cx, CH.top + 8, cx + 14, CH.top + 16, cx, CH.top + 24]).fill(mix(FLOOR, PAL.violet, 0.6));
+        pipe.poly([cx, CH.bottom - 24, cx + 14, CH.bottom - 16, cx, CH.bottom - 8]).fill(mix(FLOOR, PAL.violet, 0.6));
+      }
+
+      // gates: magenta slabs with gold arrowhead tips pointing into the gap; they slide away during the flush
       gateGfx.clear();
       for (const g of sim.gates) {
         if (!g.active) continue;
         const o = ease.inOut(g.open);
         const topEnd = g.cy - g.gap / 2 - o * 150;
         const botStart = g.cy + g.gap / 2 + o * 150;
-        const alphaG = 1 - o * 0.7;
-        for (const [y0, y1] of [[CH.top - 12, topEnd], [botStart, CH.bottom + 12]] as const) {
-          if (y1 - y0 < 2) continue;
-          gateGfx.rect(g.x - WALL_HALF, y0, WALL_HALF * 2, y1 - y0).fill({ color: 0x5b6b7c, alpha: alphaG }).stroke({ width: 3, color: 0xaebdcc, alpha: alphaG });
-          for (let yy = y0 + 6; yy < y1 - 6; yy += 22) gateGfx.rect(g.x - WALL_HALF + 3, yy, WALL_HALF * 2 - 6, 8).fill({ color: 0xffd166, alpha: 0.55 * alphaG });
+        const a = 1 - o * 0.7;
+        if (topEnd - (CH.top - 14) > 2) {
+          gateGfx.poly([g.x - WALL_HALF, CH.top - 14, g.x + WALL_HALF, CH.top - 14, g.x + WALL_HALF, topEnd, g.x, topEnd + 16, g.x - WALL_HALF, topEnd]).fill({ color: PAL.magenta, alpha: a });
+          gateGfx.poly([g.x - 5, topEnd - 34, g.x + 5, topEnd - 34, g.x, topEnd + 8]).fill({ color: PAL.sil, alpha: a * 0.7 });
         }
-        gateGfx.circle(g.x, g.cy - g.gap / 2 - o * 150, 7).fill({ color: 0xffd166, alpha: alphaG });
-        gateGfx.circle(g.x, g.cy + g.gap / 2 + o * 150, 7).fill({ color: 0xffd166, alpha: alphaG });
+        if (CH.bottom + 14 - botStart > 2) {
+          gateGfx.poly([g.x - WALL_HALF, botStart, g.x, botStart - 16, g.x + WALL_HALF, botStart, g.x + WALL_HALF, CH.bottom + 14, g.x - WALL_HALF, CH.bottom + 14]).fill({ color: PAL.magenta, alpha: a });
+          gateGfx.poly([g.x - 5, botStart + 34, g.x + 5, botStart + 34, g.x, botStart - 8]).fill({ color: PAL.sil, alpha: a * 0.7 });
+        }
+        gateGfx.poly(ngon(g.x, topEnd + 4, 9, 3, -Math.PI / 2)).fill({ color: PAL.gold, alpha: a });
+        gateGfx.poly(ngon(g.x, botStart - 4, 9, 3, Math.PI / 2)).fill({ color: PAL.gold, alpha: a });
       }
 
-      // blobs: pooled sprites, stretched by speed, wobbling and red when wedged
+      // blobs: pooled sprites, tumbling shards; wedged ones turn magenta, shudder and sit in a spiky halo
       blobGfx.clear();
       const bl = sim.blobs;
       for (let i = 0; i < bl.length; i++) {
@@ -369,94 +462,111 @@ function createPrototype(): Prototype {
           bx += Math.sin(clock * 55 + b.id) * (1 + 2.5 * wob);
           by += Math.cos(clock * 47 + b.id) * (1 + 2.5 * wob);
           sx = 1;
-          blobGfx.circle(bx, by, b.r + 9 + 4 * Math.sin(clock * 9 + b.id)).stroke({ width: 3, color: 0xff5d73, alpha: 0.7 });
+          const spin = clock * 3 + b.id;
+          blobGfx.poly(ngon(bx, by, b.r + 11 + 4 * Math.sin(clock * 9 + b.id), 8, spin)).fill({ color: PAL.magenta, alpha: 0.45 });
         }
         sp.position.set(bx, by);
+        sp.rotation = b.stuck ? 0 : (b.x + b.id * 17) * 0.022;
         sp.scale.set(sx, 1 / sx);
       }
       for (let i = bl.length; i < blobSprites.length; i++) blobSprites[i]!.visible = false;
 
-      // charge preview: a ring that shows the pop radius and fills as you hold
+      // charge preview: a hexagonal ring showing the pop radius, and chunky wedges that light up as you hold
       chargeGfx.clear();
       if (sim.charging && !surging) {
-        const p = (0.3 + 0.7 * sim.charge) * (sim.bal('popPower'));
+        const p = (0.3 + 0.7 * sim.charge) * sim.bal('popPower');
         const R = 90 + 190 * p;
         const full = sim.charge >= 1;
-        const col = full ? hsl(clock * 700, 0.9, 0.7) : lerpColor(0xffd166, 0xff9f45, sim.charge);
-        chargeGfx.circle(x, y, R).stroke({ width: 3 + 3 * sim.charge, color: col, alpha: 0.35 + 0.4 * sim.charge });
-        chargeGfx.circle(x, y, BOT_R + 8 + sim.charge * 8).fill({ color: col, alpha: 0.18 + 0.2 * sim.charge });
-        chargeGfx.moveTo(x + BOT_R + 14, y).arc(x, y, BOT_R + 14, 0, Math.PI * 2 * sim.charge).stroke({ width: 6, color: col });
+        const col = full ? cycle(clock * 8) : mix(PAL.gold, PAL.orange, sim.charge);
+        ringPoly(chargeGfx, x, y, R, 4 + 4 * sim.charge, 6, clock * 0.4, col, 0.35 + 0.4 * sim.charge);
+        const lit = Math.round(sim.charge * 12);
+        for (let i = 0; i < 12; i++) {
+          const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+          const rr = BOT_R + 18;
+          chargeGfx.poly(ngon(x + Math.cos(a) * rr, y + Math.sin(a) * rr, 6, 3, a)).fill({ color: i < lit ? col : PAL.sil, alpha: i < lit ? 1 : 0.5 });
+        }
       }
       if (sim.pullOn) {
         for (let i = 0; i < 3; i++) {
           const t = (clock * 1.6 + i / 3) % 1;
-          chargeGfx.circle(x, y, 300 * (1 - t)).stroke({ width: 3, color: 0x9cffd8, alpha: 0.5 * t });
+          ringPoly(chargeGfx, x, y, 300 * (1 - t), 5, 6, clock, PAL.gold, 0.6 * t);
         }
       }
       aura.clear();
       if (surging) {
-        for (let i = 0; i < 3; i++) aura.circle(x, y, 80 + i * 14 + Math.sin(clock * 10 + i) * 5).stroke({ width: 5 - i, color: hsl(clock * 360 + i * 70), alpha: 0.5 - i * 0.12 });
+        for (let i = 0; i < 6; i++) {
+          const a = clock * 7 + (i * Math.PI) / 3;
+          aura.poly(ngon(x + Math.cos(a) * (BOT_R + 40), y + Math.sin(a) * (BOT_R + 40), 11, 3, a)).fill(cycle(clock * 4 + i));
+        }
+        ringPoly(aura, x, y, 84 + Math.sin(clock * 10) * 5, 6, 6, clock * 2, cycle(clock * 5), 0.8);
       }
 
       shock.clear();
-      for (const ring of rings) if (ring.a > 0.01) shock.circle(ring.x, ring.y, ring.r).stroke({ width: 10 * ring.a + 2, color: ring.color, alpha: ring.a });
+      for (const ring of rings) if (ring.a > 0.01) ringPoly(shock, ring.x, ring.y, ring.r, 10 * ring.a + 3, 6, ring.rot, ring.color, ring.a);
 
-      // HUD
+      // HUD: chunky slanted panels and segmented gauges
       dispMeter += ((surging ? Math.min(1, sim.surge / sim.flushSecs) : sim.meter) - dispMeter) * 0.2;
       dispBurst += (sim.burst - dispBurst) * 0.25;
       hud.clear();
+      hud.poly(slab(PAD - 8, 6, 760, 48, 18)).fill({ color: PAL.sil, alpha: 0.92 });
+      const SEG = 20;
       const pb = Math.min(1, dispBurst / 100);
-      hud.roundRect(190, 12, 520, 24, 12).fill(0x22224a);
-      hud.roundRect(190, 12, Math.max(10, 520 * pb), 24, 12).fill(edge);
-      for (const t of [0.5, 0.75]) hud.rect(190 + 520 * t - 1, 12, 2, 24).fill({ color: 0xffffff, alpha: 0.35 });
-      hud.roundRect(40, 756, 360, 22, 11).fill(0x22224a);
-      if (dispMeter > 0.01) hud.roundRect(40, 756, Math.max(14, 360 * dispMeter), 22, 11).fill(surging || sim.ready ? hsl(clock * 360) : lerpColor(0x4cc9f0, 0xffd166, dispMeter));
-      if (sim.ready) hud.roundRect(36, 752, 368, 30, 14).stroke({ width: 4, color: 0xfff3b0, alpha: 0.4 + 0.5 * (0.5 + 0.5 * Math.sin(clock * 12)) });
-      for (let i = 0; i < 4; i++) hud.roundRect(740 + i * 26, 14, 20, 20, 5).fill(i < sim.layer ? lerpColor(0xffd166, 0xff5d73, i / 3) : 0x22224a);
-      for (let i = 0; i < sim.maxLives; i++) {
-        const alive = i < sim.lives;
-        hud.circle(880 + i * 34, 24, 11).fill(alive ? 0x4cc9f0 : 0x22224a).stroke({ width: 3, color: alive ? 0xb8ecff : 0x34345c });
+      for (let i = 0; i < SEG; i++) {
+        const on = i < Math.round(pb * SEG);
+        hud.poly(slab(250 + i * 21, 14, 15, 32, 7)).fill(on ? mix(PAL.gold, PAL.magenta, i / SEG) : mix(PAL.sil, PAL.violet, 0.5));
       }
+      for (let i = 0; i < 4; i++) hud.poly(ngon(700 + i * 30, 30, 11, 3, -Math.PI / 2)).fill(i < sim.layer ? mix(PAL.gold, PAL.magenta, i / 3) : mix(PAL.sil, PAL.violet, 0.5));
+      for (let i = 0; i < sim.maxLives; i++) hud.poly(ngon(842 + i * 32, 30, 12, 4, 0)).fill(i < sim.lives ? PAL.orange : mix(PAL.sil, PAL.violet, 0.5));
+      hud.poly(slab(PAD - 8, 736, 560, 48, 18)).fill({ color: PAL.sil, alpha: 0.92 });
+      const FSEG = 16;
+      const lit = Math.round(dispMeter * FSEG);
+      for (let i = 0; i < FSEG; i++) {
+        const on = i < lit;
+        const fc = surging || sim.ready ? cycle(clock * 4 + i * 0.1) : mix(PAL.violet, PAL.gold, i / FSEG);
+        hud.poly(slab(180 + i * 23, 744, 17, 32, 7)).fill(on ? fc : mix(PAL.sil, PAL.violet, 0.5));
+      }
+      if (sim.ready && Math.floor(clock * 6) % 2 === 0) hud.poly(slab(PAD - 14, 730, 572, 60, 20)).fill({ color: PAL.gold, alpha: 0.3 });
+      hud.poly(slab(1030, 8, 240, 112, 20)).fill({ color: PAL.sil, alpha: 0.92 });
+      if (sim.mult > 1) hud.poly(slab(1000, 122, 270, 38, 14)).fill(PAL.orange);
       prompt.visible = sim.ready && !sim.over && !sim.choosing;
       if (prompt.visible) {
         prompt.scale.set(1 + 0.1 * Math.sin(clock * 11));
-        prompt.tint = hsl(clock * 300, 0.6, 0.85);
+        prompt.tint = cycle(clock * 5);
       }
-      scoreText.text = `Score ${Math.round(sim.score)}`;
+      scoreText.text = `${Math.round(sim.score)}`;
       comboPunch *= 0.85;
       comboText.text = sim.combo >= 3 ? `FLOW x${sim.combo}` : '';
       comboText.scale.set(1 + comboPunch);
-      comboText.tint = lerpColor(0xffffff, 0xffd166, Math.min(1, sim.combo / 30));
-      const m = sim.mult > 1 ? `gate bonus x${sim.mult.toFixed(2)}` : '';
+      comboText.tint = sim.combo >= 20 ? PAL.orange : PAL.gold;
+      const m = sim.mult > 1 ? `GATE BONUS x${sim.mult.toFixed(2)}` : '';
       if (multText.text !== m) multText.text = m;
 
       // the curator step
       choice.visible = sim.choosing;
       if (sim.choosing) {
         choiceG.clear();
-        choiceG.rect(0, 0, 1280, 800).fill({ color: 0x07070d, alpha: 0.72 });
+        choiceG.rect(0, 0, 1280, 800).fill({ color: PAL.sil, alpha: 0.82 });
         choiceTitle.text = `WAVE ${sim.waves + 1}: PICK THE NEXT PROBLEM`;
         sim.offers.forEach((o, i) => {
           const cx = i === 0 ? 330 : 950;
           const on = sim.sel === i;
           const w = 400;
-          const h = 360;
-          const k = on ? 1.03 : 0.97;
-          choiceG.roundRect(cx - (w / 2) * k, 170 - (on ? 6 : 0), w * k, h * k, 22).fill({ color: on ? 0x1f3350 : 0x141a2b, alpha: 0.96 }).stroke({ width: on ? 7 : 3, color: on ? hsl(clock * 200, 0.7, 0.7) : 0x34345c });
-          // mini pipe with the layout's gate
+          const k = on ? 1.04 : 0.96;
+          choiceG.poly(chamfer(cx - (w / 2) * k, 170 - (on ? 8 : 0), w * k, 360 * k, 28)).fill(on ? PAL.violet : mix(PAL.sil, PAL.violet, 0.35));
+          if (on) choiceG.poly(chamfer(cx - (w / 2) * k - 10, 160, w * k + 20, 10, 5)).fill(cycle(clock * 4));
           const py = 350 + (o.cy - 400) * 0.35;
           const pw = 320;
-          choiceG.roundRect(cx - pw / 2, 230, pw, 240, 10).fill(0x15293a);
-          choiceG.rect(cx - 12, 230, 24, py - o.gap * 0.4 - 230).fill(0x7a8a9c);
-          choiceG.rect(cx - 12, py + o.gap * 0.4, 24, 470 - (py + o.gap * 0.4)).fill(0x7a8a9c);
-          for (let j = 0; j < 5; j++) choiceG.circle(cx - 120 + j * 22 - ((clock * 40 + i * 9) % 22), 350 + Math.sin(j * 2 + i) * 40, 9).fill({ color: 0x4cc9f0, alpha: 0.9 });
+          choiceG.poly(chamfer(cx - pw / 2, 230, pw, 240, 14)).fill(PAL.sil);
+          choiceG.poly([cx - 14, 230, cx + 14, 230, cx + 14, py - o.gap * 0.4, cx, py - o.gap * 0.4 + 12, cx - 14, py - o.gap * 0.4]).fill(PAL.magenta);
+          choiceG.poly([cx - 14, py + o.gap * 0.4, cx, py + o.gap * 0.4 - 12, cx + 14, py + o.gap * 0.4, cx + 14, 470, cx - 14, 470]).fill(PAL.magenta);
+          for (let j = 0; j < 5; j++) choiceG.poly(ngon(cx - 120 + j * 22 - ((clock * 40 + i * 9) % 22), 350 + Math.sin(j * 2 + i) * 40, 10, 4, Math.PI / 4)).fill(PAL.gold);
           const word = o.gap < 76 ? 'TIGHT' : o.gap < 88 ? 'SNUG' : o.gap < 102 ? 'ROOMY' : 'WIDE';
           cardText[i]!.text = `${word}\nscore x${o.mult.toFixed(2)}`;
-          cardText[i]!.tint = on ? 0xffffff : 0xb8b8d8;
+          cardText[i]!.tint = on ? PAL.gold : mix(PAL.gold, PAL.violet, 0.5);
         });
         const frac = Math.max(0, sim.choiceT / 9);
-        choiceG.roundRect(440, 640, 400, 12, 6).fill(0x22224a);
-        choiceG.roundRect(440, 640, 400 * frac, 12, 6).fill(0xffd166);
+        choiceG.poly(slab(440, 640, 400, 14, 8)).fill(mix(PAL.sil, PAL.violet, 0.5));
+        choiceG.poly(slab(440, 640, 400 * frac, 14, 8)).fill(PAL.orange);
       }
 
       result.visible = sim.over && sim.overT > 0.9;
@@ -485,30 +595,29 @@ function createPrototype(): Prototype {
           const freed = Number(e.data?.freed ?? 0);
           play('pop', { pitch: 1.5 - p * 0.6, volume: 0.45 + 0.5 * p });
           play('whoosh', { pitch: 0.7 + p * 0.5, volume: 0.3 + 0.4 * p });
-          addRing(ex, ey, freed > 0 ? 0xfff3b0 : 0x7fd8ff, Number(e.data?.radius ?? 200), 380 + 200 * p);
-          particles.emit('puff', ex, ey, { count: 6 + Math.round(p * 10), color: 0xdaf3ff });
+          addRing(ex, ey, freed > 0 ? PAL.gold : PAL.violet, Number(e.data?.radius ?? 200), 380 + 200 * p);
+          particles.emit('puff', ex, ey, { count: 6 + Math.round(p * 10), color: PAL.violet });
           shake(0.12 + 0.35 * p);
           ss.pop(0.2 + 0.5 * p, 'x');
           punch(botBody, 0.15 + 0.2 * p);
           if (p > 0.9) hitStop(2);
           eyes.setMood(freed > 0 ? 'happy' : 'neutral', 0.8);
-          if (freed === 0 && p > 0.5) numberPop(world, 'no budge', ex, ey - 50, { color: 0x9a9ac4, size: 26, ms: 600 });
+          if (freed === 0 && p > 0.5) numberPop(world, 'no budge', ex, ey - 50, { color: PAL.violet, size: 28, ms: 600 });
           break;
         }
         case 'unjam': {
           const n = Number(e.data?.count ?? 1);
           const fwd = !!e.data?.forward;
           const word = fwd ? POP_WORDS[Math.floor(vfx() * POP_WORDS.length)]! : 'BACKFIRE!';
-          // the release: the best sound in the game. a low thump, a gurgle slide up, a sparkle
           play('boom', { pitch: 1.4, volume: 0.6 + 0.3 * m });
           play('blip', { pitch: fwd ? 1.2 : 0.6, volume: 0.8 });
           arpeggio(fwd ? [0, 4, 7, 12] : [0, -3, -7], 45, 0.9, 0.5);
-          particles.emit('sparks', ex, ey, { count: 12 + n * 6, color: fwd ? 0xfff3b0 : 0xff8fa0, speed: 1.3, angle: fwd ? 0 : Math.PI, spread: 1.4 });
-          particles.emit('debris', ex, ey, { count: 8 + n * 3, color: 0x7fd8ff, speed: 1.0 });
-          numberPop(world, n > 1 ? `${word} x${n}` : word, ex, ey - 46, { color: fwd ? 0xffffff : 0xff8fa0, size: 36 + Math.min(n, 5) * 5, rise: 60, ms: 800 });
+          particles.emit('sparks', ex, ey, { count: 12 + n * 6, color: fwd ? PAL.gold : PAL.magenta, speed: 1.3, angle: fwd ? 0 : Math.PI, spread: 1.4 });
+          particles.emit('debris', ex, ey, { count: 8 + n * 3, color: PAL.orange, speed: 1.0 });
+          numberPop(world, n > 1 ? `${word} x${n}` : word, ex, ey - 46, { color: fwd ? PAL.gold : PAL.magenta, size: 36 + Math.min(n, 5) * 5, rise: 60, ms: 800 });
           shake(0.25 + 0.1 * Math.min(n, 5));
           hitStop(2 + Math.min(n, 3));
-          flash(botBody, 0xfff3b0, 120);
+          flash(botBody, PAL.gold, 120);
           eyes.setMood(fwd ? 'happy' : 'frown', 1.4);
           break;
         }
@@ -516,16 +625,15 @@ function createPrototype(): Prototype {
           const n = Number(e.data?.count ?? 2);
           play('creak', { pitch: 0.8 + 0.1 * n, volume: 0.7, pan: (ex - 640) / 700 });
           play('clank', { pitch: 0.7, volume: 0.45 });
-          addRing(ex, ey, 0xff5d73, 90, 400);
-          particles.emit('dust', ex, ey, { count: 8, color: 0xff8fa0, size: 1.2 });
+          addRing(ex, ey, PAL.magenta, 90, 400);
+          particles.emit('dust', ex, ey, { count: 8, color: PAL.magenta, size: 1.2 });
           shake(0.12 + 0.05 * n);
-          numberPop(world, 'STUCK!', ex, ey - 56, { color: 0xff5d73, size: 32, rise: 30, ms: 700 });
+          numberPop(world, 'STUCK!', ex, ey - 56, { color: PAL.magenta, size: 34, rise: 30, ms: 700 });
           break;
         }
         case 'deliver': {
           const steps = Number(e.data?.steps ?? 0);
           const combo = Number(e.data?.combo ?? 1);
-          // the delivery ticks climb the meter: equal whole tones up to an octave and a bit, then a chime layer says "maxed"
           play('pickup', { pitch: Math.pow(2, (steps * 2) / 12), volume: 0.35, variation: 0.03 });
           if (combo > 21 && combo % 3 === 0) play('chime', { pitch: Math.pow(2, (((combo - 21) % 8) * 2) / 12), volume: 0.4 });
           particles.emit('sparks', BASKET_X + 10, ey, { count: 4, color: KIND_COLOR[Number(e.data?.kind ?? 0)]!, speed: 0.8, angle: 0, spread: 1.6 });
@@ -536,12 +644,12 @@ function createPrototype(): Prototype {
           const combo = Number(e.data?.combo ?? 10);
           play('layer', { pitch: 1.5 + Math.min(1, combo / 60), volume: 0.7 });
           arpeggio([0, 4, 7, 12, 16], 50, 0.9, 0.7);
-          numberPop(world, `FLOOD x${combo}`, 1080, 300, { color: 0xfff3b0, size: 64, rise: 60, ms: 1100 });
-          addRing(BASKET_X + 40, 400, 0x06d6a0, 360, 600);
+          numberPop(world, `FLOOD x${combo}`, 1000, 330, { color: PAL.gold, size: 64, rise: 60, ms: 1100 });
+          addRing(BASKET_X + 40, 400, PAL.orange, 360, 600);
           particles.emit('confetti', BASKET_X + 40, 400, { count: 36, speed: 1.4 });
           shake(0.3);
           hitStop(2);
-          flashOverlay.tint = 0x9cffd8;
+          flashOverlay.tint = PAL.orange;
           flashOverlay.alpha = 0.2;
           tweens.to(flashOverlay, { alpha: 0 }, 300, ease.outQuad);
           break;
@@ -564,9 +672,9 @@ function createPrototype(): Prototype {
           music.setParts(partsFor(level, sim.surging));
           play('layer', { pitch: Math.pow(2, ((level - 2) * 3) / 12), volume: 0.9 });
           play('boom', { pitch: 1.6, volume: 0.5 });
-          numberPop(world, `${LAYER_NAMES[level - 1] ?? 'PRESSURE'}!`, 640, 170, { color: 0xffd166, size: 60, rise: 40, ms: 1400 });
+          numberPop(world, `${LAYER_NAMES[level - 1] ?? 'PRESSURE'}!`, 640, 170, { color: PAL.gold, size: 60, rise: 40, ms: 1400 });
           shake(0.35 + 0.05 * level);
-          flashOverlay.tint = 0xffd166;
+          flashOverlay.tint = PAL.orange;
           flashOverlay.alpha = 0.3;
           tweens.to(flashOverlay, { alpha: 0 }, 400, ease.outQuad);
           break;
@@ -583,7 +691,7 @@ function createPrototype(): Prototype {
           music.stinger(tune.secret, { duck: 0.5 });
           play('clank', { pitch: 1, volume: 0.9 });
           play('click', { volume: 0.8 });
-          numberPop(world, mult > 1 ? `GATES RESET  x${mult.toFixed(2)}` : 'GATES RESET', 640, 200, { color: 0xffd166, size: 52, rise: 40, ms: 1200 });
+          numberPop(world, mult > 1 ? `GATES RESET  x${mult.toFixed(2)}` : 'GATES RESET', 640, 200, { color: PAL.gold, size: 52, rise: 40, ms: 1200 });
           shake(0.4);
           break;
         }
@@ -591,24 +699,24 @@ function createPrototype(): Prototype {
           music.stinger(tune.secret, { duck: 0.4 });
           play('layer', { pitch: 2, volume: 0.8 });
           arpeggio([0, 7, 12, 19], 70, 1, 0.7);
-          numberPop(world, `NEW MOVE: PULL  (hold ${glyph('x')})`, 640, 260, { color: 0x9cffd8, size: 46, rise: 40, ms: 1800 });
-          flashOverlay.tint = 0x9cffd8;
+          numberPop(world, `NEW MOVE: PULL  (hold ${glyph('x')})`, 640, 260, { color: PAL.gold, size: 46, rise: 40, ms: 1800 });
+          flashOverlay.tint = PAL.gold;
           flashOverlay.alpha = 0.35;
           tweens.to(flashOverlay, { alpha: 0 }, 400, ease.outQuad);
           break;
         case 'pull-tick':
           play('whoosh', { pitch: 0.6, volume: 0.18 });
-          particles.emit('dust', ex, ey, { count: 2, color: 0x9cffd8, size: 0.9 });
+          particles.emit('dust', ex, ey, { count: 2, color: PAL.gold, size: 0.9 });
           break;
         case 'flush-ready':
           music.stinger(tune.powerup);
           play('layer', { pitch: 2, volume: 0.8 });
-          numberPop(world, 'FLUSH READY!', 640, 220, { color: 0xfff3b0, size: 78, rise: 30, ms: 1600 });
-          flashOverlay.tint = 0xfff3b0;
+          numberPop(world, 'FLUSH READY!', 640, 220, { color: PAL.gold, size: 78, rise: 30, ms: 1600 });
+          flashOverlay.tint = PAL.gold;
           flashOverlay.alpha = 0.4;
           tweens.to(flashOverlay, { alpha: 0 }, 450, ease.outQuad);
           shake(0.3);
-          addRing(ex, ey, 0xfff3b0, 380, 700);
+          addRing(ex, ey, PAL.gold, 380, 700);
           particles.emit('confetti', ex, ey, { count: 40, speed: 1.3 });
           eyes.setMood('happy', 2);
           break;
@@ -624,15 +732,15 @@ function createPrototype(): Prototype {
           play('boom', { pitch: 1.5, volume: 0.8 });
           play('whoosh', { pitch: 0.5, volume: 0.9 });
           arpeggio([0, 7, 12, 16, 19, 24], 55, 0.9, 0.8);
-          numberPop(world, 'FLUSH!', 640, 160, { color: 0xffffff, size: 110, rise: 60, ms: 1400 });
+          numberPop(world, 'FLUSH!', 640, 160, { color: PAL.gold, size: 110, rise: 60, ms: 1400 });
           shake(0.85);
           hitStop(5);
           world.scale.set(1.05);
           tweens.to(world, { 'scale.x': 1, 'scale.y': 1 }, 600, ease.outElastic);
-          flashOverlay.tint = 0xffffff;
+          flashOverlay.tint = PAL.gold;
           flashOverlay.alpha = 0.7;
           tweens.to(flashOverlay, { alpha: 0 }, 400, ease.outQuad);
-          for (let i = 0; i < 3; i++) addRing(ex, ey, hsl(i * 120), 640, 700, i * 110);
+          for (let i = 0; i < 3; i++) addRing(ex, ey, [PAL.gold, PAL.orange, PAL.magenta][i]!, 640, 700, i * 110);
           particles.emit('confetti', ex, ey, { count: 64, speed: 1.6, size: 1.2 });
           eyes.setMood('happy', 8);
           break;
@@ -641,7 +749,7 @@ function createPrototype(): Prototype {
           play('boom', { pitch: 0.9, volume: 0.7 });
           play('clank', { pitch: 0.8, volume: 0.9 });
           arpeggio([19, 12, 7, 0], 80, 0.7, 0.6);
-          numberPop(world, `FLUSH OVER  ${Number(e.data?.carried ?? 0)} carried`, 640, 160, { color: 0xffd166, size: 48, rise: 40, ms: 1500 });
+          numberPop(world, `FLUSH OVER  ${Number(e.data?.carried ?? 0)} carried`, 640, 160, { color: PAL.gold, size: 48, rise: 40, ms: 1500 });
           shake(0.45);
           eyes.setMood('neutral', 0.1);
           trail.clear();
@@ -657,19 +765,19 @@ function createPrototype(): Prototype {
           hitStop(9);
           world.scale.set(1.07);
           tweens.to(world, { 'scale.x': 1, 'scale.y': 1 }, 520, ease.outElastic);
-          flashOverlay.tint = 0xffffff;
+          flashOverlay.tint = PAL.gold;
           flashOverlay.alpha = 0.75;
           tweens.to(flashOverlay, { alpha: 0 }, 350, ease.outQuad);
-          tweens.to(flashOverlay, { tint: 0xff3b5c }, 200, ease.linear);
-          for (let i = 0; i < 3; i++) addRing(640, 400, i === 1 ? 0xffffff : 0xff5d73, 760, 700, i * 90);
+          tweens.to(flashOverlay, { tint: PAL.magenta }, 200, ease.linear);
+          for (let i = 0; i < 3; i++) addRing(640, 400, [PAL.magenta, PAL.gold, PAL.orange][i]!, 760, 700, i * 90);
           for (let k = 0; k < 6; k++) {
             const px = 120 + k * 200;
-            particles.emit('debris', px, 400, { count: 18, color: 0x4cc9f0, size: 1.6, speed: 1.4 });
-            particles.emit('puff', px, 400, { count: 6, color: 0xdaf3ff, size: 1.8 });
+            particles.emit('debris', px, 400, { count: 18, color: k % 2 ? PAL.orange : PAL.gold, size: 1.6, speed: 1.4 });
+            particles.emit('puff', px, 400, { count: 6, color: PAL.violet, size: 1.8 });
           }
-          particles.emit('sparks', 640, 400, { count: 40, color: 0xfff3b0, speed: 1.4 });
-          numberPop(world, lives > 0 ? 'BURST!' : 'LAST PIPE GONE', 640, 330, { color: 0xff5d73, size: 78, rise: 90, ms: 1000 });
-          if (lives > 0) numberPop(world, `${lives} ${lives === 1 ? 'burst' : 'bursts'} left`, 640, 460, { color: 0xffd1d8, size: 32, rise: 30, ms: 1200 });
+          particles.emit('sparks', 640, 400, { count: 40, color: PAL.gold, speed: 1.4 });
+          numberPop(world, lives > 0 ? 'BURST!' : 'LAST PIPE GONE', 640, 330, { color: PAL.magenta, size: 78, rise: 90, ms: 1000 });
+          if (lives > 0) numberPop(world, `${lives} ${lives === 1 ? 'burst' : 'bursts'} left`, 640, 460, { color: PAL.gold, size: 32, rise: 30, ms: 1200 });
           eyes.setMood('frown', 1.6);
           ss.pop(0.65, 'y');
           trail.clear();
@@ -684,12 +792,12 @@ function createPrototype(): Prototype {
           hitStop(14);
           world.scale.set(1.1);
           tweens.to(world, { 'scale.x': 1, 'scale.y': 1 }, 900, ease.outElastic);
-          particles.emit('debris', 640, 400, { count: 60, color: 0x4cc9f0, size: 1.8, speed: 1.6 });
+          particles.emit('debris', 640, 400, { count: 60, color: PAL.magenta, size: 1.8, speed: 1.6 });
           break;
         case 'recover':
           play('recover');
           play('chime', { volume: 0.6 });
-          numberPop(world, 'breathe...', 640, 200, { color: 0x9cffd8, size: 40, rise: 30, ms: 1400 });
+          numberPop(world, 'breathe...', 640, 200, { color: PAL.gold, size: 40, rise: 30, ms: 1400 });
           eyes.setMood('happy', 1.5);
           botBody.alpha = 0.4;
           tweens.to(botBody, { alpha: 1 }, 600, ease.outQuad);
@@ -698,8 +806,8 @@ function createPrototype(): Prototype {
           music.setParts(partsFor(1, false), 0.25);
           play('chime', { volume: 0.8 });
           play('recover');
-          numberPop(world, 'GO!', 640, 200, { color: 0x9cffd8, size: 64, rise: 50, ms: 800 });
-          particles.emit('puff', 640, 400, { count: 14, color: 0x9cffd8 });
+          numberPop(world, 'GO!', 640, 200, { color: PAL.gold, size: 64, rise: 50, ms: 800 });
+          particles.emit('puff', 640, 400, { count: 14, color: PAL.orange });
           trail.clear();
           break;
       }
