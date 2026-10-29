@@ -1,8 +1,14 @@
 import type { Ctx, InputState, PrototypeMeta, SimEvent } from '../../core/types.ts';
 
 /** Pure sim for the demo: no Pixi, no DOM, no audio, no Math.random. Bots and unit tests import this directly. */
-export const ARENA = { left: 40, top: 40, right: 1240, bottom: 760 };
+export const FIELD = { left: 40, top: 40, right: 1240, bottom: 760 };
 export const BALL_R = 28;
+export const HAZARD_R = 24;
+export const LIVES = 3;
+/** Run time (seconds) at which each pressure layer switches on: 1 heat, 2 drifters, 3 fading sparks, 4 closing walls. */
+export const LAYER_AT = [0, 25, 55, 90];
+export const LAYER_NAMES = ['HEAT', 'DRIFTERS', 'FADING SPARKS', 'CLOSING WALLS'];
+const MAX_INSET = 110;
 const ACCEL = 2600;
 const MAX_SPEED = 900;
 const DRAG = 1.8;
@@ -11,10 +17,21 @@ const DASH_IMPULSE = 650;
 const DASH_COOLDOWN = 30;
 const PICKUP_R = 18;
 const MAX_PICKUPS = 3;
+const PICKUP_LIFE = 7;
 
 export interface Pickup {
   x: number;
   y: number;
+  age: number;
+}
+
+export interface Hazard {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  /** Seconds of telegraph left; the hazard cannot hurt or move until it reaches 0. */
+  warn: number;
   age: number;
 }
 
@@ -28,20 +45,31 @@ export class DemoSim {
   heat = 20;
   score = 0;
   combo = 0;
+  /** Total failures across runs. */
   deaths = 0;
+  lives = LIVES;
   dashes = 0;
   pickups: Pickup[] = [];
+  hazards: Hazard[] = [];
+  /** Total sim time, and time within the current run. */
   time = 0;
+  runTime = 0;
+  runs = 1;
+  layer = 1;
+  over = false;
+  overT = 0;
+  bestSurvival = 0;
   firstPressure = 0;
   firstFail = 0;
   dashCd = 0;
   invuln = 0;
   private spawnT = 0;
+  private hazardT = 0;
   private comboT = 0;
   private level = 0;
   private beatT = 0;
   private recoverIn = 0;
-  /** Sim time of the last failure; the pressure ramp restarts from here so failing is a reprieve. */
+  /** Run time of the last failure; the heat ramp restarts from here so failing is a reprieve. */
   private rampStart = 0;
   private out: SimEvent[] = [];
   private ctx!: Ctx;
@@ -58,15 +86,35 @@ export class DemoSim {
     this.ctx = ctx;
   }
 
+  /** Playfield; the walls close in during layer 4. */
+  get inset(): number {
+    return Math.max(0, Math.min(1, (this.runTime - LAYER_AT[3]!) / 90)) * MAX_INSET;
+  }
+  get arena(): { left: number; top: number; right: number; bottom: number } {
+    const i = this.inset;
+    return { left: FIELD.left + i, top: FIELD.top + i, right: FIELD.right - i, bottom: FIELD.bottom - i };
+  }
+
   get heatRate(): number {
-    return Math.min(30, 5 + 0.2 * (this.time - this.rampStart));
+    return Math.min(30, 5 + 0.2 * (this.runTime - this.rampStart));
+  }
+
+  get hazardCap(): number {
+    return this.layer < 2 ? 0 : Math.min(6, 2 + Math.floor((this.runTime - LAYER_AT[1]!) / 25));
   }
 
   step(dt: number, input: InputState): void {
-    this.time += dt;
     this.px = this.x;
     this.py = this.y;
+    if (this.over) {
+      this.overT += dt;
+      if (this.overT > 0.7 && input.buttons.a.pressed) this.restart();
+      return;
+    }
+    this.time += dt;
+    this.runTime += dt;
     const { left, buttons } = input;
+    const arena = this.arena;
 
     // movement
     this.vx += left.x * ACCEL * dt;
@@ -104,39 +152,16 @@ export class DemoSim {
     this.y += this.vy * dt;
 
     // walls
-    this.wall(this.x - BALL_R < ARENA.left, 'x', ARENA.left + BALL_R, -1);
-    this.wall(this.x + BALL_R > ARENA.right, 'x', ARENA.right - BALL_R, 1);
-    this.wall(this.y - BALL_R < ARENA.top, 'y', ARENA.top + BALL_R, -1);
-    this.wall(this.y + BALL_R > ARENA.bottom, 'y', ARENA.bottom - BALL_R, 1);
+    this.wall(this.x - BALL_R < arena.left, 'x', arena.left + BALL_R, -1);
+    this.wall(this.x + BALL_R > arena.right, 'x', arena.right - BALL_R, 1);
+    this.wall(this.y - BALL_R < arena.top, 'y', arena.top + BALL_R, -1);
+    this.wall(this.y + BALL_R > arena.bottom, 'y', arena.bottom - BALL_R, 1);
 
-    // pickups
-    this.spawnT -= dt;
-    if (this.pickups.length < MAX_PICKUPS && this.spawnT <= 0) {
-      this.pickups.push({
-        x: this.ctx.rng.range(ARENA.left + 90, ARENA.right - 90),
-        y: this.ctx.rng.range(ARENA.top + 90, ARENA.bottom - 90),
-        age: 0,
-      });
-      this.spawnT = 1.2;
-    }
-    for (const p of this.pickups) p.age += dt;
-    for (let i = this.pickups.length - 1; i >= 0; i--) {
-      const p = this.pickups[i]!;
-      if (Math.hypot(p.x - this.x, p.y - this.y) < BALL_R + PICKUP_R) {
-        this.pickups.splice(i, 1);
-        this.combo = this.comboT > 0 ? this.combo + 1 : 1;
-        this.comboT = 3;
-        this.score += 1;
-        this.heat = Math.max(0, this.heat - 22);
-        this.emit({ type: 'pickup', magnitude: Math.min(1, 0.4 + this.combo * 0.15), x: p.x, y: p.y, data: { combo: this.combo } });
-      }
-    }
-    if (this.comboT > 0) {
-      this.comboT -= dt;
-      if (this.comboT <= 0) this.combo = 0;
-    }
+    this.updateLayers();
+    this.updatePickups(dt, arena);
+    this.updateHazards(dt, arena);
 
-    // pressure
+    // base pressure: heat
     if (this.invuln > 0) this.invuln--;
     else this.heat += this.heatRate * dt;
     const thresholds = [50, 75, 90];
@@ -155,7 +180,96 @@ export class DemoSim {
       }
     }
     if (this.heat >= 100 && this.invuln === 0) this.fail();
-    if (this.recoverIn > 0 && --this.recoverIn === 0) this.emit({ type: 'recover', magnitude: 0.6, x: this.x, y: this.y });
+    if (this.recoverIn > 0 && --this.recoverIn === 0 && !this.over) this.emit({ type: 'recover', magnitude: 0.6, x: this.x, y: this.y });
+  }
+
+  /** Pressure layers switch on as the run goes on; the heat timer stays underneath all of them. */
+  private updateLayers(): void {
+    let layer = 1;
+    for (let i = 1; i < LAYER_AT.length; i++) if (this.runTime >= LAYER_AT[i]!) layer = i + 1;
+    if (layer > this.layer) {
+      this.layer = layer;
+      this.emit({ type: 'layer', magnitude: layer / 4, data: { level: layer, name: LAYER_NAMES[layer - 1]! } });
+    }
+  }
+
+  private updatePickups(dt: number, a: { left: number; top: number; right: number; bottom: number }): void {
+    this.spawnT -= dt;
+    if (this.pickups.length < MAX_PICKUPS && this.spawnT <= 0) {
+      this.pickups.push({ x: this.ctx.rng.range(a.left + 90, a.right - 90), y: this.ctx.rng.range(a.top + 90, a.bottom - 90), age: 0 });
+      this.spawnT = 1.2;
+    }
+    for (let i = this.pickups.length - 1; i >= 0; i--) {
+      const p = this.pickups[i]!;
+      p.age += dt;
+      // closing walls push pickups inward so none end up out of reach
+      p.x = Math.min(a.right - 40, Math.max(a.left + 40, p.x));
+      p.y = Math.min(a.bottom - 40, Math.max(a.top + 40, p.y));
+      if (Math.hypot(p.x - this.x, p.y - this.y) < BALL_R + PICKUP_R) {
+        this.pickups.splice(i, 1);
+        this.combo = this.comboT > 0 ? this.combo + 1 : 1;
+        this.comboT = 3;
+        this.score += 1;
+        this.heat = Math.max(0, this.heat - 22);
+        this.emit({ type: 'pickup', magnitude: Math.min(1, 0.4 + this.combo * 0.15), x: p.x, y: p.y, data: { combo: this.combo } });
+      } else if (this.layer >= 3 && p.age > PICKUP_LIFE) {
+        // layer 3: uncollected sparks fade, add heat, and break the combo
+        this.pickups.splice(i, 1);
+        this.heat += 8;
+        this.combo = 0;
+        this.comboT = 0;
+        this.emit({ type: 'expire', magnitude: 0.5, x: p.x, y: p.y });
+      }
+    }
+    if (this.comboT > 0) {
+      this.comboT -= dt;
+      if (this.comboT <= 0) this.combo = 0;
+    }
+  }
+
+  private updateHazards(dt: number, a: { left: number; top: number; right: number; bottom: number }): void {
+    if (this.layer >= 2 && this.invuln === 0) {
+      this.hazardT -= dt;
+      if (this.hazards.length < this.hazardCap && this.hazardT <= 0) {
+        const rng = this.ctx.rng;
+        let hx = 0;
+        let hy = 0;
+        for (let tries = 0; tries < 12; tries++) {
+          hx = rng.range(a.left + 60, a.right - 60);
+          hy = rng.range(a.top + 60, a.bottom - 60);
+          if (Math.hypot(hx - this.x, hy - this.y) > 260) break;
+        }
+        const ang = rng.range(0, Math.PI * 2);
+        const sp = rng.range(150, 230);
+        this.hazards.push({ x: hx, y: hy, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, warn: 1, age: 0 });
+        this.hazardT = 4;
+        this.emit({ type: 'hazard-warn', magnitude: 0.4, x: hx, y: hy });
+      }
+    }
+    for (let i = this.hazards.length - 1; i >= 0; i--) {
+      const h = this.hazards[i]!;
+      h.age += dt;
+      if (h.warn > 0) {
+        h.warn -= dt;
+        continue;
+      }
+      h.x += h.vx * dt;
+      h.y += h.vy * dt;
+      if (h.x - HAZARD_R < a.left) { h.x = a.left + HAZARD_R; h.vx = Math.abs(h.vx); }
+      if (h.x + HAZARD_R > a.right) { h.x = a.right - HAZARD_R; h.vx = -Math.abs(h.vx); }
+      if (h.y - HAZARD_R < a.top) { h.y = a.top + HAZARD_R; h.vy = Math.abs(h.vy); }
+      if (h.y + HAZARD_R > a.bottom) { h.y = a.bottom - HAZARD_R; h.vy = -Math.abs(h.vy); }
+      if (this.invuln === 0 && Math.hypot(h.x - this.x, h.y - this.y) < BALL_R + HAZARD_R) {
+        const d = Math.hypot(this.x - h.x, this.y - h.y) || 1;
+        this.vx += ((this.x - h.x) / d) * 520;
+        this.vy += ((this.y - h.y) / d) * 520;
+        this.hazards.splice(i, 1);
+        this.heat += 20;
+        this.combo = 0;
+        this.comboT = 0;
+        this.emit({ type: 'hazard-hit', magnitude: 0.8, x: h.x, y: h.y });
+      }
+    }
   }
 
   private wall(hit: boolean, axis: 'x' | 'y', pos: number, sign: -1 | 1): void {
@@ -178,19 +292,53 @@ export class DemoSim {
 
   private fail(): void {
     this.deaths++;
+    this.lives--;
     if (this.firstFail === 0) this.firstFail = this.time;
-    this.emit({ type: 'fail', magnitude: 1, x: this.x, y: this.y });
+    this.emit({ type: 'fail', magnitude: 1, x: this.x, y: this.y, data: { lives: this.lives } });
     this.x = this.px = 640;
     this.y = this.py = 400;
     this.vx = this.vy = 0;
     this.heat = 20;
-    this.rampStart = this.time;
+    this.rampStart = this.runTime;
     this.pickups.length = 0;
+    this.hazards.length = 0;
+    this.hazardT = 3;
     this.combo = 0;
     this.invuln = 90;
     this.level = 0;
     this.recoverIn = 45;
     this.spawnT = 0.6;
+    if (this.lives <= 0) {
+      // hard failure: the run ends. A result screen waits for the player; pressing the dash button starts over.
+      this.over = true;
+      this.overT = 0;
+      this.bestSurvival = Math.max(this.bestSurvival, this.runTime);
+      this.emit({ type: 'gameover', magnitude: 1, x: this.x, y: this.y, data: { score: this.score, seconds: Math.round(this.runTime) } });
+    }
+  }
+
+  private restart(): void {
+    this.runs++;
+    this.x = this.px = 640;
+    this.y = this.py = 400;
+    this.vx = this.vy = 0;
+    this.heat = 20;
+    this.score = 0;
+    this.combo = 0;
+    this.comboT = 0;
+    this.lives = LIVES;
+    this.pickups.length = 0;
+    this.hazards.length = 0;
+    this.runTime = 0;
+    this.rampStart = 0;
+    this.layer = 1;
+    this.level = 0;
+    this.invuln = 60;
+    this.over = false;
+    this.overT = 0;
+    this.spawnT = 0.5;
+    this.hazardT = 0;
+    this.emit({ type: 'restart', magnitude: 0.6, x: this.x, y: this.y });
   }
 
   private emit(e: SimEvent): void {
@@ -213,6 +361,10 @@ export class DemoSim {
       scoreOrProgress: this.score,
       heat: Math.round(this.heat * 10) / 10,
       heatRate: Math.round(this.heatRate * 10) / 10,
+      lives: this.lives,
+      layer: this.layer,
+      runs: this.runs,
+      survivalSec: Math.round(Math.max(this.bestSurvival, this.runTime) * 100) / 100,
     };
   }
 }
