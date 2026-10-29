@@ -9,17 +9,16 @@ export const BOT_R = 24;
 export const KIND_R = [15, 23, 17];
 /** How hard each blob kind grips a gate; a pop must beat grip * 0.4 at its distance. */
 export const KIND_GRIP = [1, 1.3, 1.8];
-export const LAYER_AT = [0, 30, 60, 90];
-export const LAYER_NAMES = ['PRESSURE', 'FAT BLOBS', 'STICKY BLOBS', 'SECOND GATE'];
-export const WAVE_EVERY = 40;
+export const LAYER_NAMES = ['WAVE 1', 'FAT BLOBS', 'SECOND GATE', 'STICKY BLOBS'];
 export const CHOICE_SECONDS = 9;
-export const UNLOCK_AT = 12;
+/** How far the bot can lock on to a wedged blob, and how long (seconds, at default strength) holding A takes to free each kind. */
+export const LOCK_R = 230;
+export const KIND_NEED = [0.35, 0.5, 0.8];
+export const FLUSH_SECONDS = 5;
+export const waveGoal = (base: number, wave: number): number => Math.round(base + 6 * wave);
 const DEFAULT_GAP = 100;
 const MAX_BLOBS = 150;
 const FLOW = 150;
-const CHARGE_TIME = 0.55;
-const AUTO_FIRE_AFTER = 0.4;
-const POP_COOLDOWN = 0.28;
 const GAP_CHOICES = [70, 82, 94, 108];
 const GAP_MULT = [1.7, 1.4, 1.15, 1.0];
 
@@ -29,9 +28,9 @@ export const BALANCE: BalanceSpec[] = [
   { id: 'spawnRamp', label: 'Speed ramp (more blobs each second)', min: 0, max: 0.2, step: 0.01, default: 0.06 },
   { id: 'jamChance', label: 'How easily gates jam', min: 0.3, max: 2.5, step: 0.1, default: 1, unit: 'x' },
   { id: 'burstRate', label: 'How fast the backlog bursts the pipe', min: 0.4, max: 2, step: 0.1, default: 1, unit: 'x' },
-  { id: 'popPower', label: 'Pop strength', min: 0.6, max: 1.6, step: 0.05, default: 1, unit: 'x' },
+  { id: 'popPower', label: 'Unjam speed (higher = shorter hold)', min: 0.6, max: 1.8, step: 0.05, default: 1, unit: 'x' },
   { id: 'flushFill', label: 'Flush meter fill speed', min: 0.4, max: 2.5, step: 0.1, default: 1, unit: 'x' },
-  { id: 'flushSeconds', label: 'Flush length', min: 3, max: 9, step: 0.5, default: 5, unit: 's' },
+  { id: 'quota', label: 'Blobs needed for wave 1 (+6 each wave)', min: 8, max: 30, step: 1, default: 14 },
   { id: 'lives', label: 'Pipe bursts allowed (next run)', min: 1, max: 6, step: 1, default: 3 },
 ];
 const DEFAULTS: Record<string, number> = Object.fromEntries(BALANCE.map((b) => [b.id, b.default]));
@@ -82,8 +81,8 @@ export class UnjamSim {
   vy = 0;
   blobs: Blob[] = [];
   gates: Gate[] = [
-    { x: 520, gap: DEFAULT_GAP, cy: 400, tgap: DEFAULT_GAP, tcy: 400, open: 0, active: true, jams: 0, clearT: 0 },
-    { x: 880, gap: DEFAULT_GAP + 8, cy: 400, tgap: DEFAULT_GAP + 8, tcy: 400, open: 0, active: false, jams: 0, clearT: 0 },
+    { x: 440, gap: DEFAULT_GAP, cy: 400, tgap: DEFAULT_GAP, tcy: 400, open: 0, active: true, jams: 0, clearT: 0 },
+    { x: 940, gap: DEFAULT_GAP + 8, cy: 400, tgap: DEFAULT_GAP + 8, tcy: 400, open: 0, active: false, jams: 0, clearT: 0 },
   ];
   score = 0;
   delivered = 0;
@@ -108,8 +107,10 @@ export class UnjamSim {
   charge = 0;
   charging = false;
   popCd = 0;
-  pullOn = false;
-  pullUnlocked = false;
+  /** The wedged blob the bot is locked onto (0 = none), and the goal progress of the current wave. */
+  lockId = 0;
+  waveDelivered = 0;
+  whiffs = 0;
   /** Forward pressure. */
   meter = 0;
   ready = false;
@@ -138,8 +139,6 @@ export class UnjamSim {
   private level = 0;
   private beatT = 0;
   private beaconT = 0;
-  private pullTick = 0;
-  private holdFull = 0;
   private inv = 0;
   private floodCount = 0;
   private out: SimEvent[] = [];
@@ -174,7 +173,15 @@ export class UnjamSim {
   }
 
   get flushSecs(): number {
-    return this.bal('flushSeconds');
+    return FLUSH_SECONDS;
+  }
+
+  get goal(): number {
+    return waveGoal(this.bal('quota'), this.waves);
+  }
+
+  get lockTarget(): Blob | undefined {
+    return this.lockId ? this.blobs.find((b) => b.id === this.lockId) : undefined;
   }
 
   step(dt: number, input: InputState): void {
@@ -196,7 +203,7 @@ export class UnjamSim {
     else this.stepWaves();
     this.moveBot(dt, input);
     if (!this.choosing) this.stepVerbs(dt, input);
-    else { this.charging = false; this.charge = 0; this.pullOn = false; }
+    else { this.charging = false; this.charge = 0; this.lockId = 0; }
     this.animateGates(dt);
     this.spawn(dt);
     this.stepBlobs(dt);
@@ -209,12 +216,12 @@ export class UnjamSim {
 
   // ---- layers, waves, the curator step ----
 
+  /** Pressure layers follow the waves the player has cleared: progress and pressure rise together. */
   private updateLayers(): void {
-    let layer = 1;
-    for (let i = 1; i < LAYER_AT.length; i++) if (this.runTime >= LAYER_AT[i]!) layer = i + 1;
+    const layer = Math.min(4, 1 + this.waves);
     if (layer > this.layer) {
       this.layer = layer;
-      if (layer >= 4) {
+      if (layer >= 3) {
         const g = this.gates[1]!;
         g.active = true;
         g.cy = g.tcy = 800 - this.gates[0]!.tcy;
@@ -223,9 +230,13 @@ export class UnjamSim {
     }
   }
 
+  /** A wave is cleared when enough blobs have reached the basket. Clearing it opens the layout choice. */
   private stepWaves(): void {
-    if (this.active) return;
-    if (this.runTime >= WAVE_EVERY * (this.waves + 1) && this.calm <= 0) this.startChoice();
+    if (this.active || this.calm > 0) return;
+    if (this.waveDelivered >= this.goal) {
+      this.emit({ type: 'wave-clear', magnitude: 1, data: { wave: this.waves + 1, goal: this.goal } });
+      this.startChoice();
+    }
   }
 
   private startChoice(): void {
@@ -253,6 +264,7 @@ export class UnjamSim {
     const o = this.offers[this.sel]!;
     this.choosing = false;
     this.waves++;
+    this.waveDelivered = 0;
     this.mult = o.mult;
     const g1 = this.gates[0]!;
     const g2 = this.gates[1]!;
@@ -305,110 +317,81 @@ export class UnjamSim {
     if (this.active) this.heading = Math.atan2(this.vy, this.vx);
   }
 
+  /**
+   * The one verb: lock on to a wedged blob (the nearest one within reach is marked), then hold A to fill the ring on it.
+   * When the ring is full the cork pops, the whole jam lets go and the queue floods through. Nothing to aim but where you hover.
+   */
   private stepVerbs(dt: number, input: InputState): void {
     const b = input.buttons;
     if (this.popCd > 0) this.popCd -= dt;
     if (this.active) {
       this.charging = false;
       this.charge = 0;
-      this.pullOn = false;
+      this.lockId = 0;
       this.plow();
       return;
     }
-    // charge-and-release pop (hold A)
-    if (b.a.down && this.popCd <= 0) {
-      if (!this.charging) this.emit({ type: 'charge-start', magnitude: 0.2, x: this.x, y: this.y });
-      this.charging = true;
-      this.charge = Math.min(1, this.charge + dt / CHARGE_TIME);
-      if (this.charge >= 1) {
-        this.holdFull += dt;
-        if (this.holdFull > AUTO_FIRE_AFTER) this.firePop();
+    // lock-on: keep the current target while it stays wedged and in reach, otherwise take the nearest
+    let t = this.lockTarget;
+    if (t && (!t.stuck || Math.hypot(t.x - this.x, t.y - this.y) > LOCK_R * 1.2)) t = undefined;
+    if (!t) {
+      let best = LOCK_R;
+      for (const blob of this.blobs) {
+        if (!blob.stuck) continue;
+        const d = Math.hypot(blob.x - this.x, blob.y - this.y);
+        if (d < best) { best = d; t = blob; }
       }
-    } else if (this.charging) {
-      this.firePop();
+      if (t) this.emit({ type: 'lock', magnitude: 0.4, x: t.x, y: t.y, data: { kind: t.kind } });
     }
-    if (!b.a.down) this.holdFull = 0;
-    // pull (hold X), unlocked by delivering enough blobs
-    this.pullOn = this.pullUnlocked && b.x.down && !this.charging;
-    if (this.pullOn) this.stepPull(dt);
+    this.lockId = t ? t.id : 0;
+    if (b.a.down && t && this.popCd <= 0) {
+      if (!this.charging) this.emit({ type: 'charge-start', magnitude: 0.2, x: t.x, y: t.y });
+      this.charging = true;
+      this.charge = Math.min(1, this.charge + (dt / KIND_NEED[t.kind]!) * this.bal('popPower'));
+      if (this.charge >= 1) this.unjam(t);
+    } else {
+      this.charging = false;
+      this.charge = Math.max(0, this.charge - dt / 0.25);
+      if (b.a.pressed && !t && this.popCd <= 0) {
+        this.whiffs++;
+        this.emit({ type: 'whiff', magnitude: 0.3, x: this.x, y: this.y });
+      }
+    }
     // flush trigger
     if (b.y.pressed && this.ready && !this.active) this.startSurge(input.left);
   }
 
-  private firePop(): void {
-    const p = (0.3 + 0.7 * this.charge) * this.bal('popPower');
-    const R = 90 + 190 * p;
-    const strongest = this.charge;
+  /** Pop the cork: every wedged blob in the jam is freed and thrown through the gate, and the queue behind gets a push. */
+  private unjam(target: Blob): void {
     this.charging = false;
     this.charge = 0;
-    this.holdFull = 0;
-    this.popCd = POP_COOLDOWN + 0.5 * strongest;
+    this.popCd = 0.25;
     this.pops++;
     let freed = 0;
-    let cx = 0;
-    let cy = 0;
-    let forward = 0;
     for (const b of this.blobs) {
-      const dx = b.x - this.x;
-      const dy = b.y - this.y;
-      const d = Math.hypot(dx, dy);
-      if (d > R) continue;
-      const f = 1 - d / R;
-      const ux = d > 3 ? dx / d : 1;
-      const uy = d > 3 ? dy / d : 0;
-      if (b.stuck) {
-        if (p * (1 - 0.5 * (d / R)) >= b.grip * 0.4) {
-          b.stuck = false;
-          b.strain = 0;
-          b.free = 1.1;
-          b.vx = ux * (330 + 520 * p);
-          b.vy = uy * (330 + 520 * p) * 0.6;
-          freed++;
-          cx += b.x;
-          cy += b.y;
-          if (ux > 0) forward++;
-        } else {
-          b.strain += 0.6;
-        }
-      } else {
-        const k = 200 + 760 * p;
-        b.vx += ux * k * f;
-        b.vy += uy * k * f;
+      if (b.stuck && Math.hypot(b.x - target.x, b.y - target.y) < 120) {
+        b.stuck = false;
+        b.strain = 0;
+        b.free = 1.1;
+        b.vx = 420;
+        b.vy = (b.y - target.y) * 2;
+        freed++;
       }
     }
-    this.emit({ type: 'pop', magnitude: Math.min(1, p), x: this.x, y: this.y, data: { power: Math.round(p * 100) / 100, radius: Math.round(R), freed } });
-    if (freed > 0) {
-      this.frees += freed;
-      for (const g of this.gates) if (g.active && Math.abs(g.x - cx / freed) < 120) g.clearT = 1.7;
-      this.floodCount = 0;
-      this.comboT = Math.max(this.comboT, 2.2);
-      this.emit({
-        type: 'unjam',
-        magnitude: Math.min(1, 0.4 + freed * 0.15),
-        x: cx / freed,
-        y: cy / freed,
-        data: { count: freed, power: Math.round(p * 100) / 100, forward: forward >= freed / 2 },
-      });
-    }
-  }
-
-  private stepPull(dt: number): void {
-    const R = 300;
+    // the queue behind the gate surges forward: that is the visible payoff
+    let queue = 0;
     for (const b of this.blobs) {
-      if (b.stuck) continue;
-      const dx = this.x - b.x;
-      const dy = this.y - b.y;
-      const d = Math.hypot(dx, dy);
-      if (d > R || d < 6) continue;
-      const k = 1500 * (1 - d / R);
-      b.vx += (dx / d) * k * dt;
-      b.vy += (dy / d) * k * dt;
+      if (!b.stuck && b.free <= 0 && b.x < target.x && b.x > target.x - 260) {
+        b.vx += 160;
+        queue++;
+      }
     }
-    this.pullTick -= dt;
-    if (this.pullTick <= 0) {
-      this.pullTick = 0.14;
-      this.emit({ type: 'pull-tick', magnitude: 0.3, x: this.x, y: this.y });
-    }
+    for (const g of this.gates) if (g.active && Math.abs(g.x - target.x) < 120) g.clearT = 1.7;
+    this.frees += freed;
+    this.floodCount = 0;
+    this.comboT = Math.max(this.comboT, 2.2);
+    this.lockId = 0;
+    this.emit({ type: 'unjam', magnitude: Math.min(1, 0.5 + (freed + queue) * 0.05), x: target.x, y: target.y, data: { count: freed, queue, forward: true } });
   }
 
   /** While flushing the bot is a bulldozer: blobs near it are carried along the heading. */
@@ -436,7 +419,7 @@ export class UnjamSim {
       const rng = this.ctx.rng;
       const roll = rng.next();
       let kind = 0;
-      if (this.layer >= 3) kind = roll < 0.22 ? 2 : roll < 0.45 ? 1 : 0;
+      if (this.layer >= 4) kind = roll < 0.22 ? 2 : roll < 0.45 ? 1 : 0;
       else if (this.layer >= 2) kind = roll < 0.28 ? 1 : 0;
       const r = KIND_R[kind]!;
       this.blobs.push({
@@ -586,6 +569,7 @@ export class UnjamSim {
       if (b.x < BASKET_X) continue;
       this.blobs.splice(i, 1);
       this.delivered++;
+      if (!this.choosing) this.waveDelivered++;
       this.combo = this.comboT > 0 ? this.combo + 1 : 1;
       this.comboT = 1.4;
       this.floodCount++;
@@ -611,10 +595,6 @@ export class UnjamSim {
         this.floods++;
         this.burst = Math.max(0, this.burst - 8);
         this.emit({ type: 'flood', magnitude: Math.min(1, this.combo / 40 + 0.4), x: BASKET_X - 60, y: 400, data: { combo: this.combo } });
-      }
-      if (!this.pullUnlocked && this.delivered >= UNLOCK_AT) {
-        this.pullUnlocked = true;
-        this.emit({ type: 'unlock', magnitude: 1, x: this.x, y: this.y });
       }
     }
   }
@@ -734,7 +714,8 @@ export class UnjamSim {
     this.surge = 0;
     this.choosing = false;
     this.waves = 0;
-    this.pullUnlocked = false;
+    this.waveDelivered = 0;
+    this.lockId = 0;
     this.maxLives = Math.round(this.bal('lives'));
     this.lives = this.maxLives;
     this.calm = 1.5;
@@ -767,6 +748,9 @@ export class UnjamSim {
       delivered: this.delivered,
       jams: this.jams,
       frees: this.frees,
+      whiffs: this.whiffs,
+      waveDelivered: this.waveDelivered,
+      goal: this.goal,
       floods: this.floods,
       maxCombo: this.maxCombo,
       burst: Math.round(this.burst),

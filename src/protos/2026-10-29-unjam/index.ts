@@ -7,7 +7,7 @@ import { flash, hitStop, numberPop as rawPop, punch, shake, SquashStretch, Trail
 import { degenerateHolderBot, greedyBot } from './bots.ts';
 import { buildUnjamMusic, partsFor } from './music.ts';
 import { Shards } from './shards.ts';
-import { BALANCE, BASKET_X, BOT_R, CH, KIND_R, LAYER_NAMES, UNLOCK_AT, UnjamSim, WALL_HALF } from './sim.ts';
+import { BALANCE, BASKET_X, BOT_R, CH, KIND_R, LAYER_NAMES, LOCK_R, UnjamSim, WALL_HALF } from './sim.ts';
 
 // Look: sunset / hard polygons / flat fills (see the brief). Every color in the game comes from these five.
 const PAL = {
@@ -94,7 +94,13 @@ function createPrototype(): Prototype {
   let multText: Text;
   let prompt: Text;
   let hint: Text;
-  let unlockText: Text;
+  let waveText: Text;
+  let quotaText: Text;
+  let lockText: Text;
+  let queueText: Text;
+  let lockedId = 0;
+  let lockAge = 0;
+  let basketPulse = 0;
   let pressureLabel: Text;
   let world: Container;
   let choice: Container;
@@ -260,12 +266,6 @@ function createPrototype(): Prototype {
             flushNote++;
           }
         }
-        // drifting shards along the current so the flow direction is readable
-        tickT -= dt;
-        if (tickT <= 0 && !sim.over) {
-          tickT = sim.surging ? 0.03 : 0.22;
-          particles.emit('dust', CH.left + 10, CH.top + 20 + vfx() * (CH.bottom - CH.top - 40), { count: 1, color: PAL.violet, size: 0.8, angle: 0, spread: 0.2, speed: sim.surging ? 2.4 : 0.9 });
-        }
       });
 
       flashOverlay = new Graphics().rect(0, 0, 1280, 800).fill(PAL.gold);
@@ -277,13 +277,13 @@ function createPrototype(): Prototype {
       pressureLabel = txt(30, PAL.gold);
       pressureLabel.text = 'PRESSURE';
       pressureLabel.position.set(PAD + 8, 10);
-      scoreLabel = txt(24, PAL.orange);
+      scoreLabel = txt(20, PAL.orange);
       scoreLabel.text = 'SCORE';
       scoreLabel.anchor.set(1, 0);
-      scoreLabel.position.set(1250, 6);
-      scoreText = txt(66, PAL.gold, { stroke: { color: PAL.sil, width: 10 } });
+      scoreLabel.position.set(1250, 2);
+      scoreText = txt(44, PAL.gold, { stroke: { color: PAL.sil, width: 8 } });
       scoreText.anchor.set(1, 0);
-      scoreText.position.set(1250, 26);
+      scoreText.position.set(1250, 22);
       const meterLabel = txt(28, PAL.gold);
       meterLabel.text = 'FLUSH';
       meterLabel.position.set(PAD + 8, 740);
@@ -296,24 +296,31 @@ function createPrototype(): Prototype {
       comboText.position.set(1250, 700);
       multText = txt(26, PAL.sil);
       multText.anchor.set(1, 0);
-      multText.position.set(1250, 128);
-      unlockText = txt(24, PAL.gold);
-      unlockText.position.set(PAD, 662);
+      multText.position.set(1250, 82);
+      waveText = txt(34, PAL.gold);
+      waveText.position.set(640, 10);
+      quotaText = txt(40, PAL.gold, { stroke: { color: PAL.sil, width: 9 } });
+      quotaText.anchor.set(0.5);
+      quotaText.position.set(1205, 206);
+      lockText = txt(30, PAL.sil);
+      lockText.anchor.set(0.5);
+      lockText.visible = false;
+      queueText = txt(26, PAL.sil);
+      queueText.anchor.set(0.5);
+      queueText.visible = false;
+      world.addChild(lockText, queueText);
       hint = txt(26, PAL.gold);
       hint.anchor.set(1, 1);
       hint.position.set(1250, 790);
-      ui.addChild(pressureLabel, scoreLabel, scoreText, meterLabel, prompt, comboText, multText, unlockText, hint);
+      ui.addChild(pressureLabel, scoreLabel, scoreText, meterLabel, prompt, comboText, multText, waveText, quotaText, hint);
       view.onFrame(() => {
-        const parts = [`${stickGlyph('left')}: fly`, `${glyph('a')}: hold, release to pop`];
-        if (sim.pullUnlocked) parts.push(`${glyph('x')}: pull`);
+        const parts = [`${stickGlyph('left')}: move`, `${glyph('a')}: hold on a stuck blob`];
         const t = sim.surging ? `${stickGlyph('left')}: steer` : parts.join('    ');
         if (hint.text !== t) hint.text = t;
         const pr = `PRESS ${glyph('y').toUpperCase()}`;
         if (prompt.text !== pr) prompt.text = pr;
         const p = `${glyph('a').toUpperCase()} to go again`;
         if (resultPrompt && resultPrompt.text !== p) resultPrompt.text = p;
-        const u = sim.pullUnlocked ? '' : `Deliver ${UNLOCK_AT} to unlock a new move  (${Math.min(UNLOCK_AT, sim.delivered)}/${UNLOCK_AT})`;
-        if (unlockText.text !== u) unlockText.text = u;
         if (choiceHint) {
           const c = `${stickGlyph('left')}: pick    ${glyph('a')}: confirm`;
           if (choiceHint.text !== c) choiceHint.text = c;
@@ -423,7 +430,7 @@ function createPrototype(): Prototype {
       for (let i = 0; i < 3; i++) pipe.poly(slab(CH.left + 2, CH.top + 30 + i * 80, 40, 56, 14)).fill(mix(FLOOR, PAL.gold, 0.22));
       // flow chevrons as flat triangles
       for (let i = 0; i < 14; i++) {
-        const cx = ((i * 90 + clock * (surging ? 380 : 120)) % 1200) + 50;
+        const cx = surging ? ((i * 90 + clock * 380) % 1200) + 50 : i * 90 + 50;
         pipe.poly([cx, CH.top + 8, cx + 14, CH.top + 16, cx, CH.top + 24]).fill(mix(FLOOR, PAL.violet, 0.6));
         pipe.poly([cx, CH.bottom - 24, cx + 14, CH.bottom - 16, cx, CH.bottom - 8]).fill(mix(FLOOR, PAL.violet, 0.6));
       }
@@ -474,33 +481,96 @@ function createPrototype(): Prototype {
           const spin = clock * 3 + b.id;
           blobGfx.poly(ngon(bx, by, b.r + 11 + 4 * Math.sin(clock * 9 + b.id), 8, spin)).fill({ color: PAL.magenta, alpha: 0.45 });
         }
+        if (!b.stuck && b.vx > 260) {
+          const len = 14 + 40 * Math.min(1, (b.vx - 260) / 400);
+          blobGfx.poly([bx - b.r * 0.6, by - b.r * 0.55, bx - b.r - len, by, bx - b.r * 0.6, by + b.r * 0.55]).fill({ color: PAL.gold, alpha: 0.55 });
+        }
         sp.position.set(bx, by);
-        sp.rotation = b.stuck ? 0 : (b.x + b.id * 17) * 0.022;
         sp.scale.set(sx, 1 / sx);
       }
       for (let i = bl.length; i < blobSprites.length; i++) blobSprites[i]!.visible = false;
 
-      // charge preview: a hexagonal ring showing the pop radius, and chunky wedges that light up as you hold
+      // the basket is a jar that fills with gold as the wave's quota is delivered: progress you can see
       chargeGfx.clear();
-      if (sim.charging && !surging) {
-        const p = (0.3 + 0.7 * sim.charge) * sim.bal('popPower');
-        const R = 90 + 190 * p;
-        const full = sim.charge >= 1;
-        const col = full ? cycle(clock * 8) : mix(PAL.gold, PAL.orange, sim.charge);
-        ringPoly(chargeGfx, x, y, R, 4 + 4 * sim.charge, 6, clock * 0.4, col, 0.35 + 0.4 * sim.charge);
-        const lit = Math.round(sim.charge * 12);
-        for (let i = 0; i < 12; i++) {
-          const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
-          const rr = BOT_R + 18;
-          chargeGfx.poly(ngon(x + Math.cos(a) * rr, y + Math.sin(a) * rr, 6, 3, a)).fill({ color: i < lit ? col : PAL.sil, alpha: i < lit ? 1 : 0.5 });
+      const frac = Math.min(1, sim.waveDelivered / Math.max(1, sim.goal));
+      const jarTop = CH.top - 4;
+      const jarH = CH.bottom - CH.top + 8;
+      const fillH = jarH * frac;
+      if (fillH > 1) chargeGfx.poly([BASKET_X + 14, CH.bottom + 4 - fillH, CH.right - 8, CH.bottom + 4 - fillH, CH.right - 8, CH.bottom + 4, BASKET_X + 14, CH.bottom + 4]).fill(basketPulse > 0.3 ? PAL.gold : PAL.orange);
+      for (let i = 1; i < 4; i++) chargeGfx.rect(BASKET_X + 14, jarTop + (jarH * i) / 4, CH.right - BASKET_X - 22, 3).fill({ color: PAL.sil, alpha: 0.5 });
+      if (basketPulse > 0.02) chargeGfx.poly(chamfer(BASKET_X, jarTop, CH.right - BASKET_X - 2, jarH, 10)).fill({ color: PAL.gold, alpha: basketPulse * 0.45 });
+      basketPulse *= 0.86;
+      const qs = `${sim.waveDelivered}/${sim.goal}`;
+      if (quotaText.text !== qs) quotaText.text = qs;
+      quotaText.scale.set(1 + comboPunch);
+
+      // lock-on: brackets snap onto the wedged blob you can unjam, a ring fills while you hold, the button badge floats above it
+      const tgt = sim.lockTarget;
+      lockText.visible = false;
+      queueText.visible = false;
+      if (tgt && !surging && !sim.choosing) {
+        if (lockedId !== tgt.id) { lockedId = tgt.id; lockAge = 0; }
+        lockAge += 1 / 60;
+        const snap = 1 + 1.4 * Math.max(0, 1 - lockAge / 0.2);
+        const rr = (tgt.r + 16) * snap;
+        const col = sim.charge > 0.02 ? mix(PAL.gold, PAL.orange, sim.charge) : PAL.gold;
+        for (let i = 0; i < 4; i++) {
+          const sx = i % 2 ? 1 : -1;
+          const sy = i < 2 ? -1 : 1;
+          const cx = tgt.x + sx * rr;
+          const cy = tgt.y + sy * rr;
+          chargeGfx.poly([cx, cy, cx - sx * 18, cy, cx - sx * 18, cy - sy * 6, cx - sx * 6, cy - sy * 6, cx - sx * 6, cy - sy * 18, cx, cy - sy * 18]).fill(col);
         }
-      }
-      if (sim.pullOn) {
-        for (let i = 0; i < 3; i++) {
-          const t = (clock * 1.6 + i / 3) % 1;
-          ringPoly(chargeGfx, x, y, 300 * (1 - t), 5, 6, clock, PAL.gold, 0.6 * t);
+        // a line of arrowheads from the bot to the target
+        const dx = tgt.x - x;
+        const dy = tgt.y - y;
+        const d = Math.hypot(dx, dy);
+        const ang = Math.atan2(dy, dx);
+        const n = Math.max(2, Math.floor(d / 36));
+        for (let k = 1; k < n; k++) chargeGfx.poly(ngon(x + (dx * k) / n, y + (dy * k) / n, 7, 3, ang)).fill({ color: PAL.gold, alpha: 0.4 + 0.4 * (((k / n) + clock * 2) % 1) });
+        // the ring on the target fills as you hold A; full means it pops
+        const lit = Math.round(sim.charge * 16);
+        for (let i = 0; i < 16; i++) {
+          const a = (i / 16) * Math.PI * 2 - Math.PI / 2;
+          const r2 = tgt.r + 30;
+          chargeGfx.poly(ngon(tgt.x + Math.cos(a) * r2, tgt.y + Math.sin(a) * r2, 7, 3, a)).fill({ color: i < lit ? PAL.orange : PAL.sil, alpha: i < lit ? 1 : 0.55 });
         }
-      }
+        // button badge above the target, queue tally behind it: what the jam is holding back
+        const bx = tgt.x;
+        const by = tgt.y - tgt.r - 52;
+        chargeGfx.poly(ngon(bx, by, 26, 6, Math.PI / 6)).fill(sim.charge > 0.02 ? PAL.orange : PAL.gold);
+        lockText.visible = true;
+        lockText.position.set(bx, by);
+        const gl = glyph('a').toUpperCase();
+        if (lockText.text !== gl) lockText.text = gl;
+        let q = 0;
+        for (const o of sim.blobs) if (!o.stuck && o.x < tgt.x && o.x > tgt.x - 260) q++;
+        if (q > 0) {
+          const qx = tgt.x - 92;
+          chargeGfx.poly(ngon(qx, tgt.y, 24, 6, 0)).fill(PAL.magenta);
+          chargeGfx.poly([qx + 30, tgt.y - 9, qx + 52, tgt.y, qx + 30, tgt.y + 9]).fill(PAL.magenta);
+          queueText.visible = true;
+          queueText.position.set(qx, tgt.y);
+          const qt = String(q);
+          if (queueText.text !== qt) queueText.text = qt;
+        }
+      } else if (!surging && !sim.choosing) {
+        lockedId = 0;
+        // no lock yet: a chevron on the bot points at the nearest wedged blob
+        let near: { x: number; y: number } | null = null;
+        let nd = Infinity;
+        for (const o of sim.blobs) {
+          if (!o.stuck) continue;
+          const d = Math.hypot(o.x - x, o.y - y);
+          if (d < nd) { nd = d; near = o; }
+        }
+        if (near) {
+          const ang = Math.atan2(near.y - y, near.x - x);
+          const pulse = 1 + 0.2 * Math.sin(clock * 10);
+          chargeGfx.poly(ngon(x + Math.cos(ang) * (BOT_R + 46), y + Math.sin(ang) * (BOT_R + 46), 16 * pulse, 3, ang)).fill(PAL.gold);
+          chargeGfx.poly(ngon(x + Math.cos(ang) * (BOT_R + 74), y + Math.sin(ang) * (BOT_R + 74), 11 * pulse, 3, ang)).fill({ color: PAL.gold, alpha: 0.6 });
+        }
+      } else lockedId = 0;
       aura.clear();
       if (surging) {
         for (let i = 0; i < 6; i++) {
@@ -513,30 +583,35 @@ function createPrototype(): Prototype {
       shock.clear();
       for (const ring of rings) if (ring.a > 0.01) ringPoly(shock, ring.x, ring.y, ring.r, 10 * ring.a + 3, 6, ring.rot, ring.color, ring.a);
 
-      // HUD: chunky slanted panels and segmented gauges
+      // HUD: chunky slanted panels and segmented gauges. Left: the pressure that ends the run. Middle: the wave goal. Right: score.
       dispMeter += ((surging ? Math.min(1, sim.surge / sim.flushSecs) : sim.meter) - dispMeter) * 0.2;
       dispBurst += (sim.burst - dispBurst) * 0.25;
       hud.clear();
-      hud.poly(slab(PAD - 8, 6, 760, 48, 18)).fill({ color: PAL.sil, alpha: 0.92 });
-      const SEG = 20;
+      hud.poly(slab(PAD - 8, 6, 560, 48, 18)).fill({ color: PAL.sil, alpha: 0.92 });
+      const SEG = 14;
       const pb = Math.min(1, dispBurst / 100);
       for (let i = 0; i < SEG; i++) {
         const on = i < Math.round(pb * SEG);
-        hud.poly(slab(250 + i * 21, 14, 15, 32, 7)).fill(on ? mix(PAL.gold, PAL.magenta, i / SEG) : mix(PAL.sil, PAL.violet, 0.5));
+        hud.poly(slab(240 + i * 22, 14, 16, 32, 7)).fill(on ? mix(PAL.gold, PAL.magenta, i / SEG) : mix(PAL.sil, PAL.violet, 0.5));
       }
-      for (let i = 0; i < 4; i++) hud.poly(ngon(700 + i * 30, 30, 11, 3, -Math.PI / 2)).fill(i < sim.layer ? mix(PAL.gold, PAL.magenta, i / 3) : mix(PAL.sil, PAL.violet, 0.5));
-      for (let i = 0; i < sim.maxLives; i++) hud.poly(ngon(842 + i * 32, 30, 12, 4, 0)).fill(i < sim.lives ? PAL.orange : mix(PAL.sil, PAL.violet, 0.5));
+      for (let i = 0; i < sim.maxLives; i++) hud.poly(ngon(PAD + 14 + i * 34, 80, 13, 4, 0)).fill(i < sim.lives ? PAL.orange : mix(PAL.sil, PAL.violet, 0.5));
+      hud.poly(slab(610, 6, 400, 66, 18)).fill({ color: PAL.sil, alpha: 0.92 });
+      const nSeg = Math.min(sim.goal, 24);
+      const litSeg = Math.floor(frac * nSeg);
+      const segW = 340 / nSeg;
+      for (let i = 0; i < nSeg; i++) hud.poly(slab(640 + i * segW, 44, Math.max(4, segW - 3), 20, 6)).fill(i < litSeg ? PAL.gold : mix(PAL.sil, PAL.violet, 0.5));
+      waveText.text = `WAVE ${sim.waves + 1}`;
       hud.poly(slab(PAD - 8, 736, 560, 48, 18)).fill({ color: PAL.sil, alpha: 0.92 });
       const FSEG = 16;
-      const lit = Math.round(dispMeter * FSEG);
+      const flit = Math.round(dispMeter * FSEG);
       for (let i = 0; i < FSEG; i++) {
-        const on = i < lit;
+        const on = i < flit;
         const fc = surging || sim.ready ? cycle(clock * 4 + i * 0.1) : mix(PAL.violet, PAL.gold, i / FSEG);
         hud.poly(slab(180 + i * 23, 744, 17, 32, 7)).fill(on ? fc : mix(PAL.sil, PAL.violet, 0.5));
       }
       if (sim.ready && Math.floor(clock * 6) % 2 === 0) hud.poly(slab(PAD - 14, 730, 572, 60, 20)).fill({ color: PAL.gold, alpha: 0.3 });
-      hud.poly(slab(1030, 8, 240, 112, 20)).fill({ color: PAL.sil, alpha: 0.92 });
-      if (sim.mult > 1) hud.poly(slab(985, 122, 285, 38, 14)).fill(PAL.orange);
+      hud.poly(slab(1030, 6, 240, 66, 18)).fill({ color: PAL.sil, alpha: 0.92 });
+      if (sim.mult > 1) hud.poly(slab(985, 80, 285, 36, 14)).fill(PAL.orange);
       prompt.visible = sim.ready && !sim.over && !sim.choosing;
       if (prompt.visible) {
         prompt.scale.set(1 + 0.1 * Math.sin(clock * 11));
@@ -544,9 +619,7 @@ function createPrototype(): Prototype {
       }
       scoreText.text = `${Math.round(sim.score)}`;
       comboPunch *= 0.85;
-      comboText.text = sim.combo >= 3 ? `FLOW x${sim.combo}` : '';
-      comboText.scale.set(1 + comboPunch);
-      comboText.tint = PAL.gold;
+      comboText.text = '';
       const m = sim.mult > 1 ? `GATE BONUS x${sim.mult.toFixed(2)}` : '';
       if (multText.text !== m) multText.text = m;
 
@@ -596,38 +669,36 @@ function createPrototype(): Prototype {
           break;
         case 'charge-start':
           chargeTick = 0;
-          ss.pop(0.25, 'y');
+          ss.pop(0.2, 'y');
           eyes.setMood('worried', 0.6);
           break;
-        case 'pop': {
-          const p = Number(e.data?.power ?? 0.5);
-          const freed = Number(e.data?.freed ?? 0);
-          play('pop', { pitch: 1.5 - p * 0.6, volume: 0.45 + 0.5 * p });
-          play('whoosh', { pitch: 0.7 + p * 0.5, volume: 0.3 + 0.4 * p });
-          addRing(ex, ey, freed > 0 ? PAL.gold : PAL.violet, Number(e.data?.radius ?? 200), 380 + 200 * p);
-          particles.emit('puff', ex, ey, { count: 6 + Math.round(p * 10), color: PAL.violet });
-          shake(0.12 + 0.35 * p);
-          ss.pop(0.2 + 0.5 * p, 'x');
-          punch(botBody, 0.15 + 0.2 * p);
-          if (p > 0.9) hitStop(2);
-          eyes.setMood(freed > 0 ? 'happy' : 'neutral', 0.8);
-          if (freed === 0 && p > 0.5) numberPop(world, 'no budge', ex, ey - 50, { color: PAL.gold, size: 28, ms: 600 });
+        case 'lock':
+          // a soft, bright tick says "this one is yours"
+          play('ui-move', { pitch: 1.5, volume: 0.6 });
           break;
-        }
+        case 'whiff':
+          // pressed A with nothing wedged in reach: a dull thud and a shrug, so wrong actions read as wrong
+          play('clank', { pitch: 0.5, volume: 0.35 });
+          ss.pop(0.15, 'x');
+          eyes.setMood('frown', 0.5);
+          break;
+
         case 'unjam': {
           const n = Number(e.data?.count ?? 1);
-          const fwd = !!e.data?.forward;
-          const word = fwd ? POP_WORDS[Math.floor(vfx() * POP_WORDS.length)]! : 'BACKFIRE!';
-          play('boom', { pitch: 1.4, volume: 0.6 + 0.3 * m });
-          play('blip', { pitch: fwd ? 1.2 : 0.6, volume: 0.8 });
-          arpeggio(fwd ? [0, 4, 7, 12] : [0, -3, -7], 45, 0.9, 0.5);
-          particles.emit('sparks', ex, ey, { count: 12 + n * 6, color: fwd ? PAL.gold : PAL.magenta, speed: 1.3, angle: fwd ? 0 : Math.PI, spread: 1.4 });
-          particles.emit('debris', ex, ey, { count: 8 + n * 3, color: PAL.orange, speed: 1.0 });
-          numberPop(world, n > 1 ? `${word} x${n}` : word, ex, ey - 46, { color: fwd ? PAL.gold : PAL.magenta, size: 36 + Math.min(n, 5) * 5, rise: 60, ms: 800 });
-          shake(0.25 + 0.1 * Math.min(n, 5));
-          hitStop(2 + Math.min(n, 3));
+          const q = Number(e.data?.queue ?? 0);
+          // the release: the best moment in the game. a low thump, a rising gurgle, a sparkle, and the gate flashes gold
+          play('boom', { pitch: 1.4, volume: 0.8 });
+          play('blip', { pitch: 1.2, volume: 0.9 });
+          play('whoosh', { pitch: 0.9, volume: 0.5 });
+          arpeggio([0, 4, 7, 12], 45, 0.9, 0.55);
+          addRing(ex, ey, PAL.gold, 220, 420);
+          particles.emit('sparks', ex, ey, { count: 14 + n * 6, color: PAL.gold, speed: 1.3, angle: 0, spread: 1.0 });
+          particles.emit('debris', ex, ey, { count: 8 + n * 3, color: PAL.orange, speed: 1.0, angle: 0, spread: 1.4 });
+          numberPop(world, q + n > 1 ? `FREE! ${n + q} flowing` : 'FREE!', ex, ey - 54, { color: PAL.gold, size: 40 + Math.min(n + q, 8) * 3, rise: 60, ms: 900 });
+          shake(0.25 + 0.04 * Math.min(n + q, 8));
+          hitStop(3);
           flash(botBody, PAL.gold, 120);
-          eyes.setMood(fwd ? 'happy' : 'frown', 1.4);
+          eyes.setMood('happy', 1.4);
           break;
         }
         case 'wedge': {
@@ -646,23 +717,30 @@ function createPrototype(): Prototype {
           play('pickup', { pitch: Math.pow(2, (steps * 2) / 12), volume: 0.35, variation: 0.03 });
           if (combo > 21 && combo % 3 === 0) play('chime', { pitch: Math.pow(2, (((combo - 21) % 8) * 2) / 12), volume: 0.4 });
           particles.emit('sparks', BASKET_X + 10, ey, { count: 4, color: KIND_COLOR[Number(e.data?.kind ?? 0)]!, speed: 0.8, angle: 0, spread: 1.6 });
-          comboPunch = Math.min(0.5, comboPunch + 0.12);
+          // the jar lights up and its counter jumps: every delivery visibly moves the wave goal
+          basketPulse = 1;
+          comboPunch = Math.min(0.4, comboPunch + 0.12);
           break;
         }
-        case 'flood': {
-          const combo = Number(e.data?.combo ?? 10);
-          play('layer', { pitch: 1.5 + Math.min(1, combo / 60), volume: 0.7 });
-          arpeggio([0, 4, 7, 12, 16], 50, 0.9, 0.7);
-          numberPop(world, `FLOOD x${combo}`, 1000, 330, { color: PAL.gold, size: 64, rise: 60, ms: 1100 });
-          addRing(BASKET_X + 40, 400, PAL.orange, 360, 600);
-          particles.emit('confetti', BASKET_X + 40, 400, { count: 36, speed: 1.4 });
-          shake(0.3);
-          hitStop(2);
-          flashOverlay.tint = PAL.orange;
-          flashOverlay.alpha = 0.2;
-          tweens.to(flashOverlay, { alpha: 0 }, 300, ease.outQuad);
+        case 'wave-clear': {
+          play('layer', { pitch: 2, volume: 0.9 });
+          arpeggio([0, 4, 7, 12, 16, 19], 55, 0.9, 0.8);
+          numberPop(world, 'WAVE CLEAR!', 640, 300, { color: PAL.gold, size: 96, rise: 50, ms: 1500 });
+          addRing(BASKET_X + 40, 400, PAL.gold, 520, 700);
+          particles.emit('confetti', BASKET_X + 40, 400, { count: 56, speed: 1.5, size: 1.2, angle: Math.PI, spread: 1.2 });
+          shake(0.5);
+          hitStop(4);
+          flashOverlay.tint = PAL.gold;
+          flashOverlay.alpha = 0.5;
+          tweens.to(flashOverlay, { alpha: 0 }, 450, ease.outQuad);
+          eyes.setMood('happy', 2);
           break;
         }
+        case 'flood':
+          // a quiet milestone now: the wave jar is the progress, so no big popup competes with it
+          play('chime', { pitch: 1.5, volume: 0.4 });
+          addRing(BASKET_X + 40, 400, PAL.orange, 240, 450);
+          break;
         case 'combo-drop':
           play('beat', { pitch: 0.6, volume: 0.35 });
           break;
@@ -704,19 +782,8 @@ function createPrototype(): Prototype {
           shake(0.4);
           break;
         }
-        case 'unlock':
-          music.stinger(tune.secret, { duck: 0.4 });
-          play('layer', { pitch: 2, volume: 0.8 });
-          arpeggio([0, 7, 12, 19], 70, 1, 0.7);
-          numberPop(world, `NEW MOVE: PULL  (hold ${glyph('x')})`, 640, 260, { color: PAL.gold, size: 46, rise: 40, ms: 1800 });
-          flashOverlay.tint = PAL.gold;
-          flashOverlay.alpha = 0.35;
-          tweens.to(flashOverlay, { alpha: 0 }, 400, ease.outQuad);
-          break;
-        case 'pull-tick':
-          play('whoosh', { pitch: 0.6, volume: 0.18 });
-          particles.emit('dust', ex, ey, { count: 2, color: PAL.gold, size: 0.9 });
-          break;
+
+
         case 'flush-ready':
           music.stinger(tune.powerup);
           play('layer', { pitch: 2, volume: 0.8 });

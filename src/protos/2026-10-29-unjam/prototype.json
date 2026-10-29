@@ -9,7 +9,7 @@
   "theme": "Things get stuck, and unsticking them is the fun",
   "wildcard": null,
   "juiceLayers": ["shake", "squashStretch", "particles", "hitStop", "flash", "trails", "eyes", "audio"],
-  "metrics": ["runLength", "deaths", "firstPressureSimSec", "idleSurvivalSec", "mainVerbCount", "scoreOrProgress", "delivered", "jams", "frees", "floods", "maxCombo", "burst", "stalled", "lives", "layer", "waves", "runs", "surges", "blobs", "survivalSec"],
+  "metrics": ["runLength", "deaths", "firstPressureSimSec", "idleSurvivalSec", "mainVerbCount", "scoreOrProgress", "delivered", "jams", "frees", "whiffs", "waveDelivered", "goal", "floods", "maxCombo", "burst", "stalled", "lives", "layer", "waves", "runs", "surges", "blobs", "survivalSec"],
   "assets": [],
   "buildStatus": "ok",
   "feedbackStatus": "needs-feedback",
