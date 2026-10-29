@@ -1,0 +1,48 @@
+{
+  "slug": "2026-10-29-demo-ball",
+  "title": "Demo Ball",
+  "date": "2026-10-29",
+  "question": "Does pushing a ball feel good, and do layered pressure, a real ending, and an earned surge hold together?",
+  "targetFeeling": "a small, springy toy that talks back",
+  "mode": "systemic",
+  "tags": [
+    "f-toy-movement",
+    "f-juice-forward",
+    "p-rising-tide",
+    "l-short-run",
+    "v-power-surge"
+  ],
+  "theme": "The original demo: a springy toy with rising pressure (it began as the scaffold smoke test)",
+  "wildcard": null,
+  "juiceLayers": [
+    "shake",
+    "squashStretch",
+    "particles",
+    "hitStop",
+    "flash",
+    "trails",
+    "eyes",
+    "audio"
+  ],
+  "metrics": [
+    "runLength",
+    "deaths",
+    "firstPressureSimSec",
+    "idleSurvivalSec",
+    "mainVerbCount",
+    "scoreOrProgress",
+    "lives",
+    "layer",
+    "runs",
+    "survivalSec",
+    "surges",
+    "surgeKills",
+    "meter"
+  ],
+  "assets": [],
+  "buildStatus": "ok",
+  "feedbackStatus": "assessed",
+  "sizeKB": 2113,
+  "thumbnail": "thumb.png",
+  "preview": "preview.gif"
+}
