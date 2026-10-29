@@ -29,6 +29,15 @@ Download the Linux AppImage from the releases (or `npm run dist -- --linux` loca
 - **Quit:** the launcher's Start menu has a "Quit app" row, shown only inside the desktop app (it has no window chrome). `Ctrl+Q` also quits on desktop; on a Steam Deck the Steam menu's Exit Game works too.
 - **Fresh pages:** the app asks the server to revalidate every page and data request (`Cache-Control: no-cache`; an unchanged page is a cheap 304), and only keeps hashed build assets cached. So leaving a game always lands on a current launcher and a republished game is never stale. The launcher also reloads itself if the browser restores it from the back-forward cache.
 
+## Steam Deck input
+Steam Input sits between the controller and the app. With the wrong layout it turns the pad into a mouse and keyboard: a trigger becomes a click and the buttons stop reaching the games (the Gamepad API only sees a real gamepad). The app handles this in three ways:
+- **Mouse off on the Deck** (detected from `SteamDeck=1` or SteamOS): the cursor is hidden and every mouse and wheel event is swallowed before any page script sees it, so a stray click can never act on, or steal focus from, the page. Elsewhere the mouse works; force it with `--no-mouse` or `--allow-mouse`.
+- **Focus:** the Gamepad API reports only to a focused page, so the app gives the page focus whenever the window gets it and after every load.
+- **A hint instead of a mystery:** if no controller shows up within 8 seconds, the launcher footer says so, and Start opens **Controller help** (also in the Start menu). The fix it describes: in Steam, open this app's Controller Settings, Browse Configs, and pick the official **Gamepad** template (not Desktop or Web Browser), then relaunch. The keyboard works as a fallback everywhere.
+- The debug overlay (hold Select, press A) shows `pad yes (<controller name>)`, which says exactly which controller the browser sees.
+
+Shortcuts are window-local (`Ctrl+Q` quits, `F11` toggles full screen); nothing is registered globally, so the OS has nothing to complain about.
+
 ## Safety
 Sandboxed renderer, no Node in the page, all permission prompts denied, navigation locked to the launcher's origin, new windows denied.
 

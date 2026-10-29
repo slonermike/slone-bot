@@ -12,6 +12,8 @@ export interface DebugData {
   seed: number;
   simSeconds: number;
   gamepad: boolean;
+  /** Which controller the browser sees, for diagnosing Steam Input (empty when none). */
+  padId?: string;
 }
 
 /** Plain-DOM debug overlay. Toggle with Select + A. */
@@ -38,7 +40,7 @@ export class DebugOverlay {
     this.el.textContent =
       `fps ${d.fps.toFixed(0)}  frame ${d.frameAvgMs.toFixed(1)}ms (p95 ${d.frameP95Ms.toFixed(1)})  steps/frame ${d.stepsPerFrame}\n` +
       `input->visual ${d.inputToVisualMs.toFixed(1)}ms  input->audio ${d.inputToAudioMs.toFixed(1)}ms\n` +
-      `sim ${d.simSeconds.toFixed(1)}s  seed ${d.seed}  pad ${d.gamepad ? 'yes' : 'NO'}  particles ${d.particles}\n` +
+      `sim ${d.simSeconds.toFixed(1)}s  seed ${d.seed}  pad ${d.gamepad ? 'yes' : 'NO'}${d.padId ? ` (${d.padId.slice(0, 48)})` : ''}  particles ${d.particles}\n` +
       `events ${ev}\n` +
       `juice x${d.intensity.toFixed(1)}: ${d.layers.join(',') || 'all off'}`;
   }

@@ -32,6 +32,8 @@ interface MgbHost {
 }
 const host = (window as unknown as { mgbHost?: MgbHost }).mgbHost;
 let hostUpdate: HostUpdate | null = null;
+/** Set when no controller has shown up after a few seconds inside the desktop app (usually Steam Input turning the pad into a mouse). */
+let controllerNote = false;
 let focus = 0;
 let menuIndex = 0;
 let filterIndex = 0;
@@ -98,6 +100,7 @@ function renderGrid(): void {
     s.append(h('b', '', k), v);
     foot.append(s);
   }
+  if (controllerNote) foot.append(h('span', 'note', `No controller detected. Press ${glyph('start')} for help`));
   if (brokenCount) foot.append(h('span', 'note', `${brokenCount} broken build${brokenCount === 1 ? '' : 's'} hidden`));
   root.append(foot);
   scrollFocusIntoView();
@@ -233,6 +236,24 @@ async function openFeedback(slug: string): Promise<void> {
   });
 }
 
+function openControllerHelp(): void {
+  screen = 'credits'; // same scrolling sheet and Back behavior as the credits
+  openOverlay((sheet) => {
+    sheet.append(h('h2', '', 'Controller help'));
+    const sc = h('div', 'scroll credits');
+    const p = (t: string) => sc.append(h('p', '', t));
+    sc.append(h('h3', '', 'Steam Deck: the controller acts like a mouse'));
+    p('Steam can map the controller to a mouse and keyboard instead of a gamepad. Pressing a trigger then clicks, and the buttons do nothing in the games.');
+    p('Fix: in Steam, open this app\'s Controller Settings, choose Browse Configs, and pick the official "Gamepad" template (not "Desktop" or "Web Browser"). Apply it, then relaunch the app.');
+    sc.append(h('h3', '', 'No controller'));
+    p('The keyboard works everywhere: arrows or WASD move, Space or Enter is A, X or Backspace is B, C is X, V is Y, Q and E are the bumpers, Esc is Start, Shift is Select.');
+    sc.append(h('h3', '', 'In the app'));
+    p('The mouse is ignored on a Steam Deck on purpose, so a stray click cannot change anything. Hold Select and Start to leave a game. Quit app is in the Start menu.');
+    scrollEl = sc;
+    sheet.append(sc, h('div', 'hint', `Up/Down scroll    ${glyph('b')} or ${glyph('start')} back`));
+  });
+}
+
 async function openCredits(): Promise<void> {
   if (!credits) {
     try {
@@ -289,6 +310,7 @@ function menuItems() {
     { label: () => 'Volume', value: () => `${Math.round(audio.getVolume('master') * 100)}%`, adjust: (d: number) => audio.setVolume('master', audio.getVolume('master') + d * 0.1) },
     { label: () => 'Mute', value: () => (audio.muted ? 'ON' : 'off'), activate: () => audio.setMuted(!audio.muted) },
     { label: () => 'Jukebox (music test)', activate: () => { location.href = './jukebox/'; } },
+    { label: () => 'Controller help', activate: () => openControllerHelp() },
     ...(host
       ? [{ label: () => 'App update', value: () => updateText(), activate: () => void updateAction() }]
       // only in a plain browser: inside the desktop app the update flow above replaces the download page
@@ -397,12 +419,17 @@ async function boot(): Promise<void> {
     requestAnimationFrame(loop);
     input.poll(now);
     for (const a of nav.read(input, now)) onAction(a);
+    if (controllerNote && input.frame.connected) { controllerNote = false; if (!overlayEl) renderGrid(); }
     if (scrollEl && (input.frame.left.y !== 0)) scrollEl.scrollBy({ top: input.frame.left.y * 14 });
   };
   requestAnimationFrame(loop);
   // button labels follow the device last used
   onDeviceChange(() => { if (!overlayEl) renderGrid(); });
   window.addEventListener('keydown', () => void audio.unlock(), { once: true });
+  // inside the desktop app, a missing controller is almost always Steam Input mapping it to a mouse
+  if (host) {
+    setTimeout(() => { if (!input.frame.connected) { controllerNote = true; if (!overlayEl) renderGrid(); } }, 8000);
+  }
   if (host) {
     void host.getUpdate().then((u) => { hostUpdate = u; });
     host.onUpdate((u) => {
