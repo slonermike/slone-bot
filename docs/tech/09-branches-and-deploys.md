@@ -7,7 +7,7 @@ Added by the scaffold build (the numbered docs 01-08 are unchanged). It records 
 
 ## How that works
 1. **Every prototype is a frozen snapshot.** When a `proto/*` branch is pushed, CI builds that branch with the scaffold code *that branch carries* and writes the result once to `p/<slug>/` on the `site` branch. Nothing rebuilds it later. It does not matter whether the branch is far behind main.
-2. **Main's CI only builds main.** A push to main runs the checks, then rebuilds the launcher only (no games; smoke-test fixtures, slugs starting `_`, are hidden from the published index). It never checks out, builds, or tests other branches.
+2. **Main's CI only builds main.** A push to main runs the checks, then rebuilds the launcher only (no games; smoke-test fixtures, slugs starting `_`, are left out of the index on every published build; only local builds and the smoke test pass `--fixtures`). It never checks out, builds, or tests other branches.
 3. **Branches never need to merge main back in.** A night starts from the `scaffold-stable` tag (the last commit of main whose checks passed, moved by CI), so a broken main does not block a night. A night merges reusable tech to main only when the smoke test passes; that is the only coupling and it points one way, from nights into main.
 4. **Failures are isolated.** If a night's checks fail, CI records a `broken` card for it (launcher skips it) and every other prototype keeps working.
 

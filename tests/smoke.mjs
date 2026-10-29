@@ -37,7 +37,7 @@ try {
   const index = JSON.parse(fs.readFileSync(path.join(SITE, 'index.json'), 'utf8'));
   const manifestErrs = index.prototypes.flatMap((m) => validateManifest(m).map((e) => `${m.slug}: ${e}`));
   const before = fs.readFileSync(path.join(SITE, 'index.json'), 'utf8');
-  execFileSync('node', ['scripts/build-site.mjs', '--out', 'dist-site', '--no-launcher', '--protos', 'none'], { cwd: ROOT, stdio: 'pipe' });
+  execFileSync('node', ['scripts/build-site.mjs', '--out', 'dist-site', '--no-launcher', '--protos', 'none', '--fixtures'], { cwd: ROOT, stdio: 'pipe' });
   const after = fs.readFileSync(path.join(SITE, 'index.json'), 'utf8');
   check('manifests validate', manifestErrs.length === 0 && index.prototypes.some((m) => m.slug === SLUG), manifestErrs.join('; '));
   check('index.json rebuilds identically', before === after);
