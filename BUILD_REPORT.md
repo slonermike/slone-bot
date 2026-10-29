@@ -44,6 +44,9 @@ Scaffold build, 2026-10-29. Everything in the kickoff list was built. Nothing is
 ## Doc conflicts
 None that needed the constitution to win. Notes: doc 05's Vercel default vs the allowance for Pages (above); doc 07's "minimum pool 15" and "fewer than n" fallback are implemented as two separate checks.
 
+## Run plan
+Start by running the site in a desktop browser with a gamepad; build the Steam wrapper once that is stable (added to `ROADMAP.md`). Deck-in-browser notes: launch the browser in kiosk mode and set the Steam Input template to Gamepad, otherwise the page sees no controller.
+
 ## Not built (ROADMAP)
 Analytics beyond the no-op `track()`, feedback endpoint or form, external feedback API, 3D, Deck sync app, iframe embedding, encrypted theme tool, music engine, adjacent assets repo.
 

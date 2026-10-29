@@ -30,6 +30,8 @@ npm run smoke          # headless end-to-end gate (needs Chromium via Playwright
 npm run check          # typecheck + secret scan + unit tests + smoke
 ```
 
+**Playing on a desktop with a gamepad (the current plan):** open the site in a normal browser and use any standard controller. Browsers only expose a gamepad after the first button press while the page has focus, so click the page once and press A if the launcher looks unresponsive. Press F11 for fullscreen. The game canvas scales to the window at 1280x800. The Steam Deck and a Steam wrapper come later (see [`ROADMAP.md`](ROADMAP.md)).
+
 `_demo` is a throwaway prototype (push a ball with the stick, dash with A) that exercises the whole pipeline. The API for building a prototype is in [`docs/tech/SCAFFOLD_API.md`](docs/tech/SCAFFOLD_API.md).
 
 ## Privacy and network
