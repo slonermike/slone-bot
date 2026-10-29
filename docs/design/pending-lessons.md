@@ -52,3 +52,9 @@ Entry template is in `docs/design/04-feedback-and-postmortem.md` section 5.
 - Lesson: AI is weak at balance work, so each game should expose a handful of tweakable balance values in a menu that Slone tunes; eventually those values are saved globally through an API so all players get his settings.   Status: one data point (promoted to Bible v3)
 - Evidence: Slone: "I expect it to be challenging for ai to do balance work, so each game should expose a handful of tweak able values in a balance menu. Eventually we should make it so I can save those globally to an api so all users get the values I adjusted it to."
 - Bible change (applied in v3, section 11); scaffold feature built (Balance screen in the pause menu); API recorded in ROADMAP.md.
+
+## 2026-10-29 _demo (fifth round)
+- Lesson: Slone is far better at reacting to a playable okay game than at designing from a blank page; ship something concrete and decent quickly and let his feedback steer.   Status: one data point (promoted to Bible v4)
+- Evidence: Slone: "Blank page paralysis is real with games, but when you show me an ok game I have a million ideas on how to improve it."
+- Bible change (applied in v4, section 1).
+- Also from this round (surge): the surge "should feel chaotic and a little unwieldy"; surge speed at least 2x the first version. Applied to `_demo` by explicit request (PR #4). One data point: power moments can be hard to control rather than smooth.
