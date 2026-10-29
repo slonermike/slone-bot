@@ -201,10 +201,10 @@ describe('demo: failure, reprieve, and layered pressure', () => {
     }
     // constant speed (a wall bounce costs one step of speed before it is restored)
     const sorted = [...speeds].sort((x, y) => x - y);
-    expect(sorted[Math.floor(sorted.length / 2)]).toBeGreaterThan(600);
-    expect(Math.max(...speeds)).toBeLessThan(640);
+    expect(sorted[Math.floor(sorted.length / 2)]).toBeGreaterThan(1250);
+    expect(Math.max(...speeds)).toBeLessThan(1350);
     expect(sim.heat).toBeLessThanOrEqual(heatAtStart);
-    expect(kills).toBe(1);
+    expect(kills).toBeGreaterThanOrEqual(1);
     expect(sim.deaths).toBe(0);
     // run it out, and check the state right when it ends
     let endedAt = false;

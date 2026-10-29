@@ -12,9 +12,9 @@ export const BALANCE: BalanceSpec[] = [
   { id: 'pickupRelief', label: 'Heat relief per spark', min: 5, max: 50, step: 1, default: 22 },
   { id: 'hazardHeat', label: 'Heat from a drifter hit', min: 0, max: 50, step: 1, default: 20 },
   { id: 'meterFill', label: 'Surge meter fill speed', min: 0.3, max: 3, step: 0.1, default: 1, unit: 'x' },
+  { id: 'surgeSpeed', label: 'Surge speed', min: 600, max: 2400, step: 50, default: 1300, unit: 'px/s' },
   { id: 'surgeSeconds', label: 'Surge length', min: 2, max: 10, step: 0.5, default: 5, unit: 's' },
   { id: 'drifterSpeed', label: 'Drifter speed', min: 0.5, max: 2, step: 0.1, default: 1, unit: 'x' },
-  { id: 'layerPace', label: 'Pressure layer pace', min: 0.5, max: 2, step: 0.1, default: 1, unit: 'x' },
   { id: 'lives', label: 'Lives (next run)', min: 1, max: 6, step: 1, default: 3 },
 ];
 const DEFAULTS: Record<string, number> = Object.fromEntries(BALANCE.map((b) => [b.id, b.default]));
@@ -31,8 +31,7 @@ const DASH_COOLDOWN = 30;
 const PICKUP_R = 18;
 const MAX_PICKUPS = 3;
 const PICKUP_LIFE = 7;
-const SURGE_SPEED = 620;
-const SURGE_TURN = 9;
+const SURGE_TURN = 4.5; // rad/s: at surge speed this is a wide, slightly out-of-control arc
 
 export interface Pickup {
   x: number;
@@ -120,9 +119,9 @@ export class DemoSim {
     return this.ctx?.balance?.[id] ?? DEFAULTS[id]!;
   }
 
-  /** Run time at which layer `i` (0-based) switches on, scaled by the pace knob. */
+  /** Run time at which layer `i` (0-based) switches on. */
   layerAt(i: number): number {
-    return LAYER_AT[i]! / this.bal('layerPace');
+    return LAYER_AT[i]!;
   }
 
   get surgeSecs(): number {
@@ -176,8 +175,8 @@ export class DemoSim {
         const turn = SURGE_TURN * dt;
         this.heading += Math.max(-turn, Math.min(turn, diff));
       }
-      this.vx = Math.cos(this.heading) * SURGE_SPEED;
-      this.vy = Math.sin(this.heading) * SURGE_SPEED;
+      this.vx = Math.cos(this.heading) * this.bal('surgeSpeed');
+      this.vy = Math.sin(this.heading) * this.bal('surgeSpeed');
       this.surge -= dt;
     } else {
       this.vx += left.x * ACCEL * dt;
