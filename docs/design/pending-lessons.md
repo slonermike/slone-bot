@@ -54,7 +54,5 @@ Entry template is in `docs/design/04-feedback-and-postmortem.md` section 5.
 - Bible change (applied in v3, section 11); scaffold feature built (Balance screen in the pause menu); API recorded in ROADMAP.md.
 
 ## 2026-10-29 _demo (fifth round)
-- Lesson: Slone is far better at reacting to a playable okay game than at designing from a blank page; ship something concrete and decent quickly and let his feedback steer.   Status: one data point (promoted to Bible v4)
-- Evidence: Slone: "Blank page paralysis is real with games, but when you show me an ok game I have a million ideas on how to improve it."
-- Bible change (applied in v4, section 1).
-- Also from this round (surge): the surge "should feel chaotic and a little unwieldy"; surge speed at least 2x the first version. Applied to `_demo` by explicit request (PR #4). One data point: power moments can be hard to control rather than smooth.
+- Lesson: Slone wants the surge to feel chaotic and a little unwieldy, and faster (at least 2x the first version); a power moment can be hard to control rather than smooth.   Status: one data point
+- Evidence: Slone: "It should feel chaotic and a little unwieldy." Applied to `_demo` by explicit request (PR #4).
