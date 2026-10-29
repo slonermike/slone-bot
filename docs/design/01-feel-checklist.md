@@ -69,6 +69,12 @@ Run this on every build before wrap-up. For each item, mark: yes, no, n/a, or un
 - [ ] Particle counts capped; frame time logged with effects on and off. [bot]
 - [ ] Juice dial works (every layer toggles; intensity slider).
 
+## D2. Music
+- [ ] The game has its own music (`src/protos/<slug>/music.ts`), composed from a brief, in one key shared by the loop and the stingers. [bot: the demo's music test is the pattern]
+- [ ] A loop plays under the action (ongoing action has no fixed length); stingers (two to four bars) mark events: win, lose, power-up, secret.
+- [ ] Parts enter with the game's pressure (pad, then bass, then drums, then arp), and the hook is held back for an earned moment, so the music tells you how the game is going.
+- [ ] The music thins out when pressure resets, ducks under stingers, and is quieter while paused.
+
 ## I. Core first sanity check
 - [ ] The bare core (juice off) is still interesting for at least 30 seconds of play. State how you judged this (bot variance, decision rate, your own reading of the loop). Never use juice to rescue a flat core.
 

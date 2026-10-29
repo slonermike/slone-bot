@@ -217,3 +217,21 @@ Reusable helpers go in `src/core` or `src/juice` with a unit test and a short en
 
 ## Capture mode (smooth media)
 `window.__scaffold.captureMode(true)` parks the real-time loop; time then moves only when `stepFrames(n)` is called, n exact frames of 1/60 s (only the last is drawn unless `drawAll`). The sim, juice and tweens all see the same fixed steps they would at 60 fps, so footage is smooth and identical on every machine, however slow its renderer. `npm run media -- <slug> [--fps 20] [--seconds 4]` uses it: pass 1 plays the greedy bot without drawing to find the busiest window, pass 2 replays to it and screenshots each captured frame. Prototypes need nothing special, but must be deterministic for a given `?seed=` (anything visual that uses `Math.random` or wall-clock time will differ between passes).
+
+## Music (v4)
+Each prototype writes its own music to match its game. A song is plain data (`src/music/`); compose it at start-up with the generator and drive it from render-side code with `music` (`src/audio/music.ts`). Never call it from sim code (the sim emits events; `onEvent` reacts).
+
+```ts
+import { composeSong, composeStinger } from '../../music/compose.ts';
+import { music } from '../../audio/music.ts';
+
+// in src/protos/<slug>/music.ts: one tonic and mode for everything in the game
+const KEY = { mode: 'dorian', root: 50 } as const;
+loop    = composeSong({ ...KEY, seed: 11, name, description, style, mood, form: 'loop', layout: 'groove-8', bpm: 120, feel: { ... } });
+powerup = composeStinger({ ...KEY, seed: 12, name, description, style, mood, form: 'oneshot', event: 'powerup', bpm: 150 });
+lose    = composeStinger({ ...KEY, seed: 13, ..., event: 'lose', bpm: 96 });
+```
+- `music.play(song, parts?)` starts a loop (waits for audio unlock); `music.setParts(parts, fadeSeconds?)` brings parts in and out on the beat (`pad`, `bass`, `drums`, `arp`, `lead`, `harmony`, `riff`); `music.stinger(song, { duck? })` plays over the loop, ducking it; `music.release(seconds)` fades the loop out; `music.stop()`. `music.setPaused` is called by the shell. Every call is logged in `music.log` and `scaffold.music.state` for bots and the smoke test.
+- Loops, because ongoing action has no length: a loop has no ending and leads back into itself. Stingers, because events do: two to four bars. `form: 'loop'` with `layout: 'groove-8'` is hook all the time (for games that gate the hook behind an earned moment); the other layouts are in `docs/tech/10-music-and-jukebox.md`.
+- Keep `root` and `mode` the same across the game's loop and stingers so they sit together. `seed` makes it deterministic; change it for a different tune.
+- Pattern to copy: `src/protos/_demo/music.ts` (the brief, plus a pure `partsFor(pressure, powerMoment)` that has a unit test) and the event wiring in `src/protos/_demo/index.ts`: start on a `run-start` event, add parts on `layer` events, the hook on `surge-start`, a stinger on `surge-ready` and on `gameover`, thin out on `restart`, `music.stop()` in `dispose`.

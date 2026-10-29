@@ -24,3 +24,11 @@ Controls: Up/Down choose; A play or stop; X picks the rating category (listenabi
 
 ## Next
 After Slone's ratings: delete what he rejected, change the briefs or seeds of what he flagged, record what the pattern says about his taste in the Bible. Later: let a prototype pick a kept song and bring parts in by `layer` as pressure grows.
+
+## Music in a game
+Nightly agents compose music for their own game (see "Music" in `SCAFFOLD_API.md`, and the demo for a worked example). The craft rules in `docs/design/06-music-craft.md` apply, with these game-specific rules:
+- Music follows the game: tempo near the game's pulse, mode and meter to match the feeling (use the vibe formula), parts layered with the pressure layers, the hook reserved for an earned moment.
+- One tonic and mode for the loop and all stingers in a game.
+- The song data is generated, never hand-written, and nothing needs an `ATTRIBUTION.md` row.
+- A game's music is not part of a jukebox batch; to audition it, add its brief to a batch.
+- `src/music/synth.ts` (`SongPlayer`) can route to an output node and mute or unmute parts with a fade; the game engine routes it through the player's music volume bus.
