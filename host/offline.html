@@ -1,0 +1,11 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Minigame Bot</title>
+<style>
+  html,body{margin:0;height:100%;background:#0b0b14;color:#e8e8f4;font:24px/1.4 system-ui,sans-serif;display:grid;place-items:center;text-align:center}
+  p{margin:.3em 0;opacity:.7;font-size:18px}
+  .dot{display:inline-block;width:12px;height:12px;border-radius:50%;background:#ffd24a;animation:b 1s infinite alternate}
+  @keyframes b{to{transform:translateY(-10px)}}
+</style>
+<div><span class="dot"></span><h1>Can't reach the games</h1><p id="u"></p><p>Trying again every few seconds.</p></div>
+<script>document.getElementById('u').textContent = new URLSearchParams(location.search).get('url') || ''</script>
