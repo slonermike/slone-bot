@@ -14,6 +14,7 @@
     "dev:proto": "node scripts/dev-proto.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "media": "node scripts/capture-media.mjs",
     "build:site": "node scripts/build-site.mjs",
     "bots": "node scripts/run-bots.mjs",
     "smoke": "node scripts/build-site.mjs && node tests/smoke.mjs",

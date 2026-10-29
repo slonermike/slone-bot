@@ -34,10 +34,11 @@ A factory for small, playable 2D game prototypes, built unattended one per night
 2. Read `CONSTITUTION.md`, `docs/tech/SCAFFOLD_API.md`, Bible, feel checklist, taste cards, concept library, ledger.
 3. `node scripts/themes.mjs roll`, then choose and resolve (see `docs/tech/07-themes-script.md`).
 4. Write the brief (`docs/design/04` template), then build, test with bots, run the feel checklist.
-5. At 3:00 elapsed: wrap up. At 3:30: pencils down. Post mortem. Publish.
+5. Before publishing, run `npm run media -- <slug>`: it records the greedy bot playing and writes `preview.gif` (a few seconds, shown on the launcher card while it is focused) and `thumb.png` from the same footage. Needs ffmpeg; if missing, log it and move on.
+6. At 3:00 elapsed: wrap up. At 3:30: pencils down. Post mortem. Publish.
 
 ## When Slone gives feedback in chat
-Default procedure (details in `CONSTITUTION.md` section 15): (1) capture what it teaches about his design philosophy and preferences; (2) update the Bible (and feel checklist or taste cards if they fit), bump the version, log evidence in `pending-lessons.md`; (3) then ask whether to update the game or use the feedback only for future games. Do not change the game first. This applies to chat sessions with Slone; nightly runs never edit the Bible.
+Default procedure (details in `CONSTITUTION.md` section 15): (1) capture what it teaches about his design philosophy and preferences; (2) update the Bible (and feel checklist or taste cards if they fit), bump the version, log evidence in `pending-lessons.md`; (3) then ask whether to update the game or use the feedback only for future games. Do not change the game first. Whenever you change a game so that it looks noticeably different or more interesting, refresh its media with `npm run media -- <slug>` (see below). This applies to chat sessions with Slone; nightly runs never edit the Bible.
 
 ## How to work with Slone in chat
 Slone is the design architect; you are the designer. Make the detail calls yourself (buttons, numbers, layout, names, timings) and tell him what you chose; do not ask him to pick between details. Ask only when his direction would change what the game is. When his feedback includes a request to change the game ("add a meter..."), that is the answer to the update-or-not question: do it.

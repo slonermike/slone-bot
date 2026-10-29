@@ -24,6 +24,8 @@ export interface PrototypeManifest {
   feedbackStatus: 'needs-feedback' | 'assessed' | 'favorite';
   sizeKB: number;
   thumbnail: string;
+  /** Short looping GIF of the game being played; empty when the build has none. */
+  preview?: string;
 }
 
 export const SLUG_RE = /^[a-z0-9_][a-z0-9_-]*$/;
@@ -40,6 +42,7 @@ export function validateManifest(m: unknown): string[] {
   };
   for (const k of ['slug', 'title', 'date', 'question', 'targetFeeling', 'theme']) str(k);
   str('thumbnail', true); // empty when the build has no thumb.png yet
+  if (o.preview !== undefined && typeof o.preview !== 'string') errs.push('preview: string when present');
   if (typeof o.slug === 'string' && !SLUG_RE.test(o.slug)) errs.push('slug: lowercase letters, digits, - and _ only');
   if (typeof o.date === 'string' && !DATE_RE.test(o.date)) errs.push('date: must be YYYY-MM-DD');
   if (o.mode !== 'content' && o.mode !== 'systemic') errs.push('mode: must be "content" or "systemic"');

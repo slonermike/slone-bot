@@ -20,7 +20,9 @@ main::-webkit-scrollbar{display:none}
 .card.focus{border-color:var(--amber);transform:scale(1.025);box-shadow:0 0 0 5px rgba(255,209,102,.35),0 16px 40px rgba(0,0,0,.55);z-index:2}
 .thumb{height:170px;background-size:cover;background-position:center;flex:none}
 .hero .thumb{height:auto;width:46%}
+.thumb{position:relative}
 .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb img.preview{position:absolute;inset:0}
 .body{padding:16px 20px 18px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .card h2{margin:0;font-size:30px;line-height:1.1}
 .hero h2{font-size:42px}

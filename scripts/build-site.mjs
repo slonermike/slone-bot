@@ -72,9 +72,10 @@ async function buildProto(slug) {
   await build(protoConfig(slug, dest));
   const thumbSources = [path.join(protosDir, slug, 'thumb.png'), path.join(ROOT, 'runs', slug, 'thumb.png')];
   const hasThumb = thumbSources.some((s) => copyIfExists(s, path.join(dest, 'thumb.png')));
+  const hasPreview = copyIfExists(path.join(protosDir, slug, 'preview.gif'), path.join(dest, 'preview.gif'));
   copyIfExists(path.join(ROOT, 'runs', slug, 'postmortem.md'), path.join(dest, 'postmortem.md'));
   copyIfExists(path.join(ROOT, 'runs', slug, 'feedback-sheet.md'), path.join(dest, 'feedback-sheet.md'));
-  const final = { ...manifest, buildStatus: 'ok', thumbnail: hasThumb ? 'thumb.png' : '' };
+  const final = { ...manifest, buildStatus: 'ok', thumbnail: hasThumb ? 'thumb.png' : '', preview: hasPreview ? 'preview.gif' : '' };
   fs.writeFileSync(path.join(dest, 'prototype.json'), JSON.stringify(final, null, 2));
   final.sizeKB = dirSizeKB(dest);
   fs.writeFileSync(path.join(dest, 'prototype.json'), JSON.stringify(final, null, 2));
