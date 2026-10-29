@@ -48,10 +48,11 @@
         "survivalSec"
       ],
       "assets": [],
-      "buildStatus": "broken",
+      "buildStatus": "ok",
       "feedbackStatus": "needs-feedback",
-      "sizeKB": 0,
-      "thumbnail": ""
+      "sizeKB": 713,
+      "thumbnail": "thumb.png",
+      "preview": ""
     },
     {
       "slug": "_demo",
