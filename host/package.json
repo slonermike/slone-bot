@@ -1,0 +1,24 @@
+{
+  "name": "minigame-bot-host",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Thin Electron shell that runs the minigame-bot launcher full screen on a Steam Deck.",
+  "license": "MIT",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron . --no-sandbox-if-needed",
+    "start:windowed": "electron . --windowed",
+    "test": "node --test test/config.test.cjs",
+    "dist:linux": "electron-builder --linux AppImage"
+  },
+  "devDependencies": {
+    "electron": "45.1.0",
+    "electron-builder": "26.8.1"
+  },
+  "build": {
+    "appId": "dev.slone.minigamebot.host",
+    "productName": "Minigame Bot",
+    "files": ["main.cjs", "config.cjs", "offline.html", "package.json"],
+    "linux": { "target": "AppImage", "category": "Game" }
+  }
+}
