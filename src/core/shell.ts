@@ -58,8 +58,8 @@ export interface Scaffold {
   music: typeof music;
   /** Park the real-time loop; time then moves only through stepFrames. */
   captureMode(on: boolean): void;
-  /** Advance exactly n frames of 1/60 s (capture mode only). Only the last is drawn unless `drawAll` is set. */
-  stepFrames(n: number, drawAll?: boolean): void;
+  /** Advance exactly n frames of 1/60 s (capture mode only). `draw`: 'last' (default) renders only the final frame, 'none' renders nothing (fast-forward), 'all' renders every frame. */
+  stepFrames(n: number, draw?: 'none' | 'last' | 'all'): void;
 }
 
 declare global {
@@ -471,11 +471,11 @@ export async function startPrototype(mod: PrototypeModule): Promise<Scaffold> {
       lastNow = 0;
       stepper.reset();
     },
-    stepFrames(n: number, drawAll = false) {
+    stepFrames(n: number, draw: 'none' | 'last' | 'all' = 'last') {
       if (!manual) throw new Error('stepFrames needs captureMode(true)');
       for (let i = 0; i < n; i++) {
         virtualNow += 1000 / 60;
-        stepFrame(virtualNow, drawAll || i === n - 1);
+        stepFrame(virtualNow, draw === 'all' || (draw === 'last' && i === n - 1));
       }
     },
   };
