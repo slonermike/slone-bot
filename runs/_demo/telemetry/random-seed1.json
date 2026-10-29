@@ -3,21 +3,30 @@
   "seed": 1,
   "bot": "random",
   "mode": "systemic",
-  "simSeconds": 120,
-  "wallMs": 48,
+  "simSeconds": 64.73,
+  "wallMs": 32,
   "timescale": 20,
-  "outcome": "timeout",
+  "outcome": "failed",
   "metrics": {
-    "runLength": 120,
-    "deaths": 20,
+    "runLength": 64.73,
+    "deaths": 3,
     "firstPressureSimSec": 17.48,
     "restartDelaySimSec": 0,
-    "mainVerbCount": 96,
+    "mainVerbCount": 52,
     "decisionsPerMinute": 0,
     "idleSurvivalSec": 23.02,
-    "scoreOrProgress": 13,
+    "scoreOrProgress": 16,
     "variance": 0,
-    "heat": 48
+    "heat": 20,
+    "heatRate": 5,
+    "lives": 0,
+    "maxLives": 3,
+    "layer": 3,
+    "runs": 1,
+    "meter": 0,
+    "surges": 0,
+    "surgeKills": 0,
+    "survivalSec": 64.73
   },
   "perf": {
     "avgFrameMs": 0,
@@ -30,16 +39,31 @@
     "inputToVisualMs": 0,
     "inputToAudioMs": 0,
     "eventsFired": {
-      "hit": 142,
-      "dash": 96,
-      "pickup": 13,
-      "pressure": 70,
-      "heartbeat": 67,
-      "fail": 20,
-      "recover": 20
+      "hit": 77,
+      "dash": 52,
+      "pickup": 16,
+      "pressure": 11,
+      "heartbeat": 20,
+      "fail": 3,
+      "recover": 2,
+      "layer": 2,
+      "hazard-warn": 7,
+      "hazard-hit": 3,
+      "expire": 3,
+      "gameover": 1
     },
     "shakePeak": 0,
     "hitStopFrames": 0
   },
-  "errors": []
+  "errors": [],
+  "balance": {
+    "heatRamp": 0.2,
+    "pickupRelief": 22,
+    "hazardHeat": 20,
+    "meterFill": 1,
+    "surgeSpeed": 1300,
+    "surgeSeconds": 5,
+    "drifterSpeed": 1,
+    "lives": 3
+  }
 }
