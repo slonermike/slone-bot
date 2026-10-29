@@ -30,6 +30,8 @@ Download the Linux AppImage from the releases (or `npm run dist -- --linux` loca
 - **Fresh pages:** the app asks the server to revalidate every page and data request (`Cache-Control: no-cache`; an unchanged page is a cheap 304), and only keeps hashed build assets cached. So leaving a game always lands on a current launcher and a republished game is never stale. The launcher also reloads itself if the browser restores it from the back-forward cache.
 
 ## Steam Deck input
+**Launch it from Steam, not from the file manager.** An app started outside Steam (for example by double-clicking it in Desktop Mode) gets Steam's Desktop controller layout: the triggers click like a mouse and the buttons send keyboard keys, so the games show keyboard prompts and have no gamepad. Added as a Non-Steam Game and launched from Steam, it gets a real gamepad. The app detects this (Steam sets `SteamGameId`/`SteamAppId` for anything it launches) and opens Controller help at start when it finds itself on a Deck without Steam.
+
 Steam Input sits between the controller and the app. With the wrong layout it turns the pad into a mouse and keyboard: a trigger becomes a click and the buttons stop reaching the games (the Gamepad API only sees a real gamepad). The app handles this in three ways:
 - **Mouse off on the Deck** (detected from `SteamDeck=1` or SteamOS): the cursor is hidden and every mouse and wheel event is swallowed before any page script sees it, so a stray click can never act on, or steal focus from, the page. Elsewhere the mouse works; force it with `--no-mouse` or `--allow-mouse`.
 - **Focus:** the Gamepad API reports only to a focused page, so the app gives the page focus whenever the window gets it and after every load.

@@ -56,6 +56,8 @@ export class InputManager {
   /** Button values for the NEXT edge comparison: held keys and pad only. A tap that already ended counts as released. */
   private heldNow = zeroValues();
   private listening = false;
+  private sawPad = false;
+  private usedKeys = false;
 
   private readonly keyboard: boolean;
 
@@ -72,6 +74,7 @@ export class InputManager {
       if (KEY_BUTTONS[e.code] || KEY_STICK[e.code]) e.preventDefault();
       this.keys.add(e.code);
       this.tapped.add(e.code);
+      this.usedKeys = true;
       setDevice('keyboard');
     });
     target.addEventListener('keyup', (e) => {
@@ -111,6 +114,12 @@ export class InputManager {
       rx += pad.axes[2] ?? 0;
       ry += pad.axes[3] ?? 0;
       break; // first connected pad only
+    }
+
+    // A pad appearing before any key was pressed means gamepad prompts from the start (this is a gamepad-first design).
+    if (connected && !this.sawPad) {
+      this.sawPad = true;
+      if (!this.usedKeys) setDevice('gamepad');
     }
 
     // The gamepad wins the "last used device" label when a pad button goes down or a stick is pushed.
