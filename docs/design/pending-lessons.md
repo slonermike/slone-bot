@@ -56,3 +56,8 @@ Entry template is in `docs/design/04-feedback-and-postmortem.md` section 5.
 ## 2026-10-29 _demo (fifth round)
 - Lesson: Slone wants the surge to feel chaotic and a little unwieldy, and faster (at least 2x the first version); a power moment can be hard to control rather than smooth.   Status: one data point
 - Evidence: Slone: "It should feel chaotic and a little unwieldy." Applied to `_demo` by explicit request (PR #4).
+
+## 2026-10-29 music (loops versus one-shots)
+- Lesson: Loops cover nearly everything because ongoing player action cannot be mapped to a length of time. A one-shot is a stinger of a couple of measures that accents an event (level beaten, you died), not a short song.   Status: one data point
+- Evidence: Slone: "We need loops for most scenarios because ongoing player action is not mappable to a length of time. One shots would typically just be a couple measures meant to accent a big thing having happened. You beat the level. You died. Etc."
+- Applied to the music generator (loops for songs; `composeStinger` for events) in `docs/design/06-music-craft.md`. Earlier in the same session: not every song should be an earworm, and a vibe can be any tempo (frantic included). Both one data point.
