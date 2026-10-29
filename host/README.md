@@ -11,7 +11,7 @@ npm install            # downloads Electron
 MGB_URL=https://<your-site>/ npm start          # full screen; F11 toggles, Ctrl+Q quits
 MGB_URL=https://<your-site>/ npm run start:windowed
 ```
-The URL comes from, in order: `--url=...`, the `MGB_URL` env var, a `config.json` (`{"url": "https://..."}`) in the app's user-data folder or next to the executable, then `http://127.0.0.1:4173/` (the local `npm run serve`).
+The URL comes from, in order: `--url=...`, the `MGB_URL` env var, a `config.json` (`{"url": "https://..."}`) in the app's user-data folder or next to the executable, then `https://slone-bot.vercel.app/` (for local testing use `MGB_URL=http://127.0.0.1:4173/` with `npm run serve`).
 
 Offline or the site down: it shows a local "can't reach the games" page and retries every 5 seconds. Pages already visited are served from Chromium's cache.
 
@@ -23,7 +23,7 @@ Offline or the site down: it shows a local "can't reach the games" page and retr
 - Dev builds (`npm start`) never check for updates.
 
 ## Build for the Deck
-Download the Linux AppImage from the releases (or `npm run dist -- --linux` locally), copy it to the Deck (Desktop Mode), `chmod +x`, then in Steam: Add a Non-Steam Game, pick the AppImage. Put the URL in `~/.config/minigame-bot-host/config.json`. In the game's Controller settings choose the **Gamepad** template (not the default desktop mouse layout), so the page sees a standard pad. Launch from Gaming Mode; quit from Steam's menu (Steam button, Exit Game). Keep the AppImage somewhere writable (your home folder) so it can replace itself.
+Download the Linux AppImage from the releases (or `npm run dist -- --linux` locally), copy it to the Deck (Desktop Mode), `chmod +x`, then in Steam: Add a Non-Steam Game, pick the AppImage. The URL is built in, so there is nothing to configure; if the site moves, set `{"url": "https://..."}` in `~/.config/minigame-bot-host/config.json`. In the game's Controller settings choose the **Gamepad** template (not the default desktop mouse layout), so the page sees a standard pad. Launch from Gaming Mode; quit from Steam's menu (Steam button, Exit Game). Keep the AppImage somewhere writable (your home folder) so it can replace itself.
 
 ## Safety
 Sandboxed renderer, no Node in the page, all permission prompts denied, navigation locked to the launcher's origin, new windows denied.
