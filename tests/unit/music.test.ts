@@ -2,8 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { buildDemoMusic, partsFor } from '../../src/protos/_demo/music.ts';
-import { Rng, hashSeed } from '../../src/core/rng.ts';
-import { BATCH_2 } from '../../src/music/briefs.ts';
+import { Rng } from '../../src/core/rng.ts';
+import { composeBatch } from '../../src/music/batches.ts';
+import { checkBatch } from '../../src/music/coverage.ts';
 import { composeSong, LAYOUTS, songSeconds } from '../../src/music/compose.ts';
 import { beatsOf, eighthsOf, meterSpec } from '../../src/music/meter.ts';
 import { writeMidi } from '../../src/music/midi.ts';
@@ -11,7 +12,7 @@ import { beatAt, secondsAt } from '../../src/music/timing.ts';
 import type { Song, TempoPoint } from '../../src/music/types.ts';
 import { pickForVibe, vibeOf } from '../../src/music/vibe.ts';
 
-const songs: Song[] = BATCH_2.map((b, i) => composeSong({ ...b, seed: hashSeed(`b02:${i}`), batch: 'b02', index: i + 1 }));
+const songs: Song[] = composeBatch('b02');
 const base = { name: 'T', description: 'x', style: 's', mood: 'm' };
 
 describe('meters', () => {
@@ -246,6 +247,25 @@ describe('generated songs on disk', () => {
       expect(fs.existsSync(path.join(dir, `${s.id}.mid`))).toBe(true);
       expect(songSeconds(s)).toBeGreaterThan(1);
     }
+  });
+});
+
+describe('batch quality gate', () => {
+  it('the first batch passes with no problems or warnings', () => {
+    const c = checkBatch(songs);
+    expect(c.problems).toEqual([]);
+    expect(c.warnings).toEqual([]);
+  });
+  it('flags duplicate names, copied descriptions, bad lengths and lopsided batches', () => {
+    const a = songs[0]!;
+    const dup = { ...songs[1]!, name: a.name, description: a.description };
+    const longLoop = { ...songs[2]!, description: 'x'.repeat(300) };
+    const c = checkBatch([a, dup, longLoop]);
+    expect(c.problems.join('|')).toMatch(/duplicate name/);
+    expect(c.problems.join('|')).toMatch(/copied/);
+    expect(c.problems.join('|')).toMatch(/300 characters/);
+    const lopsided = checkBatch(Array.from({ length: 12 }, (_, i) => ({ ...songs[0]!, id: `x-${i}`, name: `n${i}`, description: `d${i} `.repeat(20) })));
+    expect(lopsided.warnings.length).toBeGreaterThan(2);
   });
 });
 
