@@ -4,7 +4,7 @@
   "bot": "idle",
   "mode": "systemic",
   "simSeconds": 97.95,
-  "wallMs": 124,
+  "wallMs": 116,
   "timescale": 20,
   "outcome": "failed",
   "metrics": {

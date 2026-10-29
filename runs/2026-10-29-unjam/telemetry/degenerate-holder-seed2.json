@@ -4,7 +4,7 @@
   "bot": "degenerate-holder",
   "mode": "systemic",
   "simSeconds": 120,
-  "wallMs": 199,
+  "wallMs": 223,
   "timescale": 20,
   "outcome": "timeout",
   "metrics": {

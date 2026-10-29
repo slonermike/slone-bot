@@ -4,7 +4,7 @@
   "bot": "greedy",
   "mode": "systemic",
   "simSeconds": 120,
-  "wallMs": 259,
+  "wallMs": 200,
   "timescale": 20,
   "outcome": "timeout",
   "metrics": {
