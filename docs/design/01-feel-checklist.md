@@ -32,6 +32,7 @@ Run this on every build before wrap-up. For each item, mark: yes, no, n/a, or un
 - [ ] Pitch variation per play (a few percent) and round-robin variants for frequent sounds.
 - [ ] Layered impacts: transient plus body.
 - [ ] Parameters tied to gameplay (combo pitch, filter with pressure, volume with impact).
+- [ ] Every rising or rewarding cue (pitch ladder, combo counter) has a consequence the player can feel: a meter, a state, a payoff. [Slone]
 - [ ] Rising pitch for progress uses equal semitone steps up to a cap (about an octave), then adds a different layer; each step is audibly distinct. [Slone]
 - [ ] No clipping; loudness balanced across sounds. [bot]
 - [ ] Silence is intentional, not accidental. [bot]
@@ -41,6 +42,7 @@ Run this on every build before wrap-up. For each item, mark: yes, no, n/a, or un
 - [ ] The main actor has character: eyes, expressions, idle animation, reactions to success and near-miss.
 - [ ] The world reacts to the player (things wobble, sway, notice).
 - [ ] Failure is funny, dramatic, or readable, never just a freeze.
+- [ ] A power moment, if the build has one, is announced with a prompt, triggered by the player, and clearly flips the pressure (hazards become targets) with the biggest juice in the game. [Slone]
 - [ ] Failure gets the same effect stack as the main verb (layered sound, freeze, shake, flash, particles, text, a reaction from the actor). [Slone]
 
 ## F. Readability and Deck fit
@@ -53,6 +55,7 @@ Run this on every build before wrap-up. For each item, mark: yes, no, n/a, or un
 ## G. Pressure and recovery (taste)
 - [ ] Idle bot proves back pressure acts without player input. [bot]
 - [ ] Pressure rises over time or with exploration, with a visible curve.
+- [ ] Forward pressure exists: the player's power or options also grow as the pressure does (meter, power moment, unlocks). [Slone]
 - [ ] Pressure gains complexity, not just speed: a new source or a change in character appears as the session goes on. [bot: count distinct pressure events by minute]
 - [ ] The failure type matches the target feeling and the brief says which: soft reprieve only, or soft failures plus a real run end. A rising-threat game can end. [Slone]
 - [ ] A soft failure leads to a recoverable state, with a story-worthy moment. [Slone]

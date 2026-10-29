@@ -33,3 +33,17 @@ Entry template is in `docs/design/04-feedback-and-postmortem.md` section 5.
 - Evidence: Slone: "I also would have liked to see a back pressure that was more dynamic than the timer. Not necessarily to replace the timer but to have the back pressure complexity ramp over time."
 - Bible change (applied in v1, section 6): pressure gains complexity (new sources, changing character), timer as the base layer.
 - Proposed atoms (Slone decides): p-layered-pressure: pressure sources are added or change character as the session goes on, on top of a base timer.
+
+## 2026-10-29 _demo (third round)
+- Lesson: Confirmation that layered back pressure that grows, plus a hard failure and the crunchier failure, improved the demo.   Status: one data point (reinforces the v1 entries; not yet a second night)
+- Evidence: Slone: "Improvements to the demo game are great! What an improvement." and "The back pressure now feels dynamic and growing which is working well."
+- Lesson: Growing back pressure needs matching forward pressure: the player's power should also rise.   Status: one data point (promoted to Bible v2)
+- Evidence: Slone: "there's no increase in forward pressure."
+- Bible change (applied in v2, section 6): forward pressure bullet.
+- Lesson: A "doing well" sound that does not lead anywhere reads as meaningless; reward cues need a consequence.   Status: one data point (promoted to Bible v2)
+- Evidence: Slone: "You get this rising sound indicating that you're doing well, but it doesn't mean anything."
+- Bible change (applied in v2, section 6): every reward cue must mean something.
+- Lesson: Slone wants an earned, player-triggered power moment: a combo meter fills, a prompt appears, he presses the button, and for a few seconds he is in a spectacle state (constant speed, steer only, hazards die spectacularly).   Status: one data point (promoted to Bible v2)
+- Evidence: Slone: "Add a meter that fills as you increase your combo, and when it fills it gives a juicy animation and says 'press (button)'. When you do, for a few seconds lots of particles falling off you, colors animating... you start moving at a constant rate and you can only change the direction. Any enemy you hit dies in spectacular fashion."
+- Bible change (applied in v2, section 6): earned power moments.
+- Proposed atoms (Slone decides): v-power-surge: a meter fills from skilled play and the player triggers a short empowered state that flips the pressure (hazards become prey); p-forward-pressure: the player's power escalates alongside the pressure.
