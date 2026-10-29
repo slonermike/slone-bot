@@ -422,6 +422,7 @@ export async function startPrototype(mod: PrototypeModule): Promise<Scaffold> {
       inputToVisualMs: latency.visual, inputToAudioMs: latency.audio, events: eventCounts,
       particles: fxStats.particleMax, layers: dial.activeLayers(), intensity: dial.intensity,
       seed, simSeconds: simSteps * DT, gamepad: input.frame.connected,
+      padId: (typeof navigator !== 'undefined' && navigator.getGamepads ? [...navigator.getGamepads()].find((p) => p?.connected)?.id : '') || '',
     };
   };
 

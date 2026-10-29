@@ -25,14 +25,14 @@ Requires Node 22.18+.
 npm install
 npm run build:site     # launcher + every prototype -> dist-site/
 npm run serve          # http://127.0.0.1:4173  (use a gamepad, or the keyboard fallback)
-npm run dev:proto -- _demo   # hot-reload one prototype on :5173
+npm run dev:proto -- _fixture   # hot-reload one prototype on :5173 (_fixture is the bare smoke-test fixture)
 npm run smoke          # headless end-to-end gate (needs Chromium via Playwright)
 npm run check          # typecheck + secret scan + unit tests + smoke
 ```
 
 **Playing on a desktop with a gamepad (the current plan):** open the site in a normal browser and use any standard controller. Browsers only expose a gamepad after the first button press while the page has focus, so click the page once and press A if the launcher looks unresponsive. Press F11 for fullscreen. A keyboard works too: WASD or arrows, Space or Enter to confirm, X to go back, Esc to pause or go back; on-screen labels switch between key names and gamepad buttons depending on what you last used. The game canvas scales to the window at 1280x800. The Steam Deck and a Steam wrapper come later (see [`ROADMAP.md`](ROADMAP.md)).
 
-`_demo` is a throwaway prototype (push a ball with the stick, dash with A) that exercises the whole pipeline. The API for building a prototype is in [`docs/tech/SCAFFOLD_API.md`](docs/tech/SCAFFOLD_API.md).
+`src/protos/_fixture/` is a bare smoke-test fixture (a square and a ring) that exercises the whole pipeline; it is hidden from the published launcher. Games live on their own `proto/` branches; the original demo (a springy ball with layered pressure, a surge and its own music) is `proto/2026-10-29-demo-ball`. The API for building a prototype is in [`docs/tech/SCAFFOLD_API.md`](docs/tech/SCAFFOLD_API.md).
 
 ## Privacy and network
 

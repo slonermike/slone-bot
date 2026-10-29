@@ -16,7 +16,7 @@
     "allowJs": true,
     "checkJs": false,
     "resolveJsonModule": true,
-    "paths": { "@proto": ["./src/protos/_demo/index.ts"] }
+    "paths": { "@proto": ["./src/protos/_fixture/index.ts"] }
   },
   "include": ["src", "tests", "scripts", "vite.config.ts", "vitest.config.ts"]
 }

@@ -51,3 +51,39 @@ describe('night-state', () => {
     }
   });
 });
+
+describe('look roll', () => {
+  it('is deterministic per seed, varied across seeds, and never the demo look', async () => {
+    const { pickLook, DEMO_LOOK, PALETTES, SHAPES, RENDERINGS } = await import('../../scripts/looks.mjs');
+    expect(pickLook([], 5)).toEqual(pickLook([], 5));
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 60; seed++) {
+      const l = pickLook([], seed);
+      seen.add(`${l.palette}/${l.shapes}/${l.rendering}`);
+      expect(l.palette in PALETTES && l.shapes in SHAPES && l.rendering in RENDERINGS).toBe(true);
+      const like = (['palette', 'shapes', 'rendering'] as const).filter((d) => l[d] === (DEMO_LOOK as any)[d]).length;
+      expect(like).toBeLessThan(2);
+    }
+    expect(seen.size).toBeGreaterThan(40);
+  });
+
+  it('avoids the palette, shapes and rendering of the last three nights', async () => {
+    const { pickLook, parseLedgerLooks } = await import('../../scripts/looks.mjs');
+    const ledger = [
+      '2030-01-01 | a | systemic | atoms: v-a, p-c | theme: x | wildcard: none | look: paper/thin lines/flat fills | verdict: pending',
+      '2030-01-02 | b | systemic | atoms: v-a, p-d | theme: x | wildcard: none | look: candy/rounded cards/soft gradients | verdict: pending',
+      '2030-01-03 | c | systemic | atoms: v-b, p-c | theme: x | wildcard: none | look: earth/pixel blocks/dithered | verdict: pending',
+    ].join('\n');
+    const hist = parseLedgerLooks(ledger);
+    expect(hist).toHaveLength(3);
+    expect(hist[0]).toEqual({ palette: 'paper', shapes: 'thin lines', rendering: 'flat fills' });
+    for (let seed = 1; seed <= 80; seed++) {
+      const l = pickLook(hist, seed);
+      for (const h of hist) {
+        expect(l.palette).not.toBe(h.palette);
+        expect(l.shapes).not.toBe(h.shapes);
+        expect(l.rendering).not.toBe(h.rendering);
+      }
+    }
+  });
+});

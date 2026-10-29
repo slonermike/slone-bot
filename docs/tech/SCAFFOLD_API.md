@@ -1,6 +1,6 @@
 # SCAFFOLD_API
 
-How a nightly agent uses everything the scaffold provides. Read this instead of the internals. Examples are short on purpose; copy `src/protos/_demo/` (scaffold-owned, safe to read) as your starting structure.
+How a nightly agent uses everything the scaffold provides. Read this instead of the internals. This document is the whole contract: there is deliberately no example game to copy. (`src/protos/_fixture/` is a bare smoke-test fixture (the file in section 1a); earlier games live on their own branches and are not to be opened or imitated. Every night has a different look; see Step 1 of `docs/tech/06` and the brief template.)
 
 Imports from a prototype at `src/protos/<slug>/index.ts`:
 ```ts
@@ -46,6 +46,78 @@ Two additions to the doc 02 contract: `mount(view)` (the place to create display
 **Run it:** `npm run dev:proto -- <slug>` (hot reload on :5173), or `npm run build:site && npm run serve` (the real launcher on :4173).
 
 **Ending a run:** a sim that emits an event of type `complete` ends a bot run as `completed`; `gameover` ends it as `failed`. Systemic builds just run until the time cap (`timeout`).
+
+### 1a. The smallest valid prototype
+Every required piece and nothing else: no style, so there is nothing to imitate but the shape. This file is real code (a test builds it, runs the bots on it and checks that this section contains it verbatim). Put your sim in `sim.ts` and your render in `index.ts` as described above; it is one file here only to keep it short.
+```ts
+// The smallest valid prototype: every required piece, no style. A grey square, a ring to touch, nothing else.
+// Copy the SHAPE of this (contract, event flow, bots, balance), never a look: pick your own palette, shapes and feel.
+import { Graphics } from 'pixi.js';
+import { play } from '../../audio/index.ts';
+import { steerToward } from '../../bots/index.ts';
+import type { Bot, Ctx, InputState, Prototype, SimEvent, View } from '../../core/types.ts';
+
+const R = 24; // the square's half-size
+const GOAL_R = 34;
+
+export function createPrototype(): Prototype {
+  let ctx!: Ctx;
+  let x = 640, y = 400, px = 640, py = 400; // position now and one step ago (for render interpolation)
+  let gx = 900, gy = 300; // the ring
+  let reached = 0;
+  let out: SimEvent[] = [];
+  let body: Graphics;
+  let goal: Graphics;
+
+  return {
+    meta: { slug: 'minimal', title: 'Minimal', question: 'Does the contract work?', targetFeeling: 'neutral', mode: 'systemic' },
+    balance: [{ id: 'speed', label: 'Move speed', min: 200, max: 700, step: 20, default: 420 }],
+
+    // sim: pure, no Pixi, no audio, no Math.random (use ctx.rng); the bots run exactly this
+    init(c: Ctx) { ctx = c; },
+    step(dt: number, input: InputState) {
+      px = x; py = y;
+      if (input.buttons.a.pressed) out.push({ type: 'ping', magnitude: 0.5, x, y }); // buttons become events too
+      const speed = ctx.balance.speed ?? 420;
+      x = Math.max(R, Math.min(1280 - R, x + input.left.x * speed * dt));
+      y = Math.max(R, Math.min(800 - R, y + input.left.y * speed * dt));
+      if (Math.hypot(gx - x, gy - y) < R + GOAL_R) {
+        reached++;
+        out.push({ type: 'reach', magnitude: 0.6, x: gx, y: gy }); // juice and audio react to events, not to sim state
+        gx = ctx.rng.range(100, 1180);
+        gy = ctx.rng.range(100, 700);
+      }
+    },
+    events() { const e = out; out = []; return e; },
+
+    // render: build display objects in mount, draw from sim state in render, react to events in onEvent
+    mount(view: View) {
+      body = new Graphics().rect(-R, -R, 2 * R, 2 * R).fill(0x888888);
+      goal = new Graphics().circle(0, 0, GOAL_R).stroke({ width: 4, color: 0xaaaaaa });
+      (view.world as import('pixi.js').Container).addChild(goal, body);
+    },
+    render(alpha: number) {
+      body.position.set(px + (x - px) * alpha, py + (y - py) * alpha);
+      goal.position.set(gx, gy);
+    },
+    onEvent(e: SimEvent) {
+      if (e.type === 'reach') play('pickup');
+      if (e.type === 'ping') play('dash');
+    },
+
+    // what the bots and telemetry can see: small, numeric
+    telemetry: () => ({ reached, scoreOrProgress: reached }), // scoreOrProgress lets the suite compare bots
+    getState: () => ({ x, y, gx, gy }),
+  };
+}
+
+// at least a greedy bot and a degenerate-strategy probe (idle and random are built in)
+const num = (o: Record<string, unknown>, k: string) => Number(o[k] ?? 0);
+export const bots: Bot[] = [
+  { name: 'greedy', reset() {}, act: (o) => ({ left: steerToward(num(o, 'x'), num(o, 'y'), num(o, 'gx'), num(o, 'gy')) }) },
+  { name: 'degenerate-corner', reset() {}, act: () => ({ left: { x: -1, y: -1 } }) },
+];
+```
 
 ### Ctx (what `init` and sim code may use)
 | Field | Use |
@@ -234,4 +306,4 @@ lose    = composeStinger({ ...KEY, seed: 13, ..., event: 'lose', bpm: 96 });
 - `music.play(song, parts?)` starts a loop (waits for audio unlock); `music.setParts(parts, fadeSeconds?)` brings parts in and out on the beat (`pad`, `bass`, `drums`, `arp`, `lead`, `harmony`, `riff`); `music.stinger(song, { duck? })` plays over the loop, ducking it; `music.release(seconds)` fades the loop out; `music.stop()`. `music.setPaused` is called by the shell. Every call is logged in `music.log` and `scaffold.music.state` for bots and the smoke test.
 - Loops, because ongoing action has no length: a loop has no ending and leads back into itself. Stingers, because events do: two to four bars. `form: 'loop'` with `layout: 'groove-8'` is hook all the time (for games that gate the hook behind an earned moment); the other layouts are in `docs/tech/10-music-and-jukebox.md`.
 - Keep `root` and `mode` the same across the game's loop and stingers so they sit together. `seed` makes it deterministic; change it for a different tune.
-- Pattern to copy: `src/protos/_demo/music.ts` (the brief, plus a pure `partsFor(pressure, powerMoment)` that has a unit test) and the event wiring in `src/protos/_demo/index.ts`: start on a `run-start` event, add parts on `layer` events, the hook on `surge-start`, a stinger on `surge-ready` and on `gameover`, thin out on `restart`, `music.stop()` in `dispose`.
+- Wiring pattern: the sim emits events (`run-start`, `layer`, `power-start`, `power-ready`, `gameover`, ...) and `onEvent` calls `music`: start the loop on the run-start event, `setParts` when pressure layers arrive, bring the hook (`lead`, `harmony`) in only for an earned moment, a stinger for the big events, thin the parts out when pressure resets, `music.stop()` in `dispose`. Put the choice of parts in a pure function (`partsFor(pressure, powerMoment)`) with a unit test.

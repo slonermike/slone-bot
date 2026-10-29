@@ -78,7 +78,7 @@ jobs:
         run: |
           # Frozen snapshots: every other p/<slug>/ folder in site-out is left untouched.
           if [ "$REF_NAME" = "main" ]; then
-            node scripts/build-site.mjs --out site-out --protos _demo
+            node scripts/build-site.mjs --out site-out --protos none --no-fixtures
           else
             SLUG="${REF_NAME#proto/}"
             if ! printf '%s' "$SLUG" | grep -Eq '^[a-z0-9][a-z0-9_-]{0,80}$'; then

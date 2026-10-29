@@ -25,6 +25,8 @@ function resolveConfig({ argv = [], env = {}, dirs = [] } = {}) {
     url: url.href,
     origin: url.origin,
     windowed: has('windowed'),
+    noMouse: has('no-mouse'),
+    allowMouse: has('allow-mouse'),
     devtools: has('devtools'),
   };
 }
@@ -38,4 +40,25 @@ function isAllowedNavigation(target, origin) {
   }
 }
 
-module.exports = { resolveConfig, isAllowedNavigation, DEFAULT_URL };
+/**
+ * Pages and data (the launcher, game pages, index.json) must be revalidated on every load so leaving a game always
+ * lands on a fresh launcher and a republished game is never stale. Hashed build assets never change, so they can
+ * stay cached.
+ */
+function needsRevalidation(target) {
+  try {
+    return !/\/assets\//.test(new URL(target).pathname);
+  } catch {
+    return false;
+  }
+}
+
+/** True on a Steam Deck / SteamOS (the Deck sets SteamDeck=1 for games; SteamOS also identifies itself in os-release). */
+function isSteamDeck(env = {}, osRelease = '') {
+  return env.SteamDeck === '1' || env.SteamOS === '1' || /^ID=["']?steamos["']?$/m.test(osRelease);
+}
+
+/** Injected into every page on the Deck: the controller is the only input, so a stray click must do nothing. */
+const NO_MOUSE_CSS = 'html,body,*{cursor:none !important;pointer-events:none !important;user-select:none !important}';
+
+module.exports = { resolveConfig, isAllowedNavigation, needsRevalidation, isSteamDeck, NO_MOUSE_CSS, DEFAULT_URL };
