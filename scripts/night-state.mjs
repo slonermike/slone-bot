@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Run-protocol helper: NIGHT_STATE.md checkpoints, elapsed-time gates, seeded atom picks.
-// Commands: start [--night <slug>] [--force] | checkpoint <phase> [note...] | set key=value ... | show | elapsed | check | atoms [--seed N]
+// Commands: start [--night <slug>] [--force] | checkpoint <phase> [note...] | set key=value ... | show | elapsed | check | atoms [--seed N] | look [--seed N]
 // Spec: docs/tech/06-nightly-run-protocol.md
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { formatLook, parseLedgerLooks, pickLook } from './looks.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const WRAP_MIN = 180;
@@ -148,8 +149,12 @@ function main(argv) {
     const seed = opt('seed') ? Number(opt('seed')) : dateSeed();
     const [a, b] = pickAtoms(parseAtoms(lib), parseLedgerPairs(ledger), seed);
     console.log(`${a}, ${b}`);
+  } else if (cmd === 'look') {
+    const ledger = fs.readFileSync(path.join(ROOT, 'docs/design/ledger.md'), 'utf8');
+    const seed = opt('seed') ? Number(opt('seed')) : dateSeed();
+    console.log(formatLook(pickLook(parseLedgerLooks(ledger), seed)));
   } else {
-    console.error('usage: night-state.mjs start|checkpoint <phase> [note]|set k=v|show|elapsed|check|atoms [--seed N]');
+    console.error('usage: night-state.mjs start|checkpoint <phase> [note]|set k=v|show|elapsed|check|atoms [--seed N]|look [--seed N]');
     process.exitCode = 1;
   }
 }
