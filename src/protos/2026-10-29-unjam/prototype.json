@@ -12,7 +12,7 @@
   "metrics": ["runLength", "deaths", "firstPressureSimSec", "idleSurvivalSec", "mainVerbCount", "scoreOrProgress", "delivered", "jams", "frees", "whiffs", "waveDelivered", "goal", "floods", "maxCombo", "burst", "stalled", "lives", "layer", "waves", "runs", "surges", "blobs", "survivalSec"],
   "assets": [],
   "buildStatus": "ok",
-  "feedbackStatus": "needs-feedback",
+  "feedbackStatus": "assessed",
   "sizeKB": 0,
   "thumbnail": "thumb.png"
 }

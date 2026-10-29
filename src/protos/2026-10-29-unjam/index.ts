@@ -543,6 +543,7 @@ function createPrototype(): Prototype {
         lockText.position.set(bx, by);
         const gl = glyph('a').toUpperCase();
         if (lockText.text !== gl) lockText.text = gl;
+        lockText.style.fontSize = gl.length > 1 ? 15 : 30;
         let q = 0;
         for (const o of sim.blobs) if (!o.stuck && o.x < tgt.x && o.x > tgt.x - 260) q++;
         if (q > 0) {
@@ -759,7 +760,7 @@ function createPrototype(): Prototype {
           music.setParts(partsFor(level, sim.surging));
           play('layer', { pitch: Math.pow(2, ((level - 2) * 3) / 12), volume: 0.9 });
           play('boom', { pitch: 1.6, volume: 0.5 });
-          numberPop(world, `${LAYER_NAMES[level - 1] ?? 'PRESSURE'}!`, 640, 170, { color: PAL.gold, size: 60, rise: 40, ms: 1400 });
+          numberPop(world, `${LAYER_NAMES[level - 1] ?? 'PRESSURE'}!`, 640, 120, { color: PAL.gold, size: 60, rise: 40, ms: 1400 });
           shake(0.35 + 0.05 * level);
           flashOverlay.tint = PAL.orange;
           flashOverlay.alpha = 0.3;

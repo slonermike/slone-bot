@@ -4,14 +4,14 @@ THE QUESTION THIS BUILD TESTS (written before you played):
 Is the pop-and-whoosh of freeing a jam a toy worth repeating, and does choosing the next hazard from two generated layouts feel like steering the pressure?
 TARGET FEELING: relief, the plunger-pop after a held breath
 
-TARGETED QUESTIONS:
-1. When did you first feel the pile-up getting scary? (seconds, or "never")
-2. Did holding and releasing the pop feel good (the charge ticks, the ring, the release)? yes / kind of / no
-3. Did the wave choice (two gate layouts, tight pays more) matter, or did you just pick the left card?
-4. Did you notice the Pull move unlock after 12 deliveries, and did you use it?
-5. Did the music changing (parts joining, the hook during Flush) tell you how it was going?
+TARGETED QUESTIONS (redesign):
+1. Without reading anything, did you know what to do and what the goal was? yes / kind of / no
+2. When you freed a jam, did it feel like YOUR action did that (the lock-on, the filling ring, the release)? yes / kind of / no
+3. Could you tell you were making progress (the jar, the wave bar)? yes / kind of / no
+4. Did the wave choice (two gate layouts, tighter pays more) matter to you?
+5. Was anything still noisy or unclear? what?
 
-BALANCE: try this knob first: "How easily gates jam" (jamChance). If you are drowning, lower it; if you are bored, raise it. Then "Speed ramp".
+BALANCE: try "How easily gates jam" first, then "Unjam speed" and "Blobs needed for wave 1".
 
 CONSTANTS (every night, so we can compare over time):
 A. First minute: did it feel good to just move/act before anything else? yes / kind of / no
