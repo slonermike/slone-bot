@@ -1,6 +1,6 @@
 const { app, BrowserWindow, globalShortcut, session, ipcMain, shell, net } = require('electron');
 const path = require('node:path');
-const { resolveConfig, isAllowedNavigation } = require('./config.cjs');
+const { resolveConfig, isAllowedNavigation, needsRevalidation } = require('./config.cjs');
 const { createUpdater } = require('./updater.cjs');
 
 const cfg = resolveConfig({
@@ -81,6 +81,7 @@ function setupUpdates() {
   ipcMain.handle('mgb:update-state', (e) => (fromLauncher(e) ? updater.state : null));
   ipcMain.handle('mgb:update-check', (e) => (fromLauncher(e) ? updater.check() : null));
   ipcMain.handle('mgb:update-install', (e) => (fromLauncher(e) ? updater.install() : null));
+  ipcMain.handle('mgb:quit', (e) => { if (fromLauncher(e)) app.quit(); });
   // look once shortly after start, then every few hours while it stays open
   setTimeout(() => updater.check(), 8000);
   setInterval(() => updater.check(), 6 * 60 * 60 * 1000);
@@ -90,6 +91,12 @@ app.whenReady().then(() => {
   setupUpdates();
   // Deny every permission prompt (the launcher needs none; the Gamepad API is not permission-gated).
   session.defaultSession.setPermissionRequestHandler((_wc, _perm, cb) => cb(false));
+  // ask the server to revalidate pages and data on every load (a 304 is cheap), so exiting a game loads a fresh launcher
+  session.defaultSession.webRequest.onBeforeSendHeaders({ urls: [`${cfg.origin}/*`] }, (details, cb) => {
+    const headers = { ...details.requestHeaders };
+    if (needsRevalidation(details.url)) headers['Cache-Control'] = 'no-cache';
+    cb({ requestHeaders: headers });
+  });
   createWindow();
   // Escape hatches for desktop testing; on the Deck, quit from Steam's own menu.
   globalShortcut.register('CommandOrControl+Q', () => app.quit());
