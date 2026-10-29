@@ -76,6 +76,8 @@ async function buildLauncher() {
   fs.rmSync(path.join(out, 'index.html'), { force: true });
   await build(launcherConfig(out));
   buildJukeboxSongs();
+  fs.mkdirSync(path.join(out, 'download'), { recursive: true });
+  fs.copyFileSync(path.join(ROOT, 'src/launcher/download.html'), path.join(out, 'download', 'index.html'));
   fs.writeFileSync(path.join(out, '.nojekyll'), '');
   const attribution = fs.existsSync(path.join(ROOT, 'ATTRIBUTION.md')) ? fs.readFileSync(path.join(ROOT, 'ATTRIBUTION.md'), 'utf8') : '';
   const license = fs.existsSync(path.join(ROOT, 'LICENSE')) ? fs.readFileSync(path.join(ROOT, 'LICENSE'), 'utf8') : '';

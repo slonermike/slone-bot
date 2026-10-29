@@ -1,0 +1,64 @@
+name: Host app release
+
+# Builds the desktop host (host/) for Windows, macOS and Linux and attaches the installers to a GitHub Release.
+# Runs when host/ changes on main. A release is made only if the version in host/package.json has no release yet,
+# so bump the version to ship. The running app finds new releases through electron-updater (Windows, Linux) or the
+# GitHub API (macOS opens the download page).
+on:
+  push:
+    branches: [main]
+    paths: ['host/**', '.github/workflows/host-release.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      release: ${{ steps.v.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Unit tests
+        working-directory: host
+        run: node --test test/config.test.cjs test/updater.test.cjs
+      - id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./host/package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if gh release view "v$version" >/dev/null 2>&1; then echo "release=false" >> "$GITHUB_OUTPUT"; else echo "release=true" >> "$GITHUB_OUTPUT"; fi
+
+  build:
+    needs: plan
+    if: needs.plan.outputs.release == 'true'
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, args: --linux }
+          - { os: windows-latest, args: --win }
+          - { os: macos-latest, args: --mac }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: host/package-lock.json
+      - working-directory: host
+        run: npm ci
+      - working-directory: host
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npx electron-builder ${{ matrix.args }} --publish always

@@ -20,6 +20,17 @@ const root = document.getElementById('root')!;
 let all: PrototypeManifest[] = [];
 let brokenCount = 0;
 let screen: Screen = 'grid';
+/** Bridge exposed by the desktop host app (host/preload.cjs); absent in a normal browser. */
+interface HostUpdate { status: string; version: string | null; percent: number; manual: boolean; error: string | null }
+interface MgbHost {
+  version: string;
+  getUpdate(): Promise<HostUpdate | null>;
+  checkUpdate(): Promise<HostUpdate | null>;
+  installUpdate(): Promise<HostUpdate | null>;
+  onUpdate(cb: (s: HostUpdate) => void): void;
+}
+const host = (window as unknown as { mgbHost?: MgbHost }).mgbHost;
+let hostUpdate: HostUpdate | null = null;
 let focus = 0;
 let menuIndex = 0;
 let filterIndex = 0;
@@ -273,13 +284,44 @@ function drawMenu(): void {
 }
 
 function menuItems() {
-  return [
+  const rows = [
     { label: () => 'Volume', value: () => `${Math.round(audio.getVolume('master') * 100)}%`, adjust: (d: number) => audio.setVolume('master', audio.getVolume('master') + d * 0.1) },
     { label: () => 'Mute', value: () => (audio.muted ? 'ON' : 'off'), activate: () => audio.setMuted(!audio.muted) },
     { label: () => 'Jukebox (music test)', activate: () => { location.href = './jukebox/'; } },
+    ...(host
+      ? [{ label: () => 'App update', value: () => updateText(), activate: () => void updateAction() }]
+      // only in a plain browser: inside the desktop app the update flow above replaces the download page
+      : [{ label: () => 'Get the desktop app', activate: () => { location.href = './download/'; } }]),
     { label: () => 'About and credits', activate: () => void openCredits() },
     { label: () => 'Close', activate: () => closeOverlay() },
   ] as { label: () => string; value?: () => string; activate?: () => void; adjust?: (d: number) => void }[];
+  // a waiting update goes to the top of the menu (desktop app only; hostUpdate is null in a browser)
+  if (host && hostUpdate && ['available', 'downloading', 'ready'].includes(hostUpdate.status)) {
+    const i = rows.findIndex((r) => r.label() === 'App update');
+    rows.unshift(...rows.splice(i, 1));
+  }
+  return rows;
+}
+
+function updateText(): string {
+  const u = hostUpdate;
+  if (!u) return `v${host?.version ?? ''}`;
+  switch (u.status) {
+    case 'checking': return 'checking...';
+    case 'available': return `v${u.version} available: press ${glyph('a')}`;
+    case 'downloading': return `downloading ${u.percent}%`;
+    case 'ready': return 'restarting...';
+    case 'error': return `check failed (${glyph('a')} retry)`;
+    case 'dev': return `v${host?.version ?? ''} (dev build, updates off)`;
+    case 'current': return `v${host?.version ?? ''} is the latest`;
+    default: return `v${host?.version ?? ''} (${glyph('a')} check)`;
+  }
+}
+
+async function updateAction(): Promise<void> {
+  if (!host) return;
+  hostUpdate = hostUpdate?.status === 'available' ? await host.installUpdate() : await host.checkUpdate();
+  if (screen === 'menu') drawMenu();
 }
 
 function launch(p: PrototypeManifest): void {
@@ -358,6 +400,13 @@ async function boot(): Promise<void> {
   // button labels follow the device last used
   onDeviceChange(() => { if (!overlayEl) renderGrid(); });
   window.addEventListener('keydown', () => void audio.unlock(), { once: true });
+  if (host) {
+    void host.getUpdate().then((u) => { hostUpdate = u; });
+    host.onUpdate((u) => {
+      hostUpdate = u;
+      if (screen === 'menu') drawMenu();
+    });
+  }
 }
 
 void boot();
