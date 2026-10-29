@@ -1,5 +1,7 @@
 import { audio } from '../audio/audio.ts';
+import { clampValue, formatValue } from './balance.ts';
 import { glyph, onDeviceChange } from './glyphs.ts';
+import type { BalanceSpec } from './types.ts';
 import { dial, LAYERS } from '../juice/dial.ts';
 import type { NavAction } from './nav.ts';
 
@@ -12,7 +14,18 @@ interface Item {
   adjust?: (dir: -1 | 1) => void;
 }
 
+/** What the menu needs to show and change a build's balance values. */
+export interface BalanceApi {
+  spec(): BalanceSpec[];
+  values: Record<string, number>;
+  /** Persist and apply a new value. */
+  set(id: string, value: number): void;
+  reset(): void;
+  copy(): void;
+}
+
 export interface MenuHandlers {
+  balance?: BalanceApi;
   resume(): void;
   restart(): void;
   toLauncher(): void;
@@ -23,7 +36,8 @@ export interface MenuHandlers {
 export class PauseMenu {
   readonly el = document.createElement('div');
   private panel = document.createElement('div');
-  private screen: 'main' | 'juice' = 'main';
+  private screen: 'main' | 'juice' | 'balance' = 'main';
+  private note = '';
   private index = 0;
   private open = false;
 
@@ -66,6 +80,7 @@ export class PauseMenu {
       else if (a === 'confirm') items[this.index]?.activate?.();
       else if (a === 'back') {
         if (this.screen === 'juice') this.go('main', 3);
+        else if (this.screen === 'balance') this.go('main', 4);
         else this.h.resume();
       }
       if (a === 'up' || a === 'down') audio.play('ui-move');
@@ -73,20 +88,37 @@ export class PauseMenu {
     }
   }
 
-  private go(screen: 'main' | 'juice', index = 0): void {
+  private go(screen: 'main' | 'juice' | 'balance', index = 0): void {
     this.screen = screen;
+    this.note = '';
     this.index = index;
     audio.play('ui-select');
   }
 
   private items(): Item[] {
     if (this.screen === 'main') {
-      return [
+      const main: Item[] = [
         { label: () => 'Resume', activate: () => this.h.resume() },
         { label: () => 'Restart', activate: () => this.h.restart() },
         { label: () => 'Back to launcher', activate: () => this.h.toLauncher() },
         { label: () => 'Juice dial', activate: () => this.go('juice') },
-        { label: () => 'Feedback sheet', activate: () => this.h.toFeedback() },
+      ];
+      if (this.h.balance?.spec().length) main.push({ label: () => 'Balance', activate: () => this.go('balance') });
+      main.push({ label: () => 'Feedback sheet', activate: () => this.h.toFeedback() });
+      return main;
+    }
+    if (this.screen === 'balance') {
+      const api = this.h.balance!;
+      const rows: Item[] = api.spec().map((s) => ({
+        label: () => s.label,
+        value: () => formatValue(s, api.values[s.id] ?? s.default),
+        adjust: (d) => api.set(s.id, clampValue(s, (api.values[s.id] ?? s.default) + d * s.step)),
+      }));
+      return [
+        ...rows,
+        { label: () => 'Reset to defaults', activate: () => { api.reset(); this.note = 'Reset.'; } },
+        { label: () => 'Copy values', activate: () => { api.copy(); this.note = 'Copied. Paste it into chat.'; } },
+        { label: () => 'Back', activate: () => this.go('main', 4) },
       ];
     }
     const layerItems: Item[] = LAYERS.map((l) => ({
@@ -109,10 +141,12 @@ export class PauseMenu {
 
   private draw(): void {
     const items = this.items();
-    const title = this.screen === 'main' ? 'Paused' : 'Juice dial';
+    const title = this.screen === 'main' ? 'Paused' : this.screen === 'juice' ? 'Juice dial' : 'Balance';
     const hint = this.screen === 'main'
       ? `${glyph('a')} select    ${glyph('b')} or ${glyph('start')} resume`
-      : `${glyph('a')} or left/right change    ${glyph('b')} or ${glyph('start')} back`;
+      : this.screen === 'balance'
+        ? `left/right change (saved on this device)    ${glyph('b')} back${this.note ? '    ' + this.note : ''}`
+        : `${glyph('a')} or left/right change    ${glyph('b')} or ${glyph('start')} back`;
     this.panel.innerHTML = '';
     const h2 = document.createElement('h2');
     h2.textContent = title;

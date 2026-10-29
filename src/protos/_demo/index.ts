@@ -6,12 +6,26 @@ import {
   Eyes, flash, hitStop, numberPop, Particles, punch, shake, SquashStretch, Trail, lerpColor, tweens, ease,
 } from '../../juice/index.ts';
 import { degenerateCornerBot, greedyBot } from './bots.ts';
-import { BALL_R, DemoSim, FIELD, HAZARD_R, LAYER_NAMES, LIVES } from './sim.ts';
+import { BALANCE, BALL_R, DemoSim, FIELD, HAZARD_R, LAYER_NAMES } from './sim.ts';
+import { vfx } from '../../juice/index.ts';
 
 const COOL = 0x4cc9f0;
 const HOT = 0xff5d73;
 const FONT = 'system-ui, sans-serif';
 const PAD = 40;
+
+/** HSL (degrees, 0..1, 0..1) to 0xRRGGBB. Drives the rainbow surge colors. */
+function hsl(h: number, s = 0.85, l = 0.6): number {
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+  };
+  return (Math.round(f(0) * 255) << 16) | (Math.round(f(8) * 255) << 8) | Math.round(f(4) * 255);
+}
+
+const SMASH_WORDS = ['SMASH!', 'CRUSH!', 'BOOM!', 'ZAP!', 'POW!', 'SPLAT!'];
+const PENTATONIC = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21];
 
 function fmtTime(s: number): string {
   return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -33,14 +47,45 @@ function createPrototype(): Prototype {
   let world: Container;
   let shock: Graphics;
   let flashOverlay: Graphics;
+  let meterBar: Graphics;
+  let prompt: Text;
+  let aura: Graphics;
+  let ballGlow: Graphics;
+  let ballGfxRef: Graphics;
+  let dispMeter = 0;
+  let surgeTick = 0;
+  let surgeNote = 0;
   let result: Container;
   let resultStats: Text;
   let resultPrompt: Text;
   let clock = 0;
-  const ring = { r: 0, a: 0, x: 0, y: 0 };
+  interface Ring { r: number; a: number; x: number; y: number; color: number }
+  const rings: Ring[] = [];
+  const addRing = (x: number, y: number, color: number, max = 500, ms = 650, delay = 0) => {
+    const ring: Ring = { r: 20, a: 0, x, y, color };
+    rings.push(ring);
+    tweens.to(ring, { a: 1 }, 1, ease.linear, { delay });
+    tweens.to(ring, { r: max }, ms, ease.outCubic, { delay });
+    tweens.to(ring, { a: 0 }, ms * 0.8, ease.linear, { delay: delay + ms * 0.2, onComplete: () => { const i = rings.indexOf(ring); if (i >= 0) rings.splice(i, 1); } });
+  };
+  const later = (ms: number, fn: () => void) => {
+    const o = { v: 0 };
+    tweens.to(o, { v: 1 }, ms, ease.linear, { onComplete: fn });
+  };
+  const arpeggio = (notes: number[], gap: number, base = 1, volume = 0.7, wave = 'chime') => {
+    notes.forEach((n, i) => later(i * gap, () => play(wave, { pitch: base * Math.pow(2, n / 12), volume })));
+  };
+  /** A dying drifter: it spins up, swells, and fades while the burst particles fly. */
+  const deathStar = (x: number, y: number, color: number) => {
+    const g = new Graphics().star(0, 0, 8, HAZARD_R + 6, HAZARD_R - 6, 0).fill(color).stroke({ width: 3, color: 0xffffff });
+    g.position.set(x, y);
+    world.addChild(g);
+    tweens.to(g, { 'scale.x': 3.4, 'scale.y': 3.4, rotation: 5, alpha: 0 }, 520, ease.outCubic, { onComplete: () => g.destroy() });
+  };
 
   const proto: Prototype = {
     meta: sim.meta,
+    balance: BALANCE,
     init: (ctx) => sim.init(ctx),
     step: (dt, input) => sim.step(dt, input),
     events: () => sim.drain(),
@@ -49,6 +94,8 @@ function createPrototype(): Prototype {
       x: sim.x, y: sim.y, vx: sim.vx, vy: sim.vy, heat: sim.heat, score: sim.score, dashCd: sim.dashCd,
       pickups: sim.pickups.map((p) => ({ x: p.x, y: p.y })),
       hazards: sim.hazards.map((h) => ({ x: h.x, y: h.y, active: h.warn <= 0 })),
+      surgeReady: sim.ready,
+      surging: sim.surging,
     }),
 
     mount(view: View) {
@@ -73,11 +120,16 @@ function createPrototype(): Prototype {
       world.addChild(hazardGfx);
       trail = new Trail(world, { color: 0xffd166, width: 22, alpha: 0.45 });
 
+      aura = new Graphics();
+      world.addChild(aura);
       ballBody = new Container();
       const ballGfx = new Graphics().circle(0, 0, BALL_R).fill(0xffd166).stroke({ width: 4, color: 0xc98a1a });
+      ballGfxRef = ballGfx;
+      ballGlow = new Graphics().circle(0, 0, BALL_R).fill(0xffffff);
+      ballGlow.alpha = 0;
       eyes = new Eyes({ size: 7, gap: 18 });
       eyes.container.position.set(0, -4);
-      ballBody.addChild(ballGfx, eyes.container);
+      ballBody.addChild(ballGfx, ballGlow, eyes.container);
       world.addChild(ballBody);
       ss = new SquashStretch(ballBody);
 
@@ -85,6 +137,19 @@ function createPrototype(): Prototype {
       view.onFrame((dt) => {
         particles.update(dt);
         eyes.update(dt);
+        if (sim.surging) {
+          // lots of particles falling off the ball, in changing colors, while the surge lasts
+          const c = hsl(clock * 400 + vfx() * 60);
+          particles.emit('confetti', ballBody.x, ballBody.y, { count: 2, size: 0.9, color: c, angle: sim.heading + Math.PI, spread: 1.2 });
+          particles.emit('sparks', ballBody.x, ballBody.y, { count: 1, color: hsl(clock * 400 + 180), speed: 0.7 });
+          // a rolling pentatonic run: the sound of a state you chose to enter
+          surgeTick -= dt;
+          if (surgeTick <= 0) {
+            surgeTick = 0.16;
+            play('chime', { pitch: 0.7 * Math.pow(2, PENTATONIC[surgeNote % PENTATONIC.length]! / 12), volume: 0.2 });
+            surgeNote++;
+          }
+        }
       });
 
       shock = new Graphics();
@@ -99,18 +164,30 @@ function createPrototype(): Prototype {
       const label = new Text({ text: 'HEAT', style: { fontFamily: FONT, fontWeight: '800', fontSize: 26, fill: 0xf4f1ea } });
       label.position.set(PAD, 8);
       ui.addChild(label);
+      meterBar = new Graphics();
+      ui.addChild(meterBar);
+      const meterLabel = new Text({ text: 'SURGE', style: { fontFamily: FONT, fontWeight: '800', fontSize: 20, fill: 0x8f8fb8 } });
+      meterLabel.position.set(408, 768);
+      ui.addChild(meterLabel);
+      prompt = new Text({ text: '', style: { fontFamily: FONT, fontWeight: '900', fontSize: 58, fill: 0xfff3b0, stroke: { color: 0x101020, width: 8 } } });
+      prompt.anchor.set(0.5);
+      prompt.position.set(640, 680);
+      prompt.visible = false;
+      ui.addChild(prompt);
       scoreText = new Text({ text: 'Sparks 0', style: { fontFamily: FONT, fontWeight: '800', fontSize: 30, fill: 0x06d6a0 } });
       scoreText.anchor.set(1, 0);
       scoreText.position.set(1280 - PAD, 6);
       ui.addChild(scoreText);
       const hint = new Text({ text: '', style: { fontFamily: FONT, fontWeight: '600', fontSize: 26, fill: 0x8f8fb8 } });
-      hint.anchor.set(0.5, 1);
-      hint.position.set(640, 796);
+      hint.anchor.set(1, 1);
+      hint.position.set(1240, 796);
       ui.addChild(hint);
       // labels follow the device the player is actually using
       view.onFrame(() => {
-        const t = `${stickGlyph('left')}: push    ${glyph('a')}: dash`;
+        const t = sim.surging ? `${stickGlyph('left')}: steer` : `${stickGlyph('left')}: push    ${glyph('a')}: dash    ${glyph('x')}: surge`;
         if (hint.text !== t) hint.text = t;
+        const pr = `PRESS ${glyph('x').toUpperCase()}`;
+        if (prompt && prompt.text !== pr) prompt.text = pr;
         const p = `${glyph('a').toUpperCase()} to go again`;
         if (resultPrompt && resultPrompt.text !== p) resultPrompt.text = p;
       });
@@ -144,13 +221,29 @@ function createPrototype(): Prototype {
       trail.draw();
 
       const heat = Math.min(1, sim.heat / 100);
-      const edge = lerpColor(COOL, HOT, heat);
+      const surging = sim.surging;
+      const edge = surging ? hsl(clock * 300) : lerpColor(COOL, HOT, heat);
       const a = sim.arena;
+      trail.color = surging ? hsl(clock * 500 + 90) : 0xffd166;
+      trail.width = surging ? 36 : 22;
+      trail.alpha = surging ? 0.7 : 0.45;
+      ballGlow.alpha = surging ? 0.55 + 0.25 * Math.sin(clock * 12) : 0;
+      if (surging) ballGlow.tint = hsl(clock * 600);
+      aura.clear();
+      if (surging) {
+        for (let i = 0; i < 3; i++) {
+          aura.circle(x, y, BALL_R + 14 + i * 16 + Math.sin(clock * 10 + i) * 5).stroke({ width: 5 - i, color: hsl(clock * 360 + i * 70), alpha: 0.55 - i * 0.12 });
+        }
+        for (let i = 0; i < 8; i++) {
+          const an = clock * 7 + (i * Math.PI) / 4;
+          aura.circle(x + Math.cos(an) * (BALL_R + 36), y + Math.sin(an) * (BALL_R + 36), 5).fill({ color: hsl(i * 45 + clock * 300), alpha: 0.9 });
+        }
+      }
       arena.clear();
       // the closing walls (layer 4) show as a darker ring around the live arena
       arena.roundRect(FIELD.left, FIELD.top, FIELD.right - FIELD.left, FIELD.bottom - FIELD.top, 28).fill(0x2a1220);
       arena.roundRect(a.left, a.top, a.right - a.left, a.bottom - a.top, 28)
-        .fill(lerpColor(0x1b1b3a, 0x3a1b2a, heat * 0.8))
+        .fill(surging ? lerpColor(0x1b1b3a, hsl(clock * 200, 0.5, 0.18), 0.8) : lerpColor(0x1b1b3a, 0x3a1b2a, heat * 0.8))
         .stroke({ width: 6, color: edge });
 
       pickupGfx.clear();
@@ -180,7 +273,27 @@ function createPrototype(): Prototype {
       }
 
       shock.clear();
-      if (ring.a > 0.01) shock.circle(ring.x, ring.y, ring.r).stroke({ width: 10 * ring.a + 2, color: 0xff5d73, alpha: ring.a });
+      for (const ring of rings) if (ring.a > 0.01) shock.circle(ring.x, ring.y, ring.r).stroke({ width: 10 * ring.a + 2, color: ring.color, alpha: ring.a });
+
+      // surge meter: fills with combos, pulses gold when full, drains as the surge runs out
+      const target = surging ? Math.min(1, sim.surge / sim.surgeSecs) : sim.meter;
+      dispMeter += (target - dispMeter) * 0.2;
+      meterBar.clear();
+      meterBar.roundRect(40, 768, 360, 22, 11).fill(0x22224a);
+      if (dispMeter > 0.01) {
+        const fillColor = surging || sim.ready ? hsl(clock * 360) : lerpColor(0x4cc9f0, 0xffd166, dispMeter);
+        meterBar.roundRect(40, 768, Math.max(14, 360 * dispMeter), 22, 11).fill(fillColor);
+      }
+      if (sim.ready) {
+        const glow = 0.5 + 0.5 * Math.sin(clock * 12);
+        meterBar.roundRect(36, 764, 368, 30, 14).stroke({ width: 4, color: 0xfff3b0, alpha: 0.4 + 0.5 * glow });
+      }
+      prompt.visible = sim.ready && !sim.over;
+      if (prompt.visible) {
+        const k = 1 + 0.1 * Math.sin(clock * 11);
+        prompt.scale.set(k);
+        prompt.tint = hsl(clock * 300, 0.6, 0.85);
+      }
 
       heatBar.clear();
       heatBar.roundRect(120, 12, 600, 24, 12).fill(0x22224a);
@@ -192,7 +305,7 @@ function createPrototype(): Prototype {
         const on = i < sim.layer;
         pips.roundRect(750 + i * 26, 14, 20, 20, 5).fill(on ? lerpColor(0xffd166, 0xff5d73, i / 3) : 0x22224a);
       }
-      for (let i = 0; i < LIVES; i++) {
+      for (let i = 0; i < sim.maxLives; i++) {
         const alive = i < sim.lives;
         pips.circle(900 + i * 34, 24, 11).fill(alive ? 0xff5d73 : 0x22224a).stroke({ width: 3, color: alive ? 0xffb3be : 0x34345c });
       }
@@ -221,11 +334,10 @@ function createPrototype(): Prototype {
         }
         case 'pickup': {
           const combo = Number(e.data?.combo ?? 1);
-          // equal whole-tone steps (2 semitones per combo) up to an octave and a bit, so every step is audible;
-          // past the cap the pitch stays put and a high chime layer says "maxed"
-          const steps = Math.min(combo - 1, 7);
+          // the rising pitch now tracks the surge meter: equal whole-tone steps up to an octave and a bit,
+          // so you hear how close the surge is (and the ready fanfare says "now")
+          const steps = Math.min(7, Math.round(Number(e.data?.meter ?? 0) * 7));
           play('pickup', { pitch: Math.pow(2, (steps * 2) / 12), volume: 0.8 });
-          if (combo > 8) play('chime', { pitch: Math.pow(2, (((combo - 9) % 4) * 2) / 12), volume: 0.8 });
           particles.emit('sparks', e.x ?? 0, e.y ?? 0, { count: 12 + combo * 3, color: 0xfff3b0 });
           if (combo >= 3) particles.emit('confetti', e.x ?? 0, e.y ?? 0);
           numberPop(world, combo > 1 ? `+1  x${combo}` : '+1', e.x ?? 0, (e.y ?? 0) - 30, { color: 0xfff3b0 });
@@ -304,8 +416,7 @@ function createPrototype(): Prototype {
           tweens.to(flashOverlay, { alpha: 0 }, 350, ease.outQuad);
           tweens.to(flashOverlay, { tint: 0xff3b5c }, 200, ease.linear);
           flash(ballBody, 0xff5d73, 260);
-          ring.x = fx; ring.y = fy; ring.r = 20; ring.a = 1;
-          tweens.to(ring, { r: 520, a: 0 }, 650, ease.outCubic);
+          addRing(fx, fy, 0xff5d73, 520, 650);
           // matter: the ball bursts into pieces, sparks and dust
           particles.emit('debris', fx, fy, { count: 40, color: 0xffd166, size: 1.6, speed: 1.4 });
           particles.emit('debris', fx, fy, { count: 24, color: 0xff5d73, size: 1.3, speed: 1.1 });
@@ -317,6 +428,81 @@ function createPrototype(): Prototype {
           eyes.setMood('frown', 1.6);
           ss.pop(0.65, 'y');
           tweens.to(ballBody, { alpha: 0.25 }, 120, ease.linear);
+          trail.clear();
+          break;
+        }
+        case 'surge-ready': {
+          // the meter is full: announce it loudly, and keep reminding the player until they spend it
+          arpeggio([0, 4, 7, 12, 16, 19], 70, 0.8, 0.8);
+          play('layer', { pitch: 2, volume: 0.8 });
+          numberPop(world, 'SURGE READY!', 640, 220, { color: 0xfff3b0, size: 78, rise: 30, ms: 1600 });
+          flashOverlay.tint = 0xfff3b0;
+          flashOverlay.alpha = 0.45;
+          tweens.to(flashOverlay, { alpha: 0 }, 450, ease.outQuad);
+          shake(0.3);
+          addRing(e.x ?? 640, e.y ?? 400, 0xfff3b0, 380, 700);
+          addRing(e.x ?? 640, e.y ?? 400, 0xffffff, 300, 700, 120);
+          particles.emit('confetti', e.x ?? 0, e.y ?? 0, { count: 40, speed: 1.3 });
+          punch(ballBody, 0.4);
+          eyes.setMood('happy', 2);
+          break;
+        }
+        case 'surge-beacon':
+          play('chime', { pitch: Math.pow(2, 7 / 12), volume: 0.35 });
+          particles.emit('sparks', e.x ?? 0, e.y ?? 0, { count: 8, color: 0xfff3b0, speed: 0.7 });
+          punch(ballBody, 0.12);
+          break;
+        case 'surge-start': {
+          surgeTick = 0;
+          surgeNote = 0;
+          play('layer', { pitch: 2.4, volume: 1 });
+          play('boom', { pitch: 1.5, volume: 0.8 });
+          arpeggio([0, 7, 12, 16, 19, 24], 55, 0.9, 0.8);
+          numberPop(world, 'SURGE!', 640, 300, { color: 0xffffff, size: 110, rise: 60, ms: 1400 });
+          shake(0.85);
+          hitStop(5);
+          world.scale.set(1.06);
+          tweens.to(world, { 'scale.x': 1, 'scale.y': 1 }, 600, ease.outElastic);
+          flashOverlay.tint = 0xffffff;
+          flashOverlay.alpha = 0.7;
+          tweens.to(flashOverlay, { alpha: 0 }, 400, ease.outQuad);
+          for (let i = 0; i < 3; i++) addRing(e.x ?? 640, e.y ?? 400, hsl(i * 120), 640, 700, i * 110);
+          particles.emit('confetti', e.x ?? 0, e.y ?? 0, { count: 64, speed: 1.6, size: 1.2 });
+          particles.emit('sparks', e.x ?? 0, e.y ?? 0, { count: 40, speed: 1.4, color: 0xffffff });
+          eyes.setMood('happy', 8);
+          break;
+        }
+        case 'surge-kill': {
+          const streak = Number(e.data?.streak ?? 1);
+          const x = e.x ?? 0;
+          const y = e.y ?? 0;
+          // pitch climbs in equal whole tones with the kill streak (capped), so a streak sounds like momentum
+          const steps = Math.min(streak - 1, 7);
+          play('boom', { pitch: 1.2, volume: 0.9 });
+          play('crunch', { volume: 0.85 });
+          play('chime', { pitch: 0.6 * Math.pow(2, (steps * 2) / 12), volume: 0.9 });
+          if (streak > 8) play('chime', { pitch: 1.2 * Math.pow(2, (((streak - 9) % 4) * 2) / 12), volume: 0.7 });
+          deathStar(x, y, hsl(vfx() * 360));
+          particles.emit('confetti', x, y, { count: 36, speed: 1.5, size: 1.1 });
+          particles.emit('sparks', x, y, { count: 36, speed: 1.4, color: 0xffffff });
+          particles.emit('debris', x, y, { count: 16, color: 0xff5d73, size: 1.3 });
+          addRing(x, y, hsl(vfx() * 360), 340, 500);
+          numberPop(world, `${SMASH_WORDS[Math.floor(vfx() * SMASH_WORDS.length)]} x${streak}`, x, y - 40, { color: hsl(vfx() * 360, 0.9, 0.7), size: 44 + Math.min(streak, 10) * 3, rise: 80, ms: 800 });
+          shake(0.6);
+          hitStop(4);
+          flashOverlay.tint = hsl(vfx() * 360);
+          flashOverlay.alpha = 0.3;
+          tweens.to(flashOverlay, { alpha: 0 }, 220, ease.outQuad);
+          punch(ballBody, 0.25);
+          break;
+        }
+        case 'surge-end': {
+          play('boom', { pitch: 0.9, volume: 0.7 });
+          arpeggio([19, 12, 7, 0], 80, 0.7, 0.6);
+          const kills = Number(e.data?.kills ?? 0);
+          numberPop(world, kills > 0 ? `SURGE OVER  ${kills} smashed` : 'SURGE OVER', 640, 300, { color: 0xffd166, size: 52, rise: 40, ms: 1500 });
+          particles.emit('puff', e.x ?? 0, e.y ?? 0, { count: 16, color: 0xdadaf5, size: 1.4 });
+          eyes.setMood('neutral', 0.1);
           trail.clear();
           break;
         }

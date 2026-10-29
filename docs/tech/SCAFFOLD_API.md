@@ -37,6 +37,7 @@ interface Prototype {
   onEvent(e: SimEvent): void;                 // juice + audio fire HERE, driven by sim events
   telemetry(): Record<string, number>;        // numeric metrics for bots (finite numbers only)
   getState?(): unknown;                       // small numeric observation for bots
+  balance?: BalanceSpec[];                    // the 3 to 8 tweakable values shown in the pause menu's Balance screen (section 1b)
   dispose?(): void;
 }
 ```
@@ -55,8 +56,21 @@ Two additions to the doc 02 contract: `mount(view)` (the place to create display
 | `ctx.dt` | `1/60` |
 | `ctx.params` | URL query params, e.g. `ctx.params.hard === '1'` |
 | `ctx.seed` | The seed in use. |
+| `ctx.balance` | Live balance values by id (section 1b). Read them every step; they change when Slone moves a slider. Fall back to the spec default if a key is missing. |
 
 Default seed: random per launch (restart picks the next one); `?seed=N` pins it (restart repeats it). Bots always pass explicit seeds.
+
+### 1b. Balance knobs (required: 3 to 8 per build)
+AI is weak at balance, so every build exposes a handful of values for Slone to tune in the pause menu (**Balance** screen). Declare them on the prototype and read them in the sim:
+```ts
+export const BALANCE: BalanceSpec[] = [
+  { id: 'heatRamp', label: 'Heat ramp (faster each second)', min: 0, max: 0.6, step: 0.02, default: 0.2 },
+  { id: 'lives', label: 'Lives (next run)', min: 1, max: 6, step: 1, default: 3 },
+];
+// in createPrototype(): return { ..., balance: BALANCE, ... }
+// in the sim: const ramp = ctx.balance.heatRamp ?? 0.2;   // read live each step
+```
+Choose knobs for what is most likely mis-tuned: pressure rate and ramp, how fast the player's power grows, forgiveness (lives, relief per success), pacing of new layers. Write plain labels, sensible defaults, and ranges that stay playable at both ends. Values are saved per device (`localStorage`, key `mgb.balance.v1.<slug>`), the menu can reset them and **copy** them as text for chat, and `?balance=id:value,id:value` overrides them (tests, bots). Telemetry records the values used (`balance`). Bots take overrides: `runSim(create, bot, { balance: { lives: 1 } })`. Later (roadmap): Slone's chosen values will be saved to a global API so all players get them, so keep knob ids stable. Helpers: `defaultsOf`, `mergeBalance`, `clampValue`, `formatValue`, `parseBalanceParam`, `loadBalance`, `saveBalance`, `clearBalance`, `balanceToText` in `core/balance.ts`. Say in the post mortem which knob to try first.
 
 ### InputState (what `step` receives)
 ```ts
@@ -142,7 +156,7 @@ Programmatic: `runSim(createPrototype, bot, { seed, maxSimSeconds, maxWallMs, st
 
 Telemetry JSON (schema in `src/bots/telemetry.ts`, `validateTelemetry()`): `{ night, seed, bot, mode, simSeconds, wallMs, timescale, outcome, metrics, perf, feel, errors }`. Standard `metrics` keys: `runLength deaths firstPressureSimSec restartDelaySimSec mainVerbCount decisionsPerMinute idleSurvivalSec scoreOrProgress variance`; whatever your `telemetry()` returns is added (declare custom ones in `prototype.json`). Sim-only runs leave `perf`/`feel` at zero (real-time checks happen at 1x only). In the browser, `window.__scaffold.snapshot()` returns a real-time telemetry object with frame stats, latency, event counts, shake peak, hit-stop frames.
 
-Browser hooks (smoke test and `--shots` use these): `window.__scaffold` exposes `proto`, `input` (`input.inject({ left, right, hold })`), `state()`, `snapshot()`, `start()`, `restart()`, `setPaused()`, `attachBot(bot)`, `stats()`, `audioLog`.
+Browser hooks (smoke test and `--shots` use these): `window.__scaffold` exposes `proto`, `balance` (live values), `input` (`input.inject({ left, right, hold })`), `state()`, `snapshot()`, `start()`, `restart()`, `setPaused()`, `attachBot(bot)`, `stats()`, `audioLog`.
 
 ## 6. Physics (optional)
 ```ts
@@ -188,6 +202,7 @@ Reusable helpers go in `src/core` or `src/juice` with a unit test and a short en
 | `core`: `hashSeed(text)` | Stable 32-bit seed from a string. |
 | `core`: `startPrototype`, `launcherUrl`, `WIDTH`, `HEIGHT` | Shell entry (called by `src/core/shell/main.ts`), the launcher URL used by the return combo, and the 1280x800 logical size. |
 | `core`: `validateManifest`, `PrototypeManifest`, `AssetEntry` | Manifest schema and validator. |
+| `core/balance.ts` | Balance helpers (section 1b). |
 | `core/attribution.ts`, `core/history.ts`, `core/nav.ts`, `core/menu.ts`, `core/debug.ts` | Launcher/shell plumbing (credits parser, local play history, menu navigation, pause menu, debug overlay). Not for prototypes. |
 | `core/physics.ts`: `loadPhysics` | Section 6. |
 | `juice`: `Tweens`, `tweens` | The tween manager behind `tween()`; the shell updates `tweens` each frame and clears it on restart. |

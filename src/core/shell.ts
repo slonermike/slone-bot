@@ -6,6 +6,7 @@ import { dial } from '../juice/dial.ts';
 import { fxStats, registerHitStop, resetFxStats, trauma } from '../juice/fx.ts';
 import { setVfxRandom } from '../juice/random.ts';
 import { tweens } from '../juice/tween.ts';
+import { balanceToText, clearBalance, loadBalance, mergeBalance, parseBalanceParam, saveBalance } from './balance.ts';
 import { DebugOverlay } from './debug.ts';
 import { glyph, onDeviceChange } from './glyphs.ts';
 import { recordPlayTime } from './history.ts';
@@ -35,6 +36,8 @@ export interface Scaffold {
   snapshot(bot?: string): Telemetry;
   restart(): void;
   start(): void;
+  /** Live balance values (what the sim reads as ctx.balance). */
+  balance: Record<string, number>;
   setPaused(p: boolean): void;
   /** Drive the prototype with a bot in real time (1x). Pass null to stop. */
   attachBot(bot: Bot | null): void;
@@ -133,6 +136,9 @@ export async function startPrototype(mod: PrototypeModule): Promise<Scaffold> {
     },
   };
 
+  /** Live balance values. The same object lives for the whole session and is handed to the sim as ctx.balance. */
+  const balanceValues: Record<string, number> = {};
+  let balanceReady = false;
   const frameTimes: number[] = [];
   let frames = 0;
   let lastNow = performance.now();
@@ -151,6 +157,11 @@ export async function startPrototype(mod: PrototypeModule): Promise<Scaffold> {
 
   const build = () => {
     proto = mod.createPrototype();
+    if (!balanceReady) {
+      // defaults, then values saved on this device, then ?balance=id:value URL overrides
+      Object.assign(balanceValues, mergeBalance(proto.balance, loadBalance(proto.meta.slug), parseBalanceParam(params.balance)));
+      balanceReady = true;
+    }
     const rng = new Rng(seed);
     const vfxRng = new Rng(seed ^ 0xa5a5a5a5);
     simSteps = 0;
@@ -161,6 +172,7 @@ export async function startPrototype(mod: PrototypeModule): Promise<Scaffold> {
       vfxRng,
       time: { get steps() { return simSteps; }, get seconds() { return simSteps * DT; } },
       params,
+      balance: balanceValues,
     };
     setVfxRandom(() => vfxRng.next());
     audio.setRandom(() => vfxRng.next());
@@ -220,7 +232,27 @@ export async function startPrototype(mod: PrototypeModule): Promise<Scaffold> {
     }
   }
 
+  const balanceApi = {
+    spec: () => proto?.balance ?? [],
+    values: balanceValues,
+    set(id: string, value: number) {
+      balanceValues[id] = value;
+      saveBalance(proto.meta.slug, balanceValues);
+    },
+    reset() {
+      Object.assign(balanceValues, mergeBalance(proto.balance));
+      clearBalance(proto.meta.slug);
+    },
+    copy() {
+      try {
+        void navigator.clipboard?.writeText(balanceToText(proto.meta.slug, proto.balance ?? [], balanceValues));
+      } catch {
+        /* clipboard unavailable */
+      }
+    },
+  };
   const menu = new PauseMenu({
+    balance: balanceApi,
     resume: () => setPaused(false),
     restart,
     toLauncher: () => goToLauncher(),
@@ -392,6 +424,7 @@ export async function startPrototype(mod: PrototypeModule): Promise<Scaffold> {
       for (const [k, v] of Object.entries(proto.telemetry())) t.metrics[k] = Number.isFinite(v) ? v : 0;
       if (!('runLength' in proto.telemetry())) t.metrics.runLength = t.simSeconds;
       t.perf = { avgFrameMs: round2(p.avg), p95FrameMs: round2(p.p95), fps: round2(p.fps), particleMax: fxStats.particleMax, effectsOn: dial.activeLayers().length > 0 };
+      if (proto.balance?.length) t.balance = { ...balanceValues };
       t.feel = {
         inputToVisualMs: round2(latency.visual), inputToAudioMs: round2(latency.audio), eventsFired: { ...eventCounts },
         shakePeak: round2(fxStats.shakePeak), hitStopFrames: fxStats.hitStopFrames,
@@ -400,6 +433,7 @@ export async function startPrototype(mod: PrototypeModule): Promise<Scaffold> {
     },
     restart,
     start,
+    balance: balanceValues,
     setPaused,
     attachBot(b) {
       botAttached = b;

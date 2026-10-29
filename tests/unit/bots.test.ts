@@ -154,4 +154,76 @@ describe('demo: failure, reprieve, and layered pressure', () => {
     expect(g.telemetry.metrics.layer).toBe(4);
     expect(g.telemetry.outcome).toBe('failed');
   });
+
+  it('combos fill the surge meter, and a full meter is announced and kept until spent', () => {
+    const { sim, tick } = make();
+    sim.heat = 0;
+    const events: string[] = [];
+    for (let i = 0; i < 20 && !sim.ready; i++) {
+      // drop a pickup on the ball each round
+      sim.pickups.push({ x: sim.x, y: sim.y, age: 0 });
+      events.push(...run(sim, tick, 2));
+      sim.heat = 0;
+    }
+    expect(sim.ready).toBe(true);
+    expect(sim.meter).toBe(1);
+    expect(events).toContain('surge-ready');
+    // a setback does not dent a full meter
+    sim.hazards.push({ x: sim.x, y: sim.y, vx: 0, vy: 0, warn: 0, age: 1 });
+    run(sim, tick, 2);
+    expect(sim.ready).toBe(true);
+  });
+
+  it('the surge: constant speed, steer only, heat frozen, drifters die, and it ends cleanly', () => {
+    const { sim, tick } = make();
+    sim.ready = true;
+    sim.meter = 1;
+    sim.heat = 60;
+    const press = blankInput();
+    press.buttons.x.pressed = true;
+    press.buttons.x.down = true;
+    press.left.x = 1;
+    const started = run(sim, tick, 1, press);
+    expect(started).toContain('surge-start');
+    expect(sim.surging).toBe(true);
+    expect(sim.ready).toBe(false);
+    const heatAtStart = sim.heat;
+    const steer = blankInput();
+    steer.left.y = 1;
+    const speeds: number[] = [];
+    let kills = 0;
+    for (let i = 0; i < 60 * 2; i++) {
+      if (i === 30) sim.hazards.push({ x: sim.x + 20, y: sim.y, vx: 0, vy: 0, warn: 0, age: 1 });
+      sim.step(1 / 60, steer);
+      tick();
+      speeds.push(Math.hypot(sim.vx, sim.vy));
+      kills += sim.drain().filter((e) => e.type === 'surge-kill').length;
+    }
+    // constant speed (a wall bounce costs one step of speed before it is restored)
+    const sorted = [...speeds].sort((x, y) => x - y);
+    expect(sorted[Math.floor(sorted.length / 2)]).toBeGreaterThan(600);
+    expect(Math.max(...speeds)).toBeLessThan(640);
+    expect(sim.heat).toBeLessThanOrEqual(heatAtStart);
+    expect(kills).toBe(1);
+    expect(sim.deaths).toBe(0);
+    // run it out, and check the state right when it ends
+    let endedAt = false;
+    for (let i = 0; i < 60 * 9 && !endedAt; i++) {
+      sim.step(1 / 60, steer);
+      tick();
+      endedAt = sim.drain().some((e) => e.type === 'surge-end');
+    }
+    expect(endedAt).toBe(true);
+    expect(sim.surging).toBe(false);
+    expect(sim.meter).toBe(0);
+    expect(sim.heat).toBeLessThan(heatAtStart);
+  });
+
+  it('a competent bot earns surges now and then, not all the time', () => {
+    const greedy = demo.bots!.find((b) => b.name === 'greedy')!;
+    const g = runSim(demo.createPrototype, greedy, { seed: 3, maxSimSeconds: 400 });
+    expect(g.telemetry.metrics.surges).toBeGreaterThanOrEqual(2);
+    expect(g.telemetry.metrics.surges).toBeLessThan(g.telemetry.simSeconds / 15);
+    expect(g.telemetry.metrics.surgeKills).toBeGreaterThan(5);
+  });
 });

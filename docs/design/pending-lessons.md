@@ -47,3 +47,8 @@ Entry template is in `docs/design/04-feedback-and-postmortem.md` section 5.
 - Evidence: Slone: "Add a meter that fills as you increase your combo, and when it fills it gives a juicy animation and says 'press (button)'. When you do, for a few seconds lots of particles falling off you, colors animating... you start moving at a constant rate and you can only change the direction. Any enemy you hit dies in spectacular fashion."
 - Bible change (applied in v2, section 6): earned power moments.
 - Proposed atoms (Slone decides): v-power-surge: a meter fills from skilled play and the player triggers a short empowered state that flips the pressure (hazards become prey); p-forward-pressure: the player's power escalates alongside the pressure.
+
+## 2026-10-29 _demo (fourth round)
+- Lesson: AI is weak at balance work, so each game should expose a handful of tweakable balance values in a menu that Slone tunes; eventually those values are saved globally through an API so all players get his settings.   Status: one data point (promoted to Bible v3)
+- Evidence: Slone: "I expect it to be challenging for ai to do balance work, so each game should expose a handful of tweak able values in a balance menu. Eventually we should make it so I can save those globally to an api so all users get the values I adjusted it to."
+- Bible change (applied in v3, section 11); scaffold feature built (Balance screen in the pause menu); API recorded in ROADMAP.md.

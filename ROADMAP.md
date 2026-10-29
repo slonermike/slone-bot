@@ -3,6 +3,7 @@
 Deliberately postponed. Revisit only when the current pipeline is proven.
 
 ## Feedback
+- **Global balance values API:** Slone tunes each game's balance knobs in the pause menu's Balance screen; today the values are saved per device (localStorage) and can be copied out. Later: save his chosen values to a small API so every player gets them (and the game loads them at start, falling back to defaults offline). Needs: storage, a single trusted writer (Slone only), versioned per game, read-only for everyone else, no personal data. Keep the knob ids stable so saved values stay valid.
 - In-launcher feedback form on the Deck, with dictation via the Steam on-screen keyboard (test a text box first).
 - Commit-to-repo feedback endpoint (serverless function, single-writer token held only in host env vars, rate limit, payload cap).
 - Voice notes with later transcription.

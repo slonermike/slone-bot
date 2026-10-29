@@ -1,5 +1,6 @@
 import { expandBotInput, blankInput } from '../core/input-state.ts';
 import { DT } from '../core/loop.ts';
+import { mergeBalance } from '../core/balance.ts';
 import { Rng } from '../core/rng.ts';
 import type { Bot, BotInput, ButtonName, Ctx, Observation, Prototype, SimEvent } from '../core/types.ts';
 import { emptyTelemetry } from './telemetry.ts';
@@ -15,6 +16,8 @@ export interface RunOptions {
   /** Fixed steps per tick (timescale). Never changes DT. Default 20. */
   stepsPerTick?: number;
   params?: Record<string, string>;
+  /** Balance overrides by id (clamped to the spec's range). */
+  balance?: Record<string, number>;
 }
 
 export interface RunResult {
@@ -25,7 +28,7 @@ export interface RunResult {
   samples: { t: number; telemetry: Record<string, number> }[];
 }
 
-export function makeCtx(seed: number, params: Record<string, string> = {}): { ctx: Ctx; tick: () => void } {
+export function makeCtx(seed: number, params: Record<string, string> = {}, balance: Record<string, number> = {}): { ctx: Ctx; tick: () => void } {
   let steps = 0;
   const ctx: Ctx = {
     seed,
@@ -37,6 +40,7 @@ export function makeCtx(seed: number, params: Record<string, string> = {}): { ct
       get seconds() { return steps * DT; },
     },
     params,
+    balance,
   };
   return { ctx, tick: () => { steps++; } };
 }
@@ -63,7 +67,8 @@ export function runSim(create: () => Prototype, bot: Bot, opts: RunOptions = {})
   const perTick = opts.stepsPerTick ?? 20;
   const started = Date.now();
   const proto = create();
-  const { ctx, tick } = makeCtx(seed, opts.params);
+  const balance = mergeBalance(proto.balance, opts.balance);
+  const { ctx, tick } = makeCtx(seed, opts.params, balance);
   const errors: string[] = [];
   const eventsFired: Record<string, number> = {};
   const inputLog: [number, BotInput][] = [];
@@ -134,13 +139,14 @@ export function runSim(create: () => Prototype, bot: Bot, opts: RunOptions = {})
   for (const [k, v] of Object.entries(metrics)) t.metrics[k] = Number.isFinite(v) ? v : 0;
   if (!('runLength' in metrics)) t.metrics.runLength = round(simSeconds);
   t.feel.eventsFired = eventsFired;
+  if (proto.balance?.length) t.balance = balance;
   return { telemetry: t, inputLog, samples };
 }
 
 /** Re-run a recorded input log at 1 step per tick; returns final telemetry metrics for comparison. */
-export function replay(create: () => Prototype, seed: number, inputLog: [number, BotInput][], steps: number, params?: Record<string, string>): Record<string, number> {
+export function replay(create: () => Prototype, seed: number, inputLog: [number, BotInput][], steps: number, params?: Record<string, string>, balanceOverrides?: Record<string, number>): Record<string, number> {
   const proto = create();
-  const { ctx, tick } = makeCtx(seed, params);
+  const { ctx, tick } = makeCtx(seed, params, mergeBalance(proto.balance, balanceOverrides));
   proto.init(ctx);
   let idx = 0;
   let cur: BotInput = {};

@@ -8,6 +8,7 @@ A factory for small, playable 2D game prototypes, built unattended one per night
 - **2D first.** Vite + TypeScript, PixiJS, Rapier 2D, our own scaffold core.
 - **Single player, offline, no PvP, no skill walls as the main loop.**
 - **Feel first:** every build has juice and sound on the main verb, feedback events, and the pressure state. Mechanics-only builds do not ship.
+- **Balance knobs:** every build exposes 3 to 8 tweakable values in the pause menu's Balance screen (see `SCAFFOLD_API.md`). AI is weak at balance; Slone tunes.
 - **Sim and render are separate.** Bots run the sim without drawing.
 - **One question and one target feeling per prototype,** written before building.
 - **Open source (MIT), public repo.** Only truly free assets (see `docs/tech/08`). Every third-party asset goes in `ATTRIBUTION.md`. No ripped assets, no secrets, no personal data.
@@ -37,6 +38,9 @@ A factory for small, playable 2D game prototypes, built unattended one per night
 
 ## When Slone gives feedback in chat
 Default procedure (details in `CONSTITUTION.md` section 15): (1) capture what it teaches about his design philosophy and preferences; (2) update the Bible (and feel checklist or taste cards if they fit), bump the version, log evidence in `pending-lessons.md`; (3) then ask whether to update the game or use the feedback only for future games. Do not change the game first. This applies to chat sessions with Slone; nightly runs never edit the Bible.
+
+## How to work with Slone in chat
+Slone is the design architect; you are the designer. Make the detail calls yourself (buttons, numbers, layout, names, timings) and tell him what you chose; do not ask him to pick between details. Ask only when his direction would change what the game is. When his feedback includes a request to change the game ("add a meter..."), that is the answer to the update-or-not question: do it.
 
 ## Do not
 - Read or edit `themes/*.json`, other nights' branches, or other nights' rejection reasons.

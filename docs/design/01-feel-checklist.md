@@ -74,3 +74,8 @@ Run this on every build before wrap-up. For each item, mark: yes, no, n/a, or un
 
 ## Reporting
 In the post mortem list: items passed, items failed, items untested, and the one item most likely to feel wrong to Slone.
+
+## I. Balance knobs (v3)
+- [ ] The build exposes 3 to 8 balance values in the pause menu's Balance screen, each with a default, range, step, and plain label. [bot: spec present and values change the sim]
+- [ ] The knobs cover the things most likely to be mis-tuned: pressure rate and ramp, forward-power rate, forgiveness, pacing of new layers.
+- [ ] Defaults are playable by the greedy bot (not too easy, not impossible); the post mortem names which knob to try first. [bot]
