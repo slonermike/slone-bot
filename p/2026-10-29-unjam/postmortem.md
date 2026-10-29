@@ -24,3 +24,10 @@ What changed: look only, from lagoon/circles and blobs/thick outlines to sunset/
 Verified: sim.ts untouched (empty diff); bot metrics identical to the pre-reskin run for all 12 runs (scores, deaths, floods; only wall-clock time differs); `npm run check` passes (typecheck, secrets, unit tests, smoke); preview.gif and thumb.png regenerated.
 Could not check (I cannot see or hear it in play): how it reads moving at 60 fps on a Deck, whether stuck magenta blobs against the magenta gate slabs are readable enough in motion, whether the sunset sky bands are too busy behind the pipe, and real frame rate (sandbox renders about 5 fps).
 Slone should judge first: does it feel like a different game visually while playing the same?
+
+## Redesign after Slone's first play (2026-10-29)
+Feedback in one line: not fun, too indirect, lots of motion and no clarity, progress hidden. See the brief's "Redesign" section for what changed (lock-on unjam, jar and wave quota, queue tally, less noise, Pull cut).
+Measured (sim bots, 3 seeds, 120 s): greedy reaches waves 7 to 9 on two seeds and 7 on the third, 295 to 550 delivered, 0 to 1 deaths (3 in one tuning pass; final tuning in the brief); the hold-A-at-gate-1 probe reaches waves 2 to 3 with 2 deaths; idle and random lose two lives in 120 s. The probe no longer keeps up with greedy once the second gate appears.
+Believed (cannot play or see it): the lock-on plus filling ring plus badge should make "what do I do" obvious; the jar and quota should make progress obvious. Unverified: whether it is now fun, whether the lock reach (230 px) and hold times (0.35 to 0.8 s) feel responsive, and how the queue tally and brackets read in motion.
+Things cut: Pull, radial pop, combo and flood text. Telemetry meaning: `mainVerbCount` is now unjams (it was pops); `whiffs`, `waveDelivered` and `goal` are new.
+Slone should judge first: can you tell what to do and whether you did it right with no text, and does filling the jar feel like getting somewhere?
