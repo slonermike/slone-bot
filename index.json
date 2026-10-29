@@ -45,8 +45,9 @@
       "assets": [],
       "buildStatus": "ok",
       "feedbackStatus": "needs-feedback",
-      "sizeKB": 691,
-      "thumbnail": "thumb.png"
+      "sizeKB": 1068,
+      "thumbnail": "thumb.png",
+      "preview": "preview.gif"
     }
   ]
 }
