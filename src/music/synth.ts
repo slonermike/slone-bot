@@ -1,7 +1,7 @@
 // WebAudio player for Song data. Small and self-contained: a handful of subtractive voices and a noise drum kit,
 // scheduled a little ahead of the clock so the loop never drifts. Not used by the sim (audio is render-side only).
 import { beatAt, secondsAt } from './timing.ts';
-import type { Note, Song, Voice } from './types.ts';
+import type { Inst, Note, Song, Voice } from './types.ts';
 
 interface Ev {
   /** Seconds from the start of a pass, and the note's length in seconds (both honor tempo changes). */
@@ -26,10 +26,15 @@ export class SongPlayer {
   private noise: AudioBuffer | null = null;
   private song: Song | null = null;
   private volume = 0.8;
+  private instBus = new Map<string, GainNode>();
+  private parts: Set<Inst> | null = null;
   readonly ctx: AudioContext;
+  private readonly out: AudioNode;
 
-  constructor(ctx: AudioContext) {
+  /** `out` is where the music goes (a game routes it through the engine's music bus); default is the speakers. */
+  constructor(ctx: AudioContext, out?: AudioNode) {
     this.ctx = ctx;
+    this.out = out ?? ctx.destination;
   }
 
   get playing(): boolean {
@@ -52,8 +57,26 @@ export class SongPlayer {
     if (this.bus) this.bus.gain.setTargetAtTime(this.volume, this.ctx.currentTime, 0.03);
   }
 
-  /** Play from the start. A one-shot stops by itself after its last note rings out and then calls `onEnd`. */
-  play(song: Song, onEnd?: () => void): void {
+  /**
+   * Bring parts of a playing song in or out with a short fade, so a game can layer the music with its pressure.
+   * Parts keep playing in time while muted, so they come in on the beat. `null` means every part.
+   */
+  setParts(parts: Inst[] | null, fadeSeconds = 0.4): void {
+    this.parts = parts ? new Set(parts) : null;
+    for (const [inst, g] of this.instBus) g.gain.setTargetAtTime(this.partOn(inst as Inst) ? 1 : 0, this.ctx.currentTime, fadeSeconds / 3);
+  }
+
+  private partOn(inst: Inst): boolean {
+    return !this.parts || this.parts.has(inst);
+  }
+
+  /** Overall level multiplier (ducking under a stinger, quieter while paused). */
+  setLevel(v: number, seconds = 0.2): void {
+    if (this.bus) this.bus.gain.setTargetAtTime(this.volume * Math.max(0, v), this.ctx.currentTime, Math.max(0.005, seconds / 3));
+  }
+
+  /** Play from the start. A one-shot stops by itself after its last note rings out and then calls `onEnd`. `parts` limits which parts start audible. */
+  play(song: Song, onEnd?: () => void, parts?: Inst[]): void {
     this.stop();
     void this.ctx.resume();
     this.song = song;
@@ -74,8 +97,17 @@ export class SongPlayer {
     const comp = this.ctx.createDynamicsCompressor();
     const bus = this.ctx.createGain();
     bus.gain.value = this.volume;
-    bus.connect(comp).connect(this.ctx.destination);
+    bus.connect(comp).connect(this.out);
     this.bus = bus;
+    this.parts = parts ? new Set(parts) : null;
+    this.instBus.clear();
+    for (const tr of song.tracks) {
+      if (this.instBus.has(tr.inst)) continue;
+      const g = this.ctx.createGain();
+      g.gain.value = this.partOn(tr.inst) ? 1 : 0;
+      g.connect(bus);
+      this.instBus.set(tr.inst, g);
+    }
     this.tick();
     this.timer = setInterval(() => this.tick(), 40);
   }
@@ -112,7 +144,7 @@ export class SongPlayer {
       const at = this.startTime + this.iter * this.loopSeconds + e.sec;
       if (at > horizon) break;
       this.i++;
-      if (at >= this.ctx.currentTime - 0.05) this.voiceFor(bus, e, Math.max(at, this.ctx.currentTime));
+      if (at >= this.ctx.currentTime - 0.05) this.voiceFor(this.instBus.get(e.inst) ?? bus, e, Math.max(at, this.ctx.currentTime));
     }
   }
 

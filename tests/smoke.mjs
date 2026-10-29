@@ -75,6 +75,8 @@ try {
   await tap(P, [BTN.a], 300, [1, 0, 0, 0]);
   const played = await P.evaluate(() => window.__scaffold.audioLog.map((e) => e.name));
   check('audio event fired (dash)', played.includes('dash'), `log: ${[...new Set(played)].join(',')}`);
+  const mlog = await P.evaluate(() => window.__scaffold.music.log.map((e) => e.type + (e.parts ? ':' + e.parts.join('+') : '')));
+  check('music started with the base parts', mlog.some((m) => m === 'play:pad+bass'), `log: ${mlog.join(' ')}`);
 
   // 3. frame rate over 5 s real time
   const f0 = await P.evaluate(() => window.__scaffold.stats().frames);

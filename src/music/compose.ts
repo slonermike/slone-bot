@@ -66,6 +66,8 @@ export const LAYOUTS: Record<string, SectionPlan> = {
   'loop-8': [['verse', 4], ['chorus', 4]],
   'loop-12': [['verse', 4], ['pre', 4], ['chorus', 4]],
   'loop-16': [['verse', 4], ['pre', 4], ['chorus', 8]],
+  /** All hook, all the time: a groove with the hook stated every four bars. For games that bring the hook in as a reward. */
+  'groove-8': [['groove', 4], ['groove', 4]],
 };
 
 export interface ComposeOptions {
@@ -76,6 +78,8 @@ export interface ComposeOptions {
   mood: string;
   intent?: string;
   form: 'loop';
+  /** Force the tonic (MIDI note, around 48 to 59) so stingers and loops in one game share a key. */
+  root?: number;
   /** hook (default): a catchy repeating motif. vibe: texture and mood first, at any tempo; a sparse, long-note motif and no doubling. */
   character?: Character;
   layout: keyof typeof LAYOUTS;
@@ -228,7 +232,8 @@ function composeLoop(opts: ComposeOptions): Song {
   tempo = Math.round(tempo ?? rng.range(bpmRange[0], bpmRange[1]));
   const scale = SCALES[scaleName];
   if (!scale) throw new Error(`unknown mode "${scaleName}"`);
-  const root = 48 + rng.int(0, 11);
+  const rootPick = 48 + rng.int(0, 11);
+  const root = opts.root ?? rootPick;
   const fam = family(scaleName);
   const pickProg = (set: number[][]) => rng.pick(set);
   const mainProg = pickProg(scaleName === 'phrygian' ? PROGS.phrygian : scaleName === 'lydian' && rng.chance(0.6) ? PROGS.lydian : PROGS[fam]);
@@ -396,7 +401,7 @@ function composeLoop(opts: ComposeOptions): Song {
         const intro = sec.kind === 'intro';
         for (const hn of hookNotesFor(cell, ending)) {
           lead(hn.e, hn.d, hn.deg, intro ? 62 : 96);
-          if (feel.harmony && !intro && sec.kind === 'chorus') parts.harmony.push({ t: bar.start + hn.e * 0.5, d: Math.max(0.2, hn.d * 0.46), n: degreeNote(rootS, scale, hn.deg - 2) + 12, v: Math.round(74 * vel) });
+          if (feel.harmony && !intro && chorusLike) parts.harmony.push({ t: bar.start + hn.e * 0.5, d: Math.max(0.2, hn.d * 0.46), n: degreeNote(rootS, scale, hn.deg - 2) + 12, v: Math.round(74 * vel) });
         }
         if (cell === 0 && hook.pickup !== null && g > 0 && !intro) {
           const pe = bars[g - 1]!.beats * 2 - 1;
@@ -584,6 +589,8 @@ export interface StingerOptions {
   bpm?: number | [number, number];
   /** 2 to 4 bars. */
   bars?: 2 | 3 | 4;
+  /** Force the tonic so the stinger matches the game's loop. */
+  root?: number;
   character?: Character;
   leadVoice?: Voice;
   batch?: string;
@@ -604,7 +611,8 @@ export function composeStinger(opts: StingerOptions): Song {
   const scaleName = opts.mode ?? rng.pick(spec.modes);
   const scale = SCALES[scaleName];
   if (!scale) throw new Error(`unknown mode "${scaleName}"`);
-  const root = 48 + rng.int(0, 11);
+  const rootPick = 48 + rng.int(0, 11);
+  const root = opts.root ?? rootPick;
   const bpmOpt = opts.bpm ?? spec.tempo;
   const tempo = Math.round(Array.isArray(bpmOpt) ? rng.range(bpmOpt[0], bpmOpt[1]) : bpmOpt);
   const nBars = opts.bars ?? spec.bars;

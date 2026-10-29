@@ -11,7 +11,7 @@ How a scheduled nightly agent runs, start to finish. The scheduled task prompt i
 | 0 | Start: `PAUSE` check, preflight, stamp start, read docs, check pending feedback | 10 min | `phase: start` |
 | 1 | Ideation: roll themes, resolve, pick atoms and wildcard, write the brief | 20 min | `phase: brief` |
 | 2 | Core verb: bare, ugly, playable build proving the core is interesting | 60 min | `phase: core` |
-| 3 | Feel pass: juice and audio on main verb, feedback events, pressure state | 45 min | `phase: feel` |
+| 3 | Feel pass: juice and audio on main verb, feedback events, pressure state, and the game's music (loop, stingers, parts tied to pressure) | 45 min | `phase: feel` |
 | 4 | Testing: bots, telemetry, screenshots, checklist, one fix pass | 30 min | `phase: test` |
 | 5 | Wrap: manifest, feedback sheet, post mortem, publish, add themes, ledger line | 25 min | `phase: done` |
 Check elapsed time at every phase boundary and before any long command.
