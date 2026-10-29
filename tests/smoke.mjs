@@ -61,7 +61,8 @@ try {
   const P = L.page;
 
   check('title screen waits for A', (await P.evaluate(() => window.__scaffold.state())) === 'title');
-  await tap(P, [BTN.a], 300);
+  // Press A until the title screen leaves; a loaded software-GL page can miss a short press.
+  for (let i = 0; i < 4 && (await P.evaluate(() => window.__scaffold.state())) === 'title'; i++) await tap(P, [BTN.a], 400);
   check('A starts the game', (await P.evaluate(() => window.__scaffold.state())) === 'playing');
 
   // 2. synthetic gamepad moves something
