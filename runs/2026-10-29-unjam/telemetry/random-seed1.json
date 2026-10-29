@@ -4,7 +4,7 @@
   "bot": "random",
   "mode": "systemic",
   "simSeconds": 90,
-  "wallMs": 127,
+  "wallMs": 120,
   "timescale": 20,
   "outcome": "failed",
   "metrics": {

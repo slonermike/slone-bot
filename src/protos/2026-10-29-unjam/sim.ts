@@ -381,12 +381,12 @@ export class UnjamSim {
     // the queue behind the gate surges forward: that is the visible payoff
     let queue = 0;
     for (const b of this.blobs) {
-      if (!b.stuck && b.free <= 0 && b.x < target.x && b.x > target.x - 260) {
-        b.vx += 160;
+      if (!b.stuck && b.free <= 0 && b.x < target.x && b.x > target.x - 320) {
+        b.vx += 320;
         queue++;
       }
     }
-    for (const g of this.gates) if (g.active && Math.abs(g.x - target.x) < 120) g.clearT = 1.7;
+    for (const g of this.gates) if (g.active && Math.abs(g.x - target.x) < 120) g.clearT = 3;
     this.frees += freed;
     this.floodCount = 0;
     this.comboT = Math.max(this.comboT, 2.2);
