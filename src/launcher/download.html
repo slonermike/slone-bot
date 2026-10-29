@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Download minigame-bot</title>
+<style>
+  :root{color-scheme:dark;--bg:#0b0b14;--panel:#171728;--line:#2a2a44;--fg:#e8e8f4;--dim:#9a9ab8;--amber:#ffd166}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:18px/1.5 system-ui,sans-serif;padding:32px 16px}
+  main{max-width:640px;margin:0 auto}
+  h1{margin:0 0 4px;font-size:32px}h1 span{color:var(--amber)}
+  p{color:var(--dim)}
+  .list{display:grid;gap:12px;margin:24px 0}
+  a.dl{display:flex;justify-content:space-between;gap:12px;align-items:center;background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:16px 18px;color:var(--fg);text-decoration:none}
+  a.dl.mine{border-color:var(--amber)}
+  a.dl small{color:var(--dim)}
+  a.back{color:var(--amber)}
+  #status{color:var(--dim)}
+</style>
+</head>
+<body>
+<main>
+  <h1>minigame-<span>bot</span> app</h1>
+  <p>A small app that opens the games full screen and keeps itself up to date. You can also just play in the browser.</p>
+  <div id="status">Looking up the latest version...</div>
+  <div class="list" id="list"></div>
+  <p><a class="back" href="../">Back to the games</a></p>
+</main>
+<script>
+(async () => {
+  const status = document.getElementById('status');
+  const list = document.getElementById('list');
+  const ua = navigator.userAgent;
+  const mine = /Windows/.test(ua) ? 'win' : /Mac/.test(ua) ? 'mac' : 'linux';
+  const kinds = [
+    { id: 'win', label: 'Windows', re: /\.exe$/i, note: 'installer' },
+    { id: 'mac', label: 'macOS (Apple silicon)', re: /arm64\.dmg$/i, note: '.dmg' },
+    { id: 'mac', label: 'macOS (Intel)', re: /x64\.dmg$/i, note: '.dmg' },
+    { id: 'linux', label: 'Linux / Steam Deck', re: /\.AppImage$/i, note: 'AppImage' },
+  ];
+  try {
+    const res = await fetch('https://api.github.com/repos/slonermike/slone-bot/releases/latest', { headers: { accept: 'application/vnd.github+json' } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rel = await res.json();
+    status.textContent = 'Latest version: ' + String(rel.tag_name).replace(/^v/, '');
+    for (const k of kinds) {
+      const a = (rel.assets || []).find((x) => k.re.test(x.name));
+      if (!a) continue;
+      const el = document.createElement('a');
+      el.className = 'dl' + (k.id === mine ? ' mine' : '');
+      el.href = a.browser_download_url;
+      el.innerHTML = '<span></span><small></small>';
+      el.firstChild.textContent = k.label;
+      el.lastChild.textContent = k.note + ', ' + Math.round(a.size / 1048576) + ' MB';
+      list.append(el);
+    }
+    if (!list.children.length) status.textContent += ' (no installers attached yet)';
+  } catch (e) {
+    status.textContent = 'No release found yet. Check back after the first build.';
+  }
+})();
+</script>
+</body>
+</html>

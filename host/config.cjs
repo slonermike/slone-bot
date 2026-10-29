@@ -3,7 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const DEFAULT_URL = 'http://127.0.0.1:4173/';
+const DEFAULT_URL = 'https://slone-bot.vercel.app/';
 
 function readJson(file) {
   try {
