@@ -47,6 +47,9 @@ None that needed the constitution to win. Notes: doc 05's Vercel default vs the 
 ## UX pass after first play (Slone's feedback)
 Menus and launcher scale to small screens (tested at 1366x768 and 1024x600); labels follow the last-used device (keyboard or gamepad); Esc is Start/Back; keys tapped inside one frame are never lost; a button pressed on the frame the pause menu opens no longer triggers it. Demo: the heat ramp restarts after a failure, the pickup pitch rises in whole-tone steps with a cap and a chime layer past it, and the failure has a full effect stack (boom, crunch, long freeze, zoom punch, flash, shockwave ring, debris, "CRUNCH!"). Lessons recorded in `docs/design/pending-lessons.md` as one data point each.
 
+## Second and third rounds of feedback
+Demo now has a hard end (three lives, result screen), layered pressure (drifters, fading sparks, closing walls), and forward pressure: combos fill a surge meter, a prompt says when it is full, and the player triggers a short constant-speed, steer-only state in which drifters die spectacularly. Scaffold gained a **Balance** screen in the pause menu: every build declares 3 to 8 knobs, values save per device, can be copied into chat, and are read live by the sim (`ctx.balance`). A global API for saving Slone's tuned values is on the roadmap. Bible is at v3.
+
 ## Run plan
 Start by running the site in a desktop browser with a gamepad; build the Steam wrapper once that is stable (added to `ROADMAP.md`). Deck-in-browser notes: launch the browser in kiosk mode and set the Steam Input template to Gamepad, otherwise the page sees no controller.
 

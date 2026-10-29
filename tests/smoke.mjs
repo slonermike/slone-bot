@@ -143,6 +143,23 @@ try {
   check('Escape pauses, goes Back inside menus, then resumes', escPaused && inJuice && backToMain && resumedKb, `${escPaused} ${inJuice} ${backToMain} ${resumedKb}`);
   check('keyboard use switches hints to key names', /Space|Esc/.test(hintKb ?? '') && !/ A /.test(hintKb ?? ''), hintKb ?? '');
 
+  // balance screen: present, lists the knobs, and a change takes effect in the running sim
+  await P.keyboard.press('Escape');
+  await until(() => window.__scaffold.state() === 'paused');
+  const hasBalance = await focusItem('Balance');
+  await P.keyboard.press('Space');
+  const inBalance = await until(() => document.querySelector('.mgb-menu h2')?.textContent === 'Balance');
+  const rows = await P.evaluate(() => document.querySelectorAll('.mgb-menu .mgb-item').length);
+  const rampBefore = await P.evaluate(() => window.__scaffold.balance.heatRamp);
+  await P.keyboard.press('ArrowRight');
+  const changed = await until((b) => window.__scaffold.balance.heatRamp > b, rampBefore);
+  await P.screenshot({ path: path.join(OUT, 'screens/balance.png') });
+  check('Balance screen lists the knobs and changes apply live', hasBalance && inBalance && rows >= 5 && changed, `rows ${rows}, heatRamp ${rampBefore} -> ${await P.evaluate(() => window.__scaffold.balance.heatRamp)}`);
+  await P.keyboard.press('Escape');
+  await until(() => document.querySelector('.mgb-menu h2')?.textContent === 'Paused');
+  await P.keyboard.press('Escape');
+  await until(() => window.__scaffold.state() === 'playing');
+
   // small screens: the pause menu must fit the viewport
   for (const vp of [{ width: 1366, height: 768 }, { width: 1024, height: 600 }]) {
     await P.setViewportSize(vp);

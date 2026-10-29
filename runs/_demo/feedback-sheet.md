@@ -1,7 +1,7 @@
 PROTOTYPE: Demo Ball (_demo)
 
 THE QUESTION THIS BUILD TESTS:
-Does pushing a ball around feel good, and does a run with layered pressure and a real ending hold together?
+Does pushing a ball feel good, and do layered pressure, a real ending, and an earned surge hold together?
 TARGET FEELING: a small, springy toy that talks back
 
 TARGETED QUESTIONS:
@@ -10,6 +10,8 @@ TARGETED QUESTIONS:
 3. Did the extra pressure layers (drifters, fading sparks, closing walls) arrive at good moments? which one felt best or worst?
 4. Did running out of lives feel like a fair ending? did you want to go again right away? yes / kind of / no
 5. Did the failure crunch feel satisfying or too much? a few words
+6. Surge: did filling the meter, the ready prompt, and spending it feel earned? did the kills feel spectacular enough?
+7. Balance menu (pause, Balance): which values did you change, and to what? (use Copy values and paste)
 
 CONSTANTS:
 A. First minute: did it feel good to just move/act before anything else? yes / kind of / no

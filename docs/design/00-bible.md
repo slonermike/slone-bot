@@ -2,7 +2,7 @@
 
 Design principles for making prototypes Slone will like. Nightly runs read and follow this file but never edit it. It changes when Slone gives feedback in chat (the chat agent updates it directly as the first step, see `CONSTITUTION.md` section 15) or runs an assessment of `pending-lessons.md`.
 
-Version: 1 (seeded from six GMTK sources and Slone's taste; first feedback incorporated from the `_demo` prototype, 2026-10-29. One data point per lesson so far; see the revision log at the end).
+Version: 3 (seeded from six GMTK sources and Slone's taste; feedback incorporated from the `_demo` prototype, 2026-10-29. One data point per lesson so far; see the revision log at the end).
 
 ## 1. What a prototype is for
 A prototype answers one question quickly. The big three questions: Is it fun? Is it viable? Will people like it? Our nightly prototypes mostly ask "is it fun and what does it feel like?" Slone is the only playtester, so every build must make his feedback easy and specific.
@@ -37,6 +37,9 @@ A prototype answers one question quickly. The big three questions: Is it fun? Is
 ## 6. Taste constraints (Slone)
 - **Back pressure:** open-ended play with a force pushing back (rising tide, heat, a ticking clock, escalating pursuit). Without it, a sandbox goes slack. **Pressure should gain complexity over time, not only speed.** A single timer that runs faster is not enough: layer in new pressure sources or change the character of the pressure as the session goes on (a new hazard, a changing rule, a second system that interacts with the first). The timer can stay as the base layer. (v1, one data point: `_demo`.)
 - **Soft failure:** setbacks are recoverable and story-generating. No mastery walls, no punishment loops. **Let the target feeling choose the failure type.** Soft failure is the default, but a game built around rising threat can feel hollow if nothing can ever end the run. In that case pair soft failures with a real end state (a run that ends, a result screen, instant restart), still without humiliation or a mastery wall, and say which in the brief. (v1, one data point: `_demo`.) **Failure is a reprieve:** after a soft failure the pressure eases or its ramp restarts; it never resumes at the rate the player just died at. (v1, one data point: `_demo`.)
+- **Forward pressure:** back pressure alone is half the loop. As the pressure grows, the player's side should grow too: rising power, new options, a way to push forward and take the initiative. Escalation should come from both directions. (v2, one data point: `_demo`.)
+- **Every reward cue must mean something.** A rising "you're doing well" sound, a combo counter, or a flashy number needs a consequence: it fills a meter, unlocks a state, or changes the next moment of play. A cue that only decorates reads as empty. (v2, one data point: `_demo`.)
+- **Earned power moments.** Skilled play (a combo) fills a meter; when full the game announces it with a juicy prompt and the player chooses when to trigger it. The triggered state is a short spectacle that flips the pressure: the usual hazards become targets, movement simplifies to steering at a constant speed, and everything the player touches dies in spectacular fashion. The reward is a power fantasy the player triggers themselves, not an automatic buff. (v2, one data point: `_demo`.)
 - **Discovery of new play patterns:** surprises arrive as new verbs, tools, or vehicles, not just new content. **Collecting should open things up:** gathering resources or items should unlock new functionality or content (a verb, a tool, a place, a rule change), not only raise a score. (v1, one data point: `_demo`.)
 - **Verb first, theme second:** the base verb should feel good before there is anything to do with it (Mario, Tony Hawk, GTA driving).
 - **Readable systems that accumulate consequences:** the player can see the system and watch it grow or collapse (RollerCoaster Tycoon, Timberborn, The Sims).
@@ -63,5 +66,10 @@ Could a one-sentence headline and a 10-second clip make someone want to try it? 
 ## 10. The agent is honest about what it cannot know
 Bots can show the build works and find exploits. They cannot say whether it is fun or whether it sounds good. State this in every post mortem and ask Slone specific questions about feel.
 
+## 11. Balance is a human job: every game exposes balance knobs
+AI is weak at balance work, and balance is where a game's feel is finally decided. Each game therefore exposes a handful (3 to 8) of tweakable values in a balance menu in the pause menu: the pressure rate and ramp, how fast the player's power grows (forward pressure), forgiveness (lives, relief per success), and the pace of new layers. Each has a sensible default, a range, and a plain label. Slone tunes by feel while playing; the values persist on the device and can be copied out. The plan is to save his tuned values globally through an API so every player gets the values he settled on (roadmap). The agent's job is to pick good knobs and defaults, not to be the final balancer. (v3, one data point: `_demo`.)
+
 ## Revision log
+- v3, 2026-10-29: balance menu rule (11). Prompted by Slone expecting AI to be weak at balance.
+- v2, 2026-10-29: from Slone's second round on `_demo`. Confirmed working: layered back pressure that grows, hard failure, failure juice (still one data point each). Added: forward pressure, every reward cue must mean something, earned power moments (6).
 - v1, 2026-10-29: from Slone's first play of `_demo` (two rounds of feedback). Added: pressure gains complexity over time and the target feeling chooses soft vs hard failure (6); failure as reprieve (6), collecting opens content (6), failure gets the full effect stack, equal-step pitch ladders with a cap, juice-in-first-pass (7). All one data point until repeated on another night.

@@ -17,6 +17,7 @@ Recovery loop: what a soft failure looks like and how it generates a story
 Different from the last five nights (from the ledger only): one line
 Scope cut line: what is in, what is explicitly out
 Feel plan: sound and juice on main verb, feedback events, pressure state
+Balance knobs (3 to 8): id, default, range, what it changes (exposed in the pause menu's Balance screen)
 Telemetry plan: metrics and bots
 Feedback questions (3-5): see below
 ```

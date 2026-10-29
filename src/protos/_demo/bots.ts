@@ -9,16 +9,36 @@ interface DemoObs extends Observation {
   dashCd: number;
   pickups: { x: number; y: number }[];
   hazards: { x: number; y: number; active: boolean }[];
+  surgeReady: boolean;
+  surging: boolean;
 }
 
-/** Competent policy: chase the nearest pickup, steer around live drifters, dash when the pickup is far. */
+/** Competent policy: chase the nearest pickup, steer around live drifters, dash when the pickup is far, spend a full surge meter and hunt drifters while surging. */
 export function greedyBot(): Bot {
   let lastDash = false;
+  let lastSurge = false;
   return {
     name: 'greedy',
-    reset() { lastDash = false; },
+    reset() { lastDash = false; lastSurge = false; },
     act(obs): BotInput {
       const o = obs as DemoObs;
+      if (o.surging) {
+        // hunt the nearest live drifter; with none, head for the nearest pickup
+        let t: { x: number; y: number } | null = null;
+        let td = Infinity;
+        for (const h of o.hazards) {
+          const d = Math.hypot(h.x - o.x, h.y - o.y);
+          if (h.active && d < td) { td = d; t = h; }
+        }
+        if (!t) for (const p of o.pickups) {
+          const d = Math.hypot(p.x - o.x, p.y - o.y);
+          if (d < td) { td = d; t = p; }
+        }
+        if (!t) return {};
+        return { left: { x: (t.x - o.x) / Math.max(td, 1), y: (t.y - o.y) / Math.max(td, 1) } };
+      }
+      const press = o.surgeReady && !lastSurge;
+      lastSurge = press;
       let best: { x: number; y: number } | null = null;
       let bd = Infinity;
       for (const p of o.pickups) {
@@ -44,7 +64,7 @@ export function greedyBot(): Bot {
       if (m > 1) { dx /= m; dy /= m; }
       const wantDash = !!best && bd > 260 && o.dashCd === 0 && !lastDash && Math.hypot(num(obs, 'vx'), num(obs, 'vy')) < 600;
       lastDash = wantDash;
-      return { left: { x: dx, y: dy }, hold: wantDash ? ['a'] : [] };
+      return { left: { x: dx, y: dy }, hold: press ? ['x'] : wantDash ? ['a'] : [] };
     },
   };
 }

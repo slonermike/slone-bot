@@ -19,6 +19,8 @@ export interface Telemetry {
     hitStopFrames: number;
   };
   errors: string[];
+  /** Balance values in effect for this run (when the build exposes any). */
+  balance?: Record<string, number>;
 }
 
 /** Metrics every run carries (0 when the prototype does not report them). */

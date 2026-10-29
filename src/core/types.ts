@@ -68,6 +68,20 @@ export interface SimTime {
   readonly seconds: number;
 }
 
+/** One tweakable balance value, shown in the pause menu's Balance screen. */
+export interface BalanceSpec {
+  /** Stable id (saved values are keyed by it). */
+  id: string;
+  /** Plain-language label. */
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  default: number;
+  /** Shown after the value, e.g. "s" or "x". */
+  unit?: string;
+}
+
 /** Everything sim code may touch. No rendering, DOM, audio, or Math.random. */
 export interface Ctx {
   readonly seed: number;
@@ -78,10 +92,14 @@ export interface Ctx {
   readonly time: SimTime;
   /** URL query params (or {} in sim-only runs), for prototype-level toggles. */
   readonly params: Readonly<Record<string, string>>;
+  /** Live balance values (id -> number). Read them every step so menu changes apply immediately; fall back to the spec default when a key is missing. */
+  readonly balance: Record<string, number>;
 }
 
 export interface Prototype {
   meta: PrototypeMeta;
+  /** The 3 to 8 tweakable balance values this build exposes in the pause menu. */
+  balance?: BalanceSpec[];
   /** Create sim state. No drawing here. */
   init(ctx: Ctx): void;
   /** ONE fixed sim step. Pure logic: no Pixi, DOM, audio, or Math.random. */
