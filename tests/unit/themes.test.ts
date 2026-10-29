@@ -8,6 +8,11 @@ import * as themesModule from '../../scripts/themes.mjs';
 const themes = themesModule as any;
 
 const SEED = path.resolve(__dirname, '../../themes');
+// the real pool grows every night (agents add themes), so tests must not hard-code its size or next id
+const POOL_SIZE = JSON.parse(fs.readFileSync(path.join(SEED, 'pool.json'), 'utf8')).length as number;
+const FALLBACK_SIZE = JSON.parse(fs.readFileSync(path.join(SEED, 'fallback-pool.json'), 'utf8')).length as number;
+const maxId = Math.max(...JSON.parse(fs.readFileSync(path.join(SEED, 'pool.json'), 'utf8')).map((t: { id: string }) => Number(t.id.slice(1))));
+const nextId = `t${String(maxId + 1).padStart(3, '0')}`;
 let dir: string;
 const pool = () => JSON.parse(fs.readFileSync(path.join(dir, 'pool.json'), 'utf8'));
 const grave = () => JSON.parse(fs.readFileSync(path.join(dir, 'graveyard.json'), 'utf8'));
@@ -44,7 +49,7 @@ describe('roll', () => {
     fs.writeFileSync(path.join(dir, 'pool.json'), JSON.stringify(pool().slice(0, 2)));
     const r = themes.roll({ dir, today: '2030-03-02' });
     expect(r.text).toMatch(/Falling back/);
-    expect(pool().length).toBe(20);
+    expect(pool().length).toBe(FALLBACK_SIZE);
   });
 });
 
@@ -100,7 +105,7 @@ describe('resolve', () => {
 describe('add', () => {
   it('adds a theme with a fresh id', () => {
     const r = themes.add({ dir, today: '2030-06-01', text: 'Gravity that only works on weekends', type: 'constraint', env: {} });
-    expect(r.text).toMatch(/added t021/);
+    expect(r.text).toContain(`added ${nextId}`);
     expect(pool().at(-1).source).toBe('postmortem');
   });
   it('rejects near-duplicates, bad types, and more than 3 per night', () => {
@@ -116,7 +121,7 @@ describe('add', () => {
 
 describe('report', () => {
   it('prints strike data for humans and refuses under NIGHT_RUN=1', () => {
-    expect(themes.report({ dir, env: {} }).text).toMatch(/pool size: \d+/);
+    expect(themes.report({ dir, env: {} }).text).toMatch(new RegExp(`pool size: ${POOL_SIZE}`));
     expect(() => themes.report({ dir, env: { NIGHT_RUN: '1' } })).toThrow(/human only/);
   });
   it('the CLI refuses report when NIGHT_RUN=1', () => {
