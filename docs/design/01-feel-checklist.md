@@ -53,6 +53,8 @@ Run this on every build before wrap-up. For each item, mark: yes, no, n/a, or un
 ## G. Pressure and recovery (taste)
 - [ ] Idle bot proves back pressure acts without player input. [bot]
 - [ ] Pressure rises over time or with exploration, with a visible curve.
+- [ ] Pressure gains complexity, not just speed: a new source or a change in character appears as the session goes on. [bot: count distinct pressure events by minute]
+- [ ] The failure type matches the target feeling and the brief says which: soft reprieve only, or soft failures plus a real run end. A rising-threat game can end. [Slone]
 - [ ] A soft failure leads to a recoverable state, with a story-worthy moment. [Slone]
 - [ ] After a failure the pressure eases or its ramp restarts (a reprieve), not the pre-death rate. [bot: rate after death < rate before]
 - [ ] Collecting or progressing opens new functionality or content, not only score. [Slone]
