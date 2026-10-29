@@ -16,6 +16,7 @@ Production dependencies that ship in the built site. All are permissive and comm
 | Rapier 2D (@dimforge/rapier2d-compat 0.21) | Dimforge | https://github.com/dimforge/rapier.js | Apache-2.0 | 2026-10-29 | Optional physics (bundled only when a prototype imports it) | No |
 | @fontsource/space-grotesk | Fontsource contributors | https://github.com/fontsource/font-files | OFL-1.1 | 2026-10-29 | Launcher font files | No |
 | PixiJS transitive dependencies (@pixi/colord, earcut, eventemitter3, gifuct-js, ismobilejs, parse-svg-path, tiny-lru, @xmldom/xmldom) | Various | https://www.npmjs.com/ | MIT, ISC, BSD-3-Clause | 2026-10-29 | Rendering | No |
+| Electron and electron-updater (desktop host app in `host/`) | Electron contributors; electron-userland | https://github.com/electron/electron | MIT | 2026-10-29 | Desktop host app only (not the site) | No |
 
 Development tools (not shipped): Vite, TypeScript, Vitest, Playwright (MIT or Apache-2.0).
 

@@ -1,6 +1,7 @@
-const { app, BrowserWindow, globalShortcut, session } = require('electron');
+const { app, BrowserWindow, globalShortcut, session, ipcMain, shell, net } = require('electron');
 const path = require('node:path');
 const { resolveConfig, isAllowedNavigation } = require('./config.cjs');
+const { createUpdater } = require('./updater.cjs');
 
 const cfg = resolveConfig({
   argv: process.argv.slice(1),
@@ -22,6 +23,7 @@ if (!app.requestSingleInstanceLock()) app.quit();
 
 let win;
 let retry;
+let updater;
 
 function load() {
   clearTimeout(retry);
@@ -36,7 +38,7 @@ function createWindow() {
     autoHideMenuBar: true,
     backgroundColor: '#0b0b14',
     show: false,
-    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, devTools: cfg.devtools },
+    webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, devTools: cfg.devtools },
   });
   win.removeMenu();
   win.once('ready-to-show', () => win.show());
@@ -59,7 +61,33 @@ function createWindow() {
   load();
 }
 
+const fromLauncher = (e) => {
+  try { return new URL(e.senderFrame.url).origin === cfg.origin; } catch { return false; }
+};
+
+async function fetchJson(url) {
+  const res = await net.fetch(url, { headers: { accept: 'application/vnd.github+json' } });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+function setupUpdates() {
+  const { autoUpdater } = require('electron-updater');
+  updater = createUpdater({
+    app, shell, autoUpdater, fetchJson, origin: cfg.origin, platform: process.platform, arch: process.arch,
+    send: (s) => win && !win.isDestroyed() && win.webContents.send('mgb:update', s),
+  });
+  ipcMain.on('mgb:info', (e) => { e.returnValue = { version: app.getVersion(), platform: process.platform }; });
+  ipcMain.handle('mgb:update-state', (e) => (fromLauncher(e) ? updater.state : null));
+  ipcMain.handle('mgb:update-check', (e) => (fromLauncher(e) ? updater.check() : null));
+  ipcMain.handle('mgb:update-install', (e) => (fromLauncher(e) ? updater.install() : null));
+  // look once shortly after start, then every few hours while it stays open
+  setTimeout(() => updater.check(), 8000);
+  setInterval(() => updater.check(), 6 * 60 * 60 * 1000);
+}
+
 app.whenReady().then(() => {
+  setupUpdates();
   // Deny every permission prompt (the launcher needs none; the Gamepad API is not permission-gated).
   session.defaultSession.setPermissionRequestHandler((_wc, _perm, cb) => cb(false));
   createWindow();
