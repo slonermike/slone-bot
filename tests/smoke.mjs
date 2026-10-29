@@ -166,11 +166,13 @@ try {
   // small screens: the pause menu must fit the viewport
   for (const vp of [{ width: 1366, height: 768 }, { width: 1024, height: 600 }]) {
     await P.setViewportSize(vp);
+    // a keypress can be lost on a busy page, so retry pausing instead of assuming the first Escape landed
     await P.keyboard.press('Escape');
-    await until(() => window.__scaffold.state() === 'paused');
+    for (let i = 0; i < 3 && !(await until(() => window.__scaffold.state() === 'paused')); i++) await P.keyboard.press('Escape');
     await focusItem('Juice dial');
     await P.keyboard.press('Space');
     await until(() => document.querySelector('.mgb-menu h2')?.textContent === 'Juice dial');
+    await until(() => (document.querySelector('.mgb-panel')?.getBoundingClientRect().height ?? 0) > 0); // the panel can be mid-render
     const box = await P.evaluate(() => { const r = document.querySelector('.mgb-panel').getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), right: Math.round(r.right), h: innerHeight, w: innerWidth }; });
     await P.screenshot({ path: path.join(OUT, `screens/menu-${vp.width}x${vp.height}.png`) });
     check(`juice menu fits ${vp.width}x${vp.height}`, box.bottom > 0 && box.top >= -1 && box.bottom <= box.h + 1 && box.right <= box.w + 1, JSON.stringify(box));
