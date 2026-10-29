@@ -10,7 +10,7 @@ src/
   audio/       synth, sampleLoader, bus, play()
   launcher/    card grid, input focus, feedback-sheet display
   bots/        bot interface, bot runners (see 04)
-  protos/      one folder per prototype slug (empty on main except _demo)
+  protos/      one folder per prototype slug (empty on main except the bare smoke-test fixture _fixture)
 scripts/       themes.mjs, night-state.mjs, preflight.mjs, build-site.mjs
 tests/         smoke tests
 ```
