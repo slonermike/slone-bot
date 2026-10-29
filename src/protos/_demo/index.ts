@@ -1,3 +1,6 @@
+// TEST FIXTURE, NOT A TEMPLATE. This prototype exists so the smoke test has something rich to exercise, and as the
+// first card on the site. Its look (navy ground, amber ball, rainbow confetti, glow) is deliberately not a house style.
+// Nightly agents: do not read or copy this. docs/tech/SCAFFOLD_API.md is the whole contract.
 import { Container, Graphics, Text } from 'pixi.js';
 import { defineSound, play } from '../../audio/index.ts';
 import { music } from '../../audio/music.ts';
