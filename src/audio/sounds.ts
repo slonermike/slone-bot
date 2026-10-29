@@ -12,7 +12,7 @@ export const DEFAULT_SOUNDS: Record<string, SfxParams | SfxParams[]> = {
     { wave: 'saw', freq: 160, slide: -2.0, attack: 0.001, sustain: 0.03, decay: 0.12, transient: 0.5, lowpass: 2600, volume: 0.5 },
     { wave: 'square', freq: 210, slide: -2.4, duty: 0.3, attack: 0.001, sustain: 0.02, decay: 0.11, transient: 0.45, volume: 0.4 },
   ],
-  pickup: { wave: 'square', freq: 660, slide: 0.9, duty: 0.25, attack: 0.001, sustain: 0.04, decay: 0.14, punch: 0.3, volume: 0.35 },
+  pickup: { wave: 'square', freq: 520, slide: 0.9, duty: 0.25, attack: 0.001, sustain: 0.04, decay: 0.14, punch: 0.3, volume: 0.35 },
   pressureUp: { wave: 'triangle', freq: 220, slide: 0.6, attack: 0.004, sustain: 0.12, decay: 0.2, vibratoDepth: 0.03, vibratoSpeed: 14, volume: 0.45 },
   fail: { wave: 'saw', freq: 300, slide: -1.4, attack: 0.002, sustain: 0.18, decay: 0.35, lowpass: 1800, vibratoDepth: 0.04, vibratoSpeed: 9, volume: 0.45 },
   recover: { wave: 'sine', freq: 330, slide: 1.1, attack: 0.004, sustain: 0.1, decay: 0.28, punch: 0.2, volume: 0.45 },

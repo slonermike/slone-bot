@@ -59,3 +59,14 @@ describe('bot harness on the demo prototype', () => {
     expect(runSim(mk('gameover'), idleBot()).telemetry.outcome).toBe('failed');
   });
 });
+
+describe('demo: failure is a reprieve', () => {
+  it('the pressure ramp restarts after a death', () => {
+    const create = demo.createPrototype;
+    const r = runSim(create, idleBot(), { seed: 1, maxSimSeconds: 100 });
+    // idle dies repeatedly; the final heat rate must be well below the capped rate it would reach without resets
+    expect(r.telemetry.metrics.deaths).toBeGreaterThan(3);
+    expect(r.telemetry.metrics.heatRate).toBeLessThan(30);
+    expect(r.telemetry.metrics.heatRate).toBeLessThan(5 + 0.2 * 100);
+  });
+});

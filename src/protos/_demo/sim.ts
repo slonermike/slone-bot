@@ -41,6 +41,8 @@ export class DemoSim {
   private level = 0;
   private beatT = 0;
   private recoverIn = 0;
+  /** Sim time of the last failure; the pressure ramp restarts from here so failing is a reprieve. */
+  private rampStart = 0;
   private out: SimEvent[] = [];
   private ctx!: Ctx;
 
@@ -57,7 +59,7 @@ export class DemoSim {
   }
 
   get heatRate(): number {
-    return Math.min(30, 5 + 0.2 * this.time);
+    return Math.min(30, 5 + 0.2 * (this.time - this.rampStart));
   }
 
   step(dt: number, input: InputState): void {
@@ -181,10 +183,11 @@ export class DemoSim {
     this.x = this.px = 640;
     this.y = this.py = 400;
     this.vx = this.vy = 0;
-    this.heat = 35;
+    this.heat = 20;
+    this.rampStart = this.time;
     this.pickups.length = 0;
     this.combo = 0;
-    this.invuln = 60;
+    this.invuln = 90;
     this.level = 0;
     this.recoverIn = 45;
     this.spawnT = 0.6;
@@ -209,6 +212,7 @@ export class DemoSim {
       mainVerbCount: this.dashes,
       scoreOrProgress: this.score,
       heat: Math.round(this.heat * 10) / 10,
+      heatRate: Math.round(this.heatRate * 10) / 10,
     };
   }
 }

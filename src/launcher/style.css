@@ -50,3 +50,22 @@ footer .note{margin-left:auto}
 .credits table{border-collapse:collapse;width:100%;font-size:17px}
 .credits th,.credits td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
 .credits th{color:var(--dim)}
+
+/* small screens (low-res laptops, Chromebooks): scale with the viewport instead of fixed pixels */
+header h1{font-size:clamp(26px,5.5vh,44px)}
+header .sub,header .filters{font-size:clamp(14px,2.8vh,22px)}
+header{padding:2vh 4vw 1vh}
+main{padding:1vh 4vw 2vh}
+footer{font-size:clamp(14px,2.7vh,21px);padding:1.2vh 4vw 1.6vh;gap:3vw;flex-wrap:wrap}
+.card h2{font-size:clamp(20px,3.8vh,30px)}
+.hero h2{font-size:clamp(24px,5.2vh,42px)}
+.q{font-size:clamp(14px,2.6vh,21px)}
+.feel,.meta{font-size:clamp(13px,2.4vh,20px)}
+.sheet{padding:min(26px,3vh) min(34px,4vw);max-height:94vh}
+.sheet h2{font-size:clamp(20px,4.2vh,34px)}
+.sheet .scroll{font-size:clamp(14px,2.7vh,21px)}
+.sheet pre{font-size:clamp(13px,2.5vh,19px)}
+.sheet .hint{font-size:clamp(13px,2.5vh,20px)}
+.row{font-size:clamp(16px,3.6vh,30px);padding:1vh 18px}
+@media (max-width:1000px){.grid{grid-template-columns:repeat(2,1fr)}.card.hero{grid-column:span 2}}
+@media (max-width:640px){.grid{grid-template-columns:1fr}.card.hero{grid-column:span 1;flex-direction:column}.hero .thumb{width:100%;height:150px}}

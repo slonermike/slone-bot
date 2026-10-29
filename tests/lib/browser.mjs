@@ -55,12 +55,13 @@ export async function newPage(browser, { pad = true, viewport = { width: 1280, h
   return { page, errors, ctx };
 }
 
-/** Hold buttons (indices) for ms, optionally with stick axes, then release. */
-export async function tap(page, buttons, ms = 120, axes = [0, 0, 0, 0]) {
+/** Hold buttons (indices) for ms (must span at least one frame; software GL frames can take 100+ ms), optionally with stick axes, then release. */
+export async function tap(page, buttons, ms = 300, axes = [0, 0, 0, 0]) {
   await page.evaluate(([b, a]) => window.__setPad(a, b), [buttons, axes]);
   await page.waitForTimeout(ms);
   await page.evaluate(() => window.__setPad([0, 0, 0, 0], []));
-  await page.waitForTimeout(60);
+  // let the page poll the release before the next press, or two quick taps merge into one
+  await page.waitForTimeout(450);
 }
 
 /** True when a PNG buffer has real content (several distinct colors), checked in a throwaway page. */

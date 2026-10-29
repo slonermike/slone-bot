@@ -1,3 +1,4 @@
+import { KEY_BUTTONS, setDevice } from './glyphs.ts';
 import { blankInput, shapeStick } from './input-state.ts';
 import type { StickShape } from './input-state.ts';
 import { BUTTONS } from './types.ts';
@@ -8,11 +9,6 @@ const PAD_BUTTONS: ButtonName[] = [
   'a', 'b', 'x', 'y', 'lb', 'rb', 'lt', 'rt', 'select', 'start', 'ls', 'rs', 'up', 'down', 'left', 'right',
 ];
 
-/** Debug-only keyboard fallback. */
-const KEY_BUTTONS: Record<string, ButtonName> = {
-  Space: 'a', KeyZ: 'a', KeyX: 'b', KeyC: 'x', KeyV: 'y', KeyQ: 'lb', KeyE: 'rb',
-  Enter: 'start', ShiftLeft: 'select', ShiftRight: 'select',
-};
 const KEY_STICK: Record<string, [number, number]> = {
   ArrowLeft: [-1, 0], KeyA: [-1, 0], ArrowRight: [1, 0], KeyD: [1, 0],
   ArrowUp: [0, -1], KeyW: [0, -1], ArrowDown: [0, 1], KeyS: [0, 1],
@@ -54,6 +50,11 @@ export class InputManager {
   private pendingReleased = new Set<ButtonName>();
   private injected: Partial<{ left: Partial<{ x: number; y: number }>; right: Partial<{ x: number; y: number }>; hold: ButtonName[] }> | null = null;
   private keys = new Set<string>();
+  /** Keys pressed since the last poll, so a tap shorter than one frame is never lost. */
+  private tapped = new Set<string>();
+  private prevPadDown = zeroValues();
+  /** Button values for the NEXT edge comparison: held keys and pad only. A tap that already ended counts as released. */
+  private heldNow = zeroValues();
   private listening = false;
 
   private readonly keyboard: boolean;
@@ -69,6 +70,8 @@ export class InputManager {
     target.addEventListener('keydown', (e) => {
       if (KEY_BUTTONS[e.code] || KEY_STICK[e.code]) e.preventDefault();
       this.keys.add(e.code);
+      this.tapped.add(e.code);
+      setDevice('keyboard');
     });
     target.addEventListener('keyup', (e) => this.keys.delete(e.code));
     target.addEventListener('blur', () => this.keys.clear());
@@ -85,6 +88,8 @@ export class InputManager {
     let lx = 0, ly = 0, rx = 0, ry = 0;
     let connected = false;
 
+    const padDown = zeroValues();
+    let padStick = 0;
     const pads = typeof navigator !== 'undefined' && navigator.getGamepads ? navigator.getGamepads() : [];
     for (const pad of pads) {
       if (!pad || !pad.connected) continue;
@@ -93,8 +98,11 @@ export class InputManager {
         const b = pad.buttons[i];
         if (!b) continue;
         const name = PAD_BUTTONS[i]!;
-        down[name] = Math.max(down[name], b.value > 0 ? b.value : b.pressed ? 1 : 0);
+        const v = b.value > 0 ? b.value : b.pressed ? 1 : 0;
+        down[name] = Math.max(down[name], v);
+        padDown[name] = Math.max(padDown[name], v);
       }
+      padStick = Math.max(Math.hypot(pad.axes[0] ?? 0, pad.axes[1] ?? 0), Math.hypot(pad.axes[2] ?? 0, pad.axes[3] ?? 0));
       lx += pad.axes[0] ?? 0;
       ly += pad.axes[1] ?? 0;
       rx += pad.axes[2] ?? 0;
@@ -102,7 +110,16 @@ export class InputManager {
       break; // first connected pad only
     }
 
+    // The gamepad wins the "last used device" label when a pad button goes down or a stick is pushed.
+    if (padStick > 0.6 || BUTTONS.some((b) => padDown[b] > 0.5 && this.prevPadDown[b] <= 0.5)) setDevice('gamepad');
+    this.prevPadDown = padDown;
+
+    const heldValues = { ...down };
     for (const code of this.keys) {
+      const hb = KEY_BUTTONS[code];
+      if (hb) heldValues[hb] = 1;
+    }
+    for (const code of new Set([...this.keys, ...this.tapped])) {
       const btn = KEY_BUTTONS[code];
       if (btn) down[btn] = 1;
       const s = KEY_STICK[code];
@@ -117,8 +134,10 @@ export class InputManager {
       ly += this.injected.left?.y ?? 0;
       rx += this.injected.right?.x ?? 0;
       ry += this.injected.right?.y ?? 0;
-      for (const b of this.injected.hold ?? []) down[b] = 1;
+      for (const b of this.injected.hold ?? []) { down[b] = 1; heldValues[b] = 1; }
     }
+
+    this.tapped.clear();
 
     // D-pad doubles as left stick when the stick is idle.
     const l = shapeStick(clampAxis(lx), clampAxis(ly), this.shape);
@@ -148,7 +167,8 @@ export class InputManager {
     }
     if (this.frame.pressed.size > 0 || l.x !== 0 || l.y !== 0) this.lastActivityAt = now;
 
-    this.prevDown = down;
+    this.heldNow = heldValues;
+    this.prevDown = this.heldNow;
     this.frame.down = down;
     this.frame.left = l;
     this.frame.right = r;

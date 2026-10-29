@@ -5,6 +5,7 @@ import './style.css';
 import { audio } from '../audio/audio.ts';
 import { parseAttribution } from '../core/attribution.ts';
 import type { CreditsSection } from '../core/attribution.ts';
+import { glyph, onDeviceChange } from '../core/glyphs.ts';
 import { formatPlayTime, loadHistory, recordLaunch } from '../core/history.ts';
 import { InputManager } from '../core/input.ts';
 import type { PrototypeManifest } from '../core/manifest.ts';
@@ -80,7 +81,7 @@ function renderGrid(): void {
   root.append(main);
 
   const foot = h('footer');
-  for (const [k, v] of [['A', 'Play'], ['X', 'Feedback'], ['Y', 'Filter'], ['Start', 'Menu']]) {
+  for (const [k, v] of [[glyph('a'), 'Play'], [glyph('x'), 'Feedback'], [glyph('y'), 'Filter'], [glyph('start'), 'Menu']]) {
     const s = h('span');
     s.append(h('b', '', k), v);
     foot.append(s);
@@ -178,7 +179,7 @@ function drawFilter(): void {
       row.append(h('span', '', it.label), h('span', '', it.on ? 'ON' : ''));
       sc.append(row);
     });
-    sheet.append(sc, h('div', 'hint', 'A toggle    B done'));
+    sheet.append(sc, h('div', 'hint', `${glyph('a')} toggle    ${glyph('b')} or ${glyph('start')} done`));
     sc.querySelector('.focus')?.scrollIntoView({ block: 'nearest' });
   });
   (drawFilter as unknown as { items: typeof items }).items = items;
@@ -207,7 +208,7 @@ async function openFeedback(slug: string): Promise<void> {
     if (pm) sc.append(h('pre', '', pm));
     sc.append(h('pre', '', sheetText));
     scrollEl = sc;
-    sheet.append(sc, h('div', 'hint', 'Up/Down scroll    A copy sheet text    B back'));
+    sheet.append(sc, h('div', 'hint', `Up/Down scroll    ${glyph('a')} copy sheet text    ${glyph('b')} or ${glyph('start')} back`));
   });
 }
 
@@ -244,7 +245,7 @@ async function openCredits(): Promise<void> {
     }
     sc.append(h('h3', '', 'License'), h('pre', '', credits!.license));
     scrollEl = sc;
-    sheet.append(sc, h('div', 'hint', 'Up/Down scroll    B back'));
+    sheet.append(sc, h('div', 'hint', `Up/Down scroll    ${glyph('b')} or ${glyph('start')} back`));
   });
 }
 
@@ -258,7 +259,7 @@ function drawMenu(): void {
       row.append(h('span', '', it.label()), h('span', '', it.value?.() ?? ''));
       sc.append(row);
     });
-    sheet.append(sc, h('div', 'hint', 'A select    Left/Right volume    B close'));
+    sheet.append(sc, h('div', 'hint', `${glyph('a')} select    Left/Right volume    ${glyph('b')} or ${glyph('start')} close`));
   });
 }
 
@@ -289,7 +290,7 @@ function onAction(a: NavAction): void {
     else if (a === 'start') { screen = 'menu'; menuIndex = 0; drawMenu(); }
     return;
   }
-  if (a === 'back') {
+  if (a === 'back' || a === 'start') {
     if (screen === 'credits') { screen = 'menu'; drawMenu(); } else { const wasFilter = screen === 'filter'; closeOverlay(); if (wasFilter) renderGrid(); }
     audio.play('ui-back');
     return;
@@ -344,8 +345,8 @@ async function boot(): Promise<void> {
     if (scrollEl && (input.frame.left.y !== 0)) scrollEl.scrollBy({ top: input.frame.left.y * 14 });
   };
   requestAnimationFrame(loop);
-  // keyboard Escape doubles as B for debugging
-  window.addEventListener('keydown', (e) => { if (e.code === 'Escape') onAction('back'); });
+  // button labels follow the device last used
+  onDeviceChange(() => { if (!overlayEl) renderGrid(); });
   window.addEventListener('keydown', () => void audio.unlock(), { once: true });
 }
 

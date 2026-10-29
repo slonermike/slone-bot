@@ -7,6 +7,7 @@ import { fxStats, registerHitStop, resetFxStats, trauma } from '../juice/fx.ts';
 import { setVfxRandom } from '../juice/random.ts';
 import { tweens } from '../juice/tween.ts';
 import { DebugOverlay } from './debug.ts';
+import { glyph, onDeviceChange } from './glyphs.ts';
 import { recordPlayTime } from './history.ts';
 import { InputManager } from './input.ts';
 import { DT, FixedStepper } from './loop.ts';
@@ -234,7 +235,11 @@ export async function startPrototype(mod: PrototypeModule): Promise<Scaffold> {
   const titleEl = document.createElement('div');
   titleEl.className = 'mgb-overlay mgb-title';
   const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-  titleEl.innerHTML = `<h1>${esc(proto.meta.title)}</h1><p>${esc(proto.meta.question)}</p><p class="feel">${esc(proto.meta.targetFeeling)}</p><div class="go">PRESS A TO START</div>`;
+  titleEl.innerHTML = `<h1>${esc(proto.meta.title)}</h1><p>${esc(proto.meta.question)}</p><p class="feel">${esc(proto.meta.targetFeeling)}</p><div class="go"></div>`;
+  const goEl = titleEl.querySelector('.go')!;
+  const drawGo = () => { goEl.textContent = `PRESS ${glyph('a').toUpperCase()} TO START`; };
+  drawGo();
+  onDeviceChange(drawGo);
   document.body.appendChild(titleEl);
 
   const start = () => {
@@ -288,8 +293,9 @@ export async function startPrototype(mod: PrototypeModule): Promise<Scaffold> {
     }
 
     // shell-level input (reserved): pause, debug, return combo
+    let pausedThisFrame = false;
     if (state === 'title') {
-      if (input.justPressed('a') || input.justPressed('start')) start();
+      if (input.justPressed('a')) start();
     } else {
       const f = input.frame;
       if (f.down.select > 0.5 && f.down.start > 0.5) {
@@ -299,10 +305,15 @@ export async function startPrototype(mod: PrototypeModule): Promise<Scaffold> {
       } else {
         comboStart = -1;
         if (!leaving) returnBadge.style.display = 'none';
-        if (input.justPressed('start') && f.down.select < 0.5) setPaused(state !== 'paused');
+        if (input.justPressed('start') && f.down.select < 0.5) {
+          // Start/Esc pauses; while paused it acts as Back (leave a sub-screen, or resume from the main menu).
+          if (state === 'paused') menu.handle(['back']);
+          else { setPaused(true); pausedThisFrame = true; nav.reset(); }
+        }
         if (input.justPressed('a') && f.down.select > 0.5) debug.toggle();
       }
-      if (state === 'paused') menu.handle(nav.read(input, now).filter((a) => a !== 'start' && a !== 'select'));
+      // A button pressed on the very frame the menu opens must not count as a menu action.
+      if (state === 'paused' && !pausedThisFrame) menu.handle(nav.read(input, now).filter((a) => a !== 'start' && a !== 'select'));
     }
 
     // sim

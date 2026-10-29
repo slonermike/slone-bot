@@ -51,7 +51,7 @@ try {
   await L.page.screenshot({ path: path.join(OUT, 'screens/launcher.png') });
 
   // launch with the gamepad (A)
-  await tap(L.page, [BTN.a], 150);
+  await tap(L.page, [BTN.a], 300);
   await L.page.waitForURL(/\/p\/_demo\/$/, { timeout: 8000 });
   check('press A launches the card', true);
 
@@ -61,7 +61,7 @@ try {
   const P = L.page;
 
   check('title screen waits for A', (await P.evaluate(() => window.__scaffold.state())) === 'title');
-  await tap(P, [BTN.a], 150);
+  await tap(P, [BTN.a], 300);
   check('A starts the game', (await P.evaluate(() => window.__scaffold.state())) === 'playing');
 
   // 2. synthetic gamepad moves something
@@ -71,7 +71,7 @@ try {
   check('stick input moves the ball', x1 - x0 > 40, `x ${x0.toFixed(0)} -> ${x1.toFixed(0)}`);
 
   // 4. audio event fires (spy on play log)
-  await tap(P, [BTN.a], 150, [1, 0, 0, 0]);
+  await tap(P, [BTN.a], 300, [1, 0, 0, 0]);
   const played = await P.evaluate(() => window.__scaffold.audioLog.map((e) => e.name));
   check('audio event fired (dash)', played.includes('dash'), `log: ${[...new Set(played)].join(',')}`);
 
@@ -107,12 +107,58 @@ try {
   const colors = await pngIsNonBlank(browser, shot);
   check('screenshot is non-blank', colors > 8, `${colors} distinct colors`);
 
-  // pause toggles
-  await tap(P, [BTN.start], 120);
-  const paused = await P.evaluate(() => window.__scaffold.state());
-  await tap(P, [BTN.start], 120);
-  const resumed = await P.evaluate(() => window.__scaffold.state());
+  // pause toggles (gamepad Start)
+  await tap(P, [BTN.start], 300);
+  const paused = await P.waitForFunction(() => window.__scaffold.state() === 'paused', null, { timeout: 4000 }).then(() => 'paused', () => 'not paused');
+  await tap(P, [BTN.start], 300);
+  const resumed = await P.waitForFunction(() => window.__scaffold.state() === 'playing', null, { timeout: 4000 }).then(() => 'playing', () => 'not playing');
   check('Start pauses and resumes', paused === 'paused' && resumed === 'playing', `${paused} -> ${resumed}`);
+
+  // keyboard: labels switch device, Escape pauses and acts as Back inside menus.
+  // Software-GL frames are slow here, so wait on conditions instead of fixed delays.
+  const until = (fn, arg) => P.waitForFunction(fn, arg, { timeout: 4000 }).then(() => true, () => false);
+  const state = () => P.evaluate(() => window.__scaffold.state());
+  const title = () => P.evaluate(() => document.querySelector('.mgb-menu h2')?.textContent ?? '');
+  const focusItem = async (label) => {
+    for (let i = 0; i < 8; i++) {
+      const cur = await P.evaluate(() => document.querySelector('.mgb-menu .mgb-item.on')?.textContent ?? '');
+      if (cur.startsWith(label)) return true;
+      await P.keyboard.press('ArrowDown');
+      await P.waitForTimeout(400);
+    }
+    return false;
+  };
+  await P.keyboard.press('Space');
+  await P.keyboard.press('Escape');
+  const escPaused = await until(() => window.__scaffold.state() === 'paused');
+  const hintKb = await P.textContent('.mgb-menu .mgb-hint').catch(() => '');
+  await focusItem('Juice dial');
+  await P.keyboard.press('Space'); // Juice dial
+  const inJuice = await until(() => document.querySelector('.mgb-menu h2')?.textContent === 'Juice dial');
+  await P.keyboard.press('Escape'); // back to the main menu
+  const backToMain = await until(() => document.querySelector('.mgb-menu h2')?.textContent === 'Paused' && window.__scaffold.state() === 'paused');
+  await P.keyboard.press('Escape'); // resume
+  const resumedKb = await until(() => window.__scaffold.state() === 'playing');
+  check('Escape pauses, goes Back inside menus, then resumes', escPaused && inJuice && backToMain && resumedKb, `${escPaused} ${inJuice} ${backToMain} ${resumedKb}`);
+  check('keyboard use switches hints to key names', /Space|Esc/.test(hintKb ?? '') && !/ A /.test(hintKb ?? ''), hintKb ?? '');
+
+  // small screens: the pause menu must fit the viewport
+  for (const vp of [{ width: 1366, height: 768 }, { width: 1024, height: 600 }]) {
+    await P.setViewportSize(vp);
+    await P.keyboard.press('Escape');
+    await until(() => window.__scaffold.state() === 'paused');
+    await focusItem('Juice dial');
+    await P.keyboard.press('Space');
+    await until(() => document.querySelector('.mgb-menu h2')?.textContent === 'Juice dial');
+    const box = await P.evaluate(() => { const r = document.querySelector('.mgb-panel').getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), right: Math.round(r.right), h: innerHeight, w: innerWidth }; });
+    await P.screenshot({ path: path.join(OUT, `screens/menu-${vp.width}x${vp.height}.png`) });
+    check(`juice menu fits ${vp.width}x${vp.height}`, box.bottom > 0 && box.top >= -1 && box.bottom <= box.h + 1 && box.right <= box.w + 1, JSON.stringify(box));
+    await P.keyboard.press('Escape');
+    await until(() => document.querySelector('.mgb-menu h2')?.textContent === 'Paused');
+    await P.keyboard.press('Escape');
+    await until(() => window.__scaffold.state() === 'playing');
+  }
+  await P.setViewportSize({ width: 1280, height: 800 });
 
   // 8. return-to-launcher combo (hold Select+Start 0.5 s)
   await P.evaluate((b) => window.__setPad([0, 0, 0, 0], b), [BTN.select, BTN.start]);

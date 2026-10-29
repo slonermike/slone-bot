@@ -77,7 +77,14 @@ shapeStick(x, y, { deadzone: 0.15, curve: 2 })
 `view.world` (Pixi Container that shakes; put game objects here), `view.ui` (never shakes; HUD), `view.app` (Pixi Application; cast `view.app as Application`), `view.width/height` (1280x800), `view.frame.dt` (real seconds), `view.onFrame(fn)` (per-frame callbacks for particles/eyes/squash updates).
 
 ## 2. Shell behavior you get for free
-Fixed 60 Hz timestep, accumulator clamp, interpolation alpha, hit-stop. "PRESS A TO START" title screen (satisfies the audio-gesture rule). **Start** pauses with the menu (Resume / Restart / Back to launcher / Juice dial / Feedback sheet). **Select+Start held 0.5 s** returns to the launcher. **Select+A** toggles the debug overlay (FPS, frame ms, steps/frame, input-to-visual/audio ms, events, juice). Auto-pause when the tab is hidden. Play time is recorded for the launcher. Keyboard fallback for debugging: arrows/WASD = left stick, Space/Z = A, X = B, C = X, V = Y, Q/E = LB/RB, Enter = Start, Shift = Select.
+Fixed 60 Hz timestep, accumulator clamp, interpolation alpha, hit-stop. "PRESS A TO START" title screen (satisfies the audio-gesture rule). **Start** pauses with the menu (Resume / Restart / Back to launcher / Juice dial / Feedback sheet). **Select+Start held 0.5 s** returns to the launcher. **Select+A** toggles the debug overlay (FPS, frame ms, steps/frame, input-to-visual/audio ms, events, juice). Auto-pause when the tab is hidden. Play time is recorded for the launcher. Keyboard fallback (also fine for playing on a desktop): arrows/WASD = left stick, Space/Enter/Z = A, X/Backspace = B, C = X, V = Y, Q/E = LB/RB, **Esc = Start** (pause, and Back inside menus), Shift = Select. Pause menu and launcher menus work from the keyboard too (arrows, Space/Enter, Esc).
+
+**Button labels follow the device the player used last** (`glyph('a')` is "A" on a gamepad and "Space" on a keyboard; remembered across page loads). Never hard-code "Press A" in text:
+```ts
+import { glyph, stickGlyph, onDeviceChange } from '../../core/index.ts';
+hint.text = `${stickGlyph('left')}: push    ${glyph('a')}: dash`;   // "Left stick: push  A: dash" or "WASD / arrows: push  Space: dash"
+```
+Text is re-evaluated by you: update labels in a `view.onFrame` callback (compare before assigning) or subscribe with `onDeviceChange(fn)`. `getDevice()` returns `'keyboard' | 'gamepad'`. Distinguishing between kinds of gamepad (Xbox vs PlayStation glyphs) is not done yet.
 
 URL flags: `?seed=N`, `?autostart=1` (skip the title screen), `?debug=1`, `?juice=off` or `?juice=shake,audio` (layers), `?intensity=0.5`.
 
@@ -176,6 +183,7 @@ Reusable helpers go in `src/core` or `src/juice` with a unit test and a short en
 |---|---|
 | `core`: `DT`, `FixedStepper` | The 1/60 constant and the pure accumulator the shell uses (`advance`, `hitStop`, `timescale`). Used by tests and bots. |
 | `core`: `InputManager` | Gamepad/keyboard poller (`poll`, `takeStepInput`, `inject`, `frame`). The shell owns the instance; read via `window.__scaffold.input`. |
+| `core`: `glyph`, `stickGlyph`, `getDevice`, `setDevice`, `onDeviceChange`, `KEY_BUTTONS`, `Device` | Device-aware button labels and the keyboard mapping (one source for both the input layer and the labels). |
 | `core`: `blankInput`, `expandBotInput` | Build an all-zero `InputState`; expand a `BotInput` into one with press/release edges. |
 | `core`: `hashSeed(text)` | Stable 32-bit seed from a string. |
 | `core`: `startPrototype`, `launcherUrl`, `WIDTH`, `HEIGHT` | Shell entry (called by `src/core/shell/main.ts`), the launcher URL used by the return combo, and the 1280x800 logical size. |

@@ -181,3 +181,27 @@ describe('track', () => {
     expect(calls).toEqual(['hello']);
   });
 });
+
+describe('glyphs', () => {
+  it('labels follow the device', async () => {
+    const g = await import('../../src/core/glyphs.ts');
+    expect(g.glyph('a', 'gamepad')).toBe('A');
+    expect(g.glyph('a', 'keyboard')).toBe('Space');
+    expect(g.glyph('start', 'keyboard')).toBe('Esc');
+    expect(g.stickGlyph('left', 'gamepad')).toBe('Left stick');
+    expect(g.stickGlyph('left', 'keyboard')).toMatch(/WASD/);
+  });
+  it('notifies on change only, and maps Escape to start, Enter to A, Backspace to B', async () => {
+    const g = await import('../../src/core/glyphs.ts');
+    const seen: string[] = [];
+    const off = g.onDeviceChange((d) => seen.push(d));
+    g.setDevice('gamepad');
+    g.setDevice('gamepad');
+    g.setDevice('keyboard');
+    off();
+    expect(seen).toEqual(['gamepad', 'keyboard']);
+    expect(g.KEY_BUTTONS.Escape).toBe('start');
+    expect(g.KEY_BUTTONS.Enter).toBe('a');
+    expect(g.KEY_BUTTONS.Backspace).toBe('b');
+  });
+});
