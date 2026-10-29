@@ -184,6 +184,16 @@ try {
   await P.evaluate(() => window.__setPad([0, 0, 0, 0], [])).catch(() => {});
   check('Select+Start combo returns to the launcher', new URL(P.url()).pathname === '/', P.url());
 
+  // 9. jukebox page: lists the songs, plays one without errors, and the launcher menu links to it
+  await P.goto(`${srv.url}/jukebox/`);
+  await P.waitForSelector('.track', { timeout: 10000 });
+  const trackCount = await P.$$eval('.track', (r) => r.length);
+  check('jukebox lists songs', trackCount >= 1, `${trackCount} tracks`);
+  await P.mouse.click(5, 5);
+  await tap(P, [BTN.a], 400);
+  await P.waitForFunction(() => document.querySelector('.track.focus .pp')?.textContent === '\u266a', null, { timeout: 8000 }).catch(() => {});
+  check('jukebox plays a song', (await P.$eval('.track.focus .pp', (e) => e.textContent)) === '\u266a');
+
   check('no console errors during whole run', L.errors.length === 0, L.errors.slice(0, 3).join(' | '));
 } catch (e) {
   check('smoke test ran to completion', false, e instanceof Error ? e.message : String(e));

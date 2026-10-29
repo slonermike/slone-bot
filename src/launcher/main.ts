@@ -276,6 +276,7 @@ function menuItems() {
   return [
     { label: () => 'Volume', value: () => `${Math.round(audio.getVolume('master') * 100)}%`, adjust: (d: number) => audio.setVolume('master', audio.getVolume('master') + d * 0.1) },
     { label: () => 'Mute', value: () => (audio.muted ? 'ON' : 'off'), activate: () => audio.setMuted(!audio.muted) },
+    { label: () => 'Jukebox (music test)', activate: () => { location.href = './jukebox/'; } },
     { label: () => 'About and credits', activate: () => void openCredits() },
     { label: () => 'Close', activate: () => closeOverlay() },
   ] as { label: () => string; value?: () => string; activate?: () => void; adjust?: (d: number) => void }[];

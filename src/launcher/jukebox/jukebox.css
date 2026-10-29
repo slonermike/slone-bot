@@ -1,0 +1,26 @@
+/* Jukebox page (shares the launcher's tokens and header/footer styles) */
+.jb{flex:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:24px;padding:10px 40px 20px;min-height:0}
+.jb .list{overflow-y:auto;scrollbar-width:none;padding-right:6px}
+.jb .list::-webkit-scrollbar{display:none}
+.track{display:flex;align-items:center;gap:14px;padding:10px 16px;border:3px solid transparent;border-radius:14px;margin:4px 0;font-size:24px}
+.track.focus{background:var(--panel2);border-color:var(--amber)}
+.track .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track .bpm{color:var(--dim);font-size:19px}
+.track .pp{width:22px;color:var(--teal)}
+.pill{font-size:15px;font-weight:700;letter-spacing:.5px;padding:3px 10px;border-radius:999px;border:2px solid var(--line);color:var(--dim);min-width:64px;text-align:center}
+.pill.keep{border-color:var(--teal);color:var(--teal)}
+.pill.tweak{border-color:var(--amber);color:var(--amber)}
+.pill.drop{border-color:var(--pink);color:var(--pink)}
+.detail{background:var(--panel);border:3px solid var(--line);border-radius:20px;padding:20px 26px;display:flex;flex-direction:column;gap:12px;min-height:0;overflow:auto;scrollbar-width:none}
+.detail h2{margin:0;font-size:34px;color:var(--amber)}
+.detail .style{color:var(--sky);font-size:20px}
+.detail .desc{font-size:21px;line-height:1.45}
+.detail .facts{color:var(--dim);font-size:18px}
+.detail canvas{width:100%;height:150px;background:#0a0a16;border-radius:12px;border:2px solid var(--line)}
+.detail .verdict{display:flex;gap:10px;align-items:center;font-size:20px}
+.detail input{flex:1;font:inherit;font-size:20px;color:var(--text);background:#0a0a16;border:2px solid var(--line);border-radius:10px;padding:8px 12px}
+.detail input:focus{outline:none;border-color:var(--amber)}
+.detail a{color:var(--sky)}
+.vol{color:var(--dim)}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--panel2);border:2px solid var(--amber);padding:10px 20px;border-radius:12px;font-size:20px;z-index:9}
+@media (max-width:900px){.jb{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) minmax(0,1fr);padding:6px 4vw}.track{font-size:18px;padding:6px 10px}.detail h2{font-size:24px}.detail .desc{font-size:16px}.detail canvas{height:90px}}

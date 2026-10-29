@@ -53,10 +53,29 @@ function copyIfExists(from, to) {
   return false;
 }
 
+/** Copy music/songs/* into jukebox/songs/ and list them in jukebox/songs.json (the page reads that list). */
+function buildJukeboxSongs() {
+  const src = path.join(ROOT, 'music', 'songs');
+  const dest = path.join(out, 'jukebox', 'songs');
+  fs.rmSync(dest, { recursive: true, force: true });
+  fs.mkdirSync(dest, { recursive: true });
+  const metas = [];
+  for (const f of fs.existsSync(src) ? fs.readdirSync(src).sort() : []) {
+    fs.copyFileSync(path.join(src, f), path.join(dest, f));
+    if (!f.endsWith('.json')) continue;
+    const s = JSON.parse(fs.readFileSync(path.join(src, f), 'utf8'));
+    const seconds = Math.round(((s.bars * 4 * 60) / s.tempo) * 10) / 10;
+    metas.push({ id: s.id, name: s.name, description: s.description, intent: s.intent, mood: s.mood, style: s.style, tempo: s.tempo, scale: s.scale, bars: s.bars, seconds });
+  }
+  fs.writeFileSync(path.join(out, 'jukebox', 'songs.json'), JSON.stringify(metas));
+  console.log(`jukebox: ${metas.length} songs`);
+}
+
 async function buildLauncher() {
   fs.rmSync(path.join(out, 'assets'), { recursive: true, force: true });
   fs.rmSync(path.join(out, 'index.html'), { force: true });
   await build(launcherConfig(out));
+  buildJukeboxSongs();
   fs.writeFileSync(path.join(out, '.nojekyll'), '');
   const attribution = fs.existsSync(path.join(ROOT, 'ATTRIBUTION.md')) ? fs.readFileSync(path.join(ROOT, 'ATTRIBUTION.md'), 'utf8') : '';
   const license = fs.existsSync(path.join(ROOT, 'LICENSE')) ? fs.readFileSync(path.join(ROOT, 'LICENSE'), 'utf8') : '';

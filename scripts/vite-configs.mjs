@@ -12,7 +12,10 @@ export function launcherConfig(outDir) {
     base: './',
     publicDir: false,
     logLevel: 'warn',
-    build: { outDir, emptyOutDir: false, target: 'es2022', chunkSizeWarningLimit: 900 },
+    build: {
+      outDir, emptyOutDir: false, target: 'es2022', chunkSizeWarningLimit: 900,
+      rollupOptions: { input: { main: path.join(ROOT, 'src/launcher/index.html'), jukebox: path.join(ROOT, 'src/launcher/jukebox/index.html') } },
+    },
     server: { fs: { allow: [ROOT] } },
   };
 }

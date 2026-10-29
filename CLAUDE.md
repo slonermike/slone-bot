@@ -15,7 +15,7 @@ A factory for small, playable 2D game prototypes, built unattended one per night
 
 ## File map
 - `CONSTITUTION.md`: rules, decision authority, knowledge policy, cost and time rules
-- `docs/tech/`: stack, core, audio/juice, bot harness, launcher/hosting, run protocol, themes script, `SCAFFOLD_API.md`
+- `docs/tech/`: stack, core, audio/juice, bot harness, launcher/hosting, run protocol, themes script, `SCAFFOLD_API.md`, music and jukebox (`10-music-and-jukebox.md`)
 - `docs/design/00-bible.md`: design principles. **READ-ONLY during nightly runs.**
 - `docs/design/01-feel-checklist.md`: the feel pass checklist. Read-only.
 - `docs/design/02-taste-cards.md`: what Slone loves, stripped to the heart. Read-only.
