@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { resolveConfig, isAllowedNavigation, needsRevalidation, isSteamDeck, NO_MOUSE_CSS, DEFAULT_URL } = require('../config.cjs');
+const { resolveConfig, isAllowedNavigation, needsRevalidation, isSteamDeck, launchedBySteam, NO_MOUSE_CSS, DEFAULT_URL } = require('../config.cjs');
 
 test('defaults', () => {
   const c = resolveConfig();
@@ -48,4 +48,12 @@ test('recognizes a Steam Deck and keeps mouse off only there', () => {
   assert.match(NO_MOUSE_CSS, /pointer-events:none/);
   assert.equal(resolveConfig({ argv: ['--no-mouse'] }).noMouse, true);
   assert.equal(resolveConfig({ argv: ['--allow-mouse'] }).allowMouse, true);
+});
+
+test('knows whether Steam launched the app (Desktop Mode launches do not get a gamepad layout)', () => {
+  assert.ok(launchedBySteam({ SteamGameId: '123' }));
+  assert.ok(launchedBySteam({ SteamAppId: '456' }));
+  assert.ok(launchedBySteam({ STEAM_COMPAT_APP_ID: '0' }));
+  assert.ok(!launchedBySteam({}));
+  assert.ok(!launchedBySteam({ SteamDeck: '1' })); // being on a Deck is not the same as being launched by Steam
 });

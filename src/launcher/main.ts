@@ -24,6 +24,10 @@ let screen: Screen = 'grid';
 interface HostUpdate { status: string; version: string | null; percent: number; manual: boolean; error: string | null }
 interface MgbHost {
   version: string;
+  /** On a Steam Deck / SteamOS. */
+  deck?: boolean;
+  /** Started by Steam (false when run from Desktop Mode, where Steam applies the mouse-and-keyboard layout). */
+  steam?: boolean;
   getUpdate(): Promise<HostUpdate | null>;
   checkUpdate(): Promise<HostUpdate | null>;
   installUpdate(): Promise<HostUpdate | null>;
@@ -100,7 +104,7 @@ function renderGrid(): void {
     s.append(h('b', '', k), v);
     foot.append(s);
   }
-  if (controllerNote) foot.append(h('span', 'note', `No controller detected. Press ${glyph('start')} for help`));
+  if (controllerNote) foot.append(h('span', 'note', host?.deck && !host.steam ? `Not started from Steam: the controller acts as a mouse. Press ${glyph('start')} for help` : `No controller detected. Press ${glyph('start')} for help`));
   if (brokenCount) foot.append(h('span', 'note', `${brokenCount} broken build${brokenCount === 1 ? '' : 's'} hidden`));
   root.append(foot);
   scrollFocusIntoView();
@@ -236,12 +240,20 @@ async function openFeedback(slug: string): Promise<void> {
   });
 }
 
+/** The help sheet was opened automatically at start, so Back returns to the grid, not to a menu that was never open. */
+let helpFromBoot = false;
+
 function openControllerHelp(): void {
   screen = 'credits'; // same scrolling sheet and Back behavior as the credits
   openOverlay((sheet) => {
     sheet.append(h('h2', '', 'Controller help'));
     const sc = h('div', 'scroll credits');
     const p = (t: string) => sc.append(h('p', '', t));
+    if (host?.deck && !host.steam) {
+      sc.append(h('h3', '', 'This app was not started from Steam'));
+      p('It was started outside Steam (for example from Desktop Mode), so the Deck gives it the Desktop controller layout: the triggers click like a mouse and the buttons are keyboard keys. That is why the games show keyboard prompts and the buttons do not match.');
+      p('Fix: in Desktop Mode open Steam, choose Games, then Add a Non-Steam Game to My Library, browse to this app and add it. Then launch it from Steam (the Library in Gaming Mode, or the Play button in Desktop Mode) instead of from the file manager. Steam then gives it a real gamepad.');
+    }
     sc.append(h('h3', '', 'Steam Deck: the controller acts like a mouse'));
     p('Steam can map the controller to a mouse and keyboard instead of a gamepad. Pressing a trigger then clicks, and the buttons do nothing in the games.');
     p('Fix: in Steam, open this app\'s Controller Settings, choose Browse Configs, and pick the official "Gamepad" template (not "Desktop" or "Web Browser"). Apply it, then relaunch the app.');
@@ -368,7 +380,7 @@ function onAction(a: NavAction): void {
     return;
   }
   if (a === 'back' || a === 'start') {
-    if (screen === 'credits') { screen = 'menu'; drawMenu(); } else { const wasFilter = screen === 'filter'; closeOverlay(); if (wasFilter) renderGrid(); }
+    if (screen === 'credits' && helpFromBoot) { helpFromBoot = false; closeOverlay(); renderGrid(); } else if (screen === 'credits') { screen = 'menu'; drawMenu(); } else { const wasFilter = screen === 'filter'; closeOverlay(); if (wasFilter) renderGrid(); }
     audio.play('ui-back');
     return;
   }
@@ -428,6 +440,12 @@ async function boot(): Promise<void> {
   window.addEventListener('keydown', () => void audio.unlock(), { once: true });
   // inside the desktop app, a missing controller is almost always Steam Input mapping it to a mouse
   if (host) {
+    // started outside Steam on a Deck there will be no gamepad: say so right away, once, instead of leaving it a mystery
+    if (host.deck && !host.steam) {
+      controllerNote = true;
+      helpFromBoot = true;
+      openControllerHelp();
+    }
     setTimeout(() => { if (!input.frame.connected) { controllerNote = true; if (!overlayEl) renderGrid(); } }, 8000);
   }
   if (host) {

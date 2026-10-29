@@ -1,7 +1,7 @@
 const { app, BrowserWindow, session, ipcMain, shell, net } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
-const { resolveConfig, isAllowedNavigation, needsRevalidation, isSteamDeck, NO_MOUSE_CSS } = require('./config.cjs');
+const { resolveConfig, isAllowedNavigation, needsRevalidation, isSteamDeck, launchedBySteam, NO_MOUSE_CSS } = require('./config.cjs');
 const { createUpdater } = require('./updater.cjs');
 
 const cfg = resolveConfig({
@@ -25,6 +25,7 @@ if (!app.requestSingleInstanceLock()) app.quit();
 let osRelease = '';
 try { osRelease = fs.readFileSync('/etc/os-release', 'utf8'); } catch { /* not Linux */ }
 const deck = isSteamDeck(process.env, osRelease);
+const viaSteam = launchedBySteam(process.env);
 let win;
 let retry;
 let updater;
@@ -100,7 +101,7 @@ function setupUpdates() {
     app, shell, autoUpdater, fetchJson, origin: cfg.origin, platform: process.platform, arch: process.arch,
     send: (s) => win && !win.isDestroyed() && win.webContents.send('mgb:update', s),
   });
-  ipcMain.on('mgb:info', (e) => { e.returnValue = { version: app.getVersion(), platform: process.platform, mouseOff: !cfg.allowMouse && (cfg.noMouse || deck) }; });
+  ipcMain.on('mgb:info', (e) => { e.returnValue = { version: app.getVersion(), platform: process.platform, mouseOff: !cfg.allowMouse && (cfg.noMouse || deck), deck, steam: viaSteam }; });
   ipcMain.handle('mgb:update-state', (e) => (fromLauncher(e) ? updater.state : null));
   ipcMain.handle('mgb:update-check', (e) => (fromLauncher(e) ? updater.check() : null));
   ipcMain.handle('mgb:update-install', (e) => (fromLauncher(e) ? updater.install() : null));
