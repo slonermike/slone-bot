@@ -1,0 +1,45 @@
+{
+  "night": "2026-10-29-demo-ball",
+  "seed": 1,
+  "bot": "realtime-greedy",
+  "mode": "systemic",
+  "simSeconds": 25.23,
+  "wallMs": 0,
+  "timescale": 1,
+  "outcome": "timeout",
+  "metrics": {
+    "runLength": 25.23,
+    "deaths": 1,
+    "firstPressureSimSec": 16.18,
+    "restartDelaySimSec": 0,
+    "mainVerbCount": 7,
+    "decisionsPerMinute": 0,
+    "idleSurvivalSec": 21.85,
+    "scoreOrProgress": 8,
+    "variance": 0,
+    "heat": 58.4
+  },
+  "perf": {
+    "avgFrameMs": 61.5,
+    "p95FrameMs": 116.6,
+    "fps": 16.26,
+    "particleMax": 125,
+    "effectsOn": true
+  },
+  "feel": {
+    "inputToVisualMs": 7,
+    "inputToAudioMs": 5.8,
+    "eventsFired": {
+      "dash": 7,
+      "pickup": 8,
+      "hit": 5,
+      "pressure": 4,
+      "heartbeat": 6,
+      "fail": 1,
+      "recover": 1
+    },
+    "shakePeak": 0.8,
+    "hitStopFrames": 28
+  },
+  "errors": []
+}
