@@ -112,6 +112,8 @@ export class DemoSim {
     this.ctx = ctx;
     this.maxLives = Math.round(this.bal('lives'));
     this.lives = this.maxLives;
+    // tells the music (render side) a run has begun; delivered on the first playing step
+    this.emit({ type: 'run-start', magnitude: 0 });
   }
 
   /** A live balance value (falls back to the spec default, e.g. in tests that build a bare ctx). */

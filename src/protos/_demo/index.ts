@@ -1,5 +1,6 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import { defineSound, play } from '../../audio/index.ts';
+import { music } from '../../audio/music.ts';
 import { glyph, stickGlyph } from '../../core/glyphs.ts';
 import type { Prototype, PrototypeModule, SimEvent, View } from '../../core/types.ts';
 import {
@@ -8,6 +9,7 @@ import {
 import { degenerateCornerBot, greedyBot } from './bots.ts';
 import { BALANCE, BALL_R, DemoSim, FIELD, HAZARD_R, LAYER_NAMES } from './sim.ts';
 import { vfx } from '../../juice/index.ts';
+import { buildDemoMusic, partsFor } from './music.ts';
 
 const COOL = 0x4cc9f0;
 const HOT = 0xff5d73;
@@ -33,6 +35,7 @@ function fmtTime(s: number): string {
 
 function createPrototype(): Prototype {
   const sim = new DemoSim();
+  let tune: ReturnType<typeof buildDemoMusic>;
   let particles: Particles;
   let ss: SquashStretch;
   let trail: Trail;
@@ -87,6 +90,9 @@ function createPrototype(): Prototype {
     meta: sim.meta,
     balance: BALANCE,
     init: (ctx) => sim.init(ctx),
+    dispose() {
+      music.stop();
+    },
     step: (dt, input) => sim.step(dt, input),
     events: () => sim.drain(),
     telemetry: () => sim.telemetry(),
@@ -101,6 +107,7 @@ function createPrototype(): Prototype {
     mount(view: View) {
       world = view.world as Container;
       const ui = view.ui as Container;
+      tune = buildDemoMusic();
       // failure is layered: sub boom + glassy crunch + descending buzz (default 'fail')
       defineSound('boom', { wave: 'sine', freq: 110, slide: -1.6, attack: 0.001, sustain: 0.08, decay: 0.45, punch: 0.4, transient: 0.5, lowpass: 600, volume: 0.7 });
       defineSound('crunch', [
@@ -366,6 +373,8 @@ function createPrototype(): Prototype {
         case 'layer': {
           // a new pressure source arrives: rising sting, a banner, a screen pulse
           const level = Number(e.data?.level ?? 2);
+          // the music follows the pressure: each layer adds a part
+          music.setParts(partsFor(level, sim.surging));
           play('layer', { pitch: Math.pow(2, ((level - 2) * 3) / 12), volume: 0.9 });
           play('boom', { pitch: 1.6, volume: 0.5 });
           numberPop(world, `${LAYER_NAMES[level - 1] ?? 'PRESSURE'}!`, 640, 150, { color: 0xffd166, size: 60, rise: 40, ms: 1400 });
@@ -431,9 +440,12 @@ function createPrototype(): Prototype {
           trail.clear();
           break;
         }
+        case 'run-start':
+          music.play(tune.loop, partsFor(1, false));
+          break;
         case 'surge-ready': {
           // the meter is full: announce it loudly, and keep reminding the player until they spend it
-          arpeggio([0, 4, 7, 12, 16, 19], 70, 0.8, 0.8);
+          music.stinger(tune.powerup);
           play('layer', { pitch: 2, volume: 0.8 });
           numberPop(world, 'SURGE READY!', 640, 220, { color: 0xfff3b0, size: 78, rise: 30, ms: 1600 });
           flashOverlay.tint = 0xfff3b0;
@@ -453,6 +465,7 @@ function createPrototype(): Prototype {
           punch(ballBody, 0.12);
           break;
         case 'surge-start': {
+          music.setParts(partsFor(sim.layer, true), 0.15); // the hook comes in: you earned the tune
           surgeTick = 0;
           surgeNote = 0;
           play('layer', { pitch: 2.4, volume: 1 });
@@ -497,6 +510,7 @@ function createPrototype(): Prototype {
           break;
         }
         case 'surge-end': {
+          music.setParts(partsFor(sim.layer, false), 0.5);
           play('boom', { pitch: 0.9, volume: 0.7 });
           arpeggio([19, 12, 7, 0], 80, 0.7, 0.6);
           const kills = Number(e.data?.kills ?? 0);
@@ -508,6 +522,8 @@ function createPrototype(): Prototype {
         }
         case 'gameover':
           // the hard end: the biggest event in the game gets the biggest effects
+          music.stinger(tune.lose, { duck: 0.2 });
+          music.release(2.5);
           play('boom', { pitch: 0.6, volume: 1 });
           play('fail', { pitch: 0.55 });
           shake(1);
@@ -518,6 +534,7 @@ function createPrototype(): Prototype {
           particles.emit('confetti', 640, 400, { count: 40, speed: 1.2 });
           break;
         case 'restart':
+          music.setParts(partsFor(1, false), 0.25); // the heat resets, so the music thins back out
           play('chime', { volume: 0.8 });
           play('recover');
           particles.emit('puff', e.x ?? 640, e.y ?? 400, { count: 14, color: 0x9cffd8 });

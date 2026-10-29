@@ -1,5 +1,6 @@
 import { Application, Container } from 'pixi.js';
 import { audio } from '../audio/audio.ts';
+import { music } from '../audio/music.ts';
 import { emptyTelemetry } from '../bots/telemetry.ts';
 import type { Telemetry } from '../bots/telemetry.ts';
 import { dial } from '../juice/dial.ts';
@@ -53,6 +54,8 @@ export interface Scaffold {
     leaving: boolean;
   };
   audioLog: typeof audio.log;
+  /** The music director (state and call log), for the smoke test and bots. */
+  music: typeof music;
 }
 
 declare global {
@@ -224,6 +227,7 @@ export async function startPrototype(mod: PrototypeModule): Promise<Scaffold> {
   function setPaused(p: boolean) {
     if (state === 'title') return;
     state = p ? 'paused' : 'playing';
+    music.setPaused(p);
     if (p) menu.show();
     else {
       menu.hide();
@@ -447,6 +451,7 @@ export async function startPrototype(mod: PrototypeModule): Promise<Scaffold> {
       return { frames, simSteps, fps: p.fps, avgFrameMs: p.avg, p95FrameMs: p.p95, gamepad: input.frame.connected, audioCalls: audio.log.length, leaving };
     },
     audioLog: audio.log,
+    music,
   };
   window.__scaffold = scaffold;
   requestAnimationFrame((t) => {

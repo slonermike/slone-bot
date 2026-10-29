@@ -41,6 +41,7 @@ class AudioEngine {
   private vfxRand: () => number = Math.random; // visual/audio-only randomness, not sim
   private volumes: Record<BusName, number> = { master: 0.8, sfx: 1, music: 0.8, ui: 1 };
   muted = false;
+  private readyHandlers: (() => void)[] = [];
   readonly log: PlayLogEntry[] = [];
   readonly counts: Record<string, number> = {};
   /** Wall-clock ms of the first play() after the latest input press (latency probe). */
@@ -82,6 +83,11 @@ class AudioEngine {
     try {
       if (!this.ctx) this.build();
       if (this.ctx && this.ctx.state === 'suspended') await this.ctx.resume();
+      if (this.running && this.readyHandlers.length) {
+        const hs = this.readyHandlers;
+        this.readyHandlers = [];
+        for (const h of hs) h();
+      }
     } catch {
       /* no audio hardware (headless): play() still logs */
     }
@@ -89,6 +95,22 @@ class AudioEngine {
 
   get running(): boolean {
     return this.ctx?.state === 'running';
+  }
+
+  /** The shared AudioContext once unlocked (null before a user gesture, or with no audio hardware). */
+  get context(): AudioContext | null {
+    return this.ctx;
+  }
+
+  /** A bus node, for routing music or other custom audio through the player's volume settings. */
+  bus(name: BusName): GainNode | null {
+    return this.buses[name] ?? null;
+  }
+
+  /** Run `fn` as soon as audio is unlocked and running (immediately if it already is). */
+  whenReady(fn: () => void): void {
+    if (this.running) fn();
+    else this.readyHandlers.push(fn);
   }
 
   play(name: string, opts: PlayOptions = {}): void {
