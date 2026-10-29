@@ -131,7 +131,7 @@ function render(): void {
     const song = loaded.get(m.id);
     detail.append(h('h2', '', m.name), h('div', 'style', m.style));
     const tags = h('div', 'tags');
-    tags.append(h('span', `tag ${m.character}`, m.character === 'hook' ? 'hook song' : 'vibe piece'), h('span', 'tag', m.form === 'loop' ? 'loop' : 'one-shot'), h('span', 'tag', m.meter), h('span', 'tag', m.scale), h('span', 'tag', `${m.tempo} bpm`), h('span', 'tag', `${m.barCount} bars, ${m.seconds}s`));
+    tags.append(h('span', `tag ${m.character}`, m.character === 'hook' ? 'hook song' : 'vibe piece'), h('span', 'tag', m.form === 'loop' ? 'loop' : 'stinger'), h('span', 'tag', m.meter), h('span', 'tag', m.scale), h('span', 'tag', `${m.tempo} bpm`), h('span', 'tag', `${m.barCount} bars, ${m.seconds}s`));
     detail.append(tags, h('div', 'desc', m.description));
     CATEGORIES.forEach((c, i) => detail.append(ratingRow(m, c, i)));
     detail.append(h('div', 'rhint', `${glyph('x')} picks a category (${CATEGORIES[cat]!.hint}) · Left/Right or 1-5 sets stars`));
@@ -268,7 +268,7 @@ function buildExport(): string {
   const done = metas.filter((m) => rated(ratings[m.id]));
   const fmt = (m: SongMeta) => {
     const e = ratings[m.id] ?? {};
-    return `${m.id} "${m.name}" [${m.character}, ${m.form}, ${m.meter}, ${m.tempo} bpm, ${m.scale}] listen ${e.l ?? '-'}/5, catchy ${e.c ?? '-'}/5, vibe ${e.v ?? '-'}/5${e.note ? ' - ' + e.note : ''}`;
+    return `${m.id} "${m.name}" [${m.character}, ${m.form === 'loop' ? 'loop' : 'stinger'}, ${m.meter}, ${m.tempo} bpm, ${m.scale}] listen ${e.l ?? '-'}/5, catchy ${e.c ?? '-'}/5, vibe ${e.v ?? '-'}/5${e.note ? ' - ' + e.note : ''}`;
   };
   const lines = [`Jukebox ratings: ${done.length} of ${metas.length} rated (listenability / catchiness / vibe, out of 5)`];
   if (done.length) lines.push('', ...[...done].sort((a, b) => total(ratings[b.id]) - total(ratings[a.id])).map((m) => '- ' + fmt(m)));

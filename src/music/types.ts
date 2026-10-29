@@ -2,8 +2,12 @@
  *  All positions are in quarter-note beats from the start of the song (so a bar of 7/8 is 3.5 beats long). */
 export type Inst = 'bass' | 'pad' | 'lead' | 'harmony' | 'riff' | 'arp' | 'drums';
 export type Voice = 'square' | 'saw' | 'pluck' | 'bell' | 'flute' | 'sub' | 'warm';
-export type SectionKind = 'intro' | 'verse' | 'pre' | 'chorus' | 'bridge' | 'outro' | 'groove';
+export type SectionKind = 'intro' | 'verse' | 'pre' | 'chorus' | 'bridge' | 'outro' | 'groove' | 'stinger';
+/** loop: plays under ongoing action, so it has no fixed length and its last bar leads back to the first.
+ *  oneshot: a stinger of a few bars that punctuates an event (level cleared, you died) and stops. */
 export type Form = 'loop' | 'oneshot';
+/** What a stinger is for. */
+export type StingerEvent = 'win' | 'lose' | 'boss' | 'powerup' | 'secret';
 /** hook: built around a repeating, catchy motif. vibe: texture and mood first, at any tempo (frantic is a vibe); its motif is sparse and does not repeat like a hook. */
 export type Character = 'hook' | 'vibe';
 
@@ -62,7 +66,6 @@ export interface Song {
   /** Genre and era flavor the brief asked for, e.g. "8-bit action stage". */
   style: string;
   seed: number;
-  /** loop: plays forever and its last bar leads back to its first. oneshot: has an ending. */
   form: Form;
   character: Character;
   /** Base tempo; the tempo map carries any changes. */

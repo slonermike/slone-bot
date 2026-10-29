@@ -1,11 +1,13 @@
-// The second batch (b02): twenty songs in the spirit of 8-bit and 16-bit era game music, with 80s rock and 2000s pop
-// hook craft mixed in. 12 loops and 8 one-shots; 13 are built around a hook and 7 are vibe pieces (texture and mood first, at any tempo: two of them are fast and frantic); time signatures
+// The second batch (b02): twenty pieces in the spirit of 8-bit and 16-bit era game music, with 80s rock and 2000s pop
+// hook craft mixed in. 15 loops (they play under ongoing action, so they have no fixed length and lead back into
+// themselves) and 5 one-shot stingers of two to four bars that mark an event (level cleared, you died, boss down,
+// power-up, secret found). Loops are hook songs or vibe pieces (texture and mood first, at any tempo, frantic included); time signatures
 // range over 4/4, 2/4, 3/4, 6/8, 7/8, 5/4, 9/8, 12/8, one song changes meter by section and one every few bars.
 // Where a brief leaves mode or tempo open, the vibe formula (vibe.ts) picks them from the target vibe.
 // Style sketches, not copies: every melody is generated from a seed.
-import type { ComposeOptions } from './compose.ts';
+import type { ComposeOptions, StingerOptions } from './compose.ts';
 
-type Brief = Omit<ComposeOptions, 'seed' | 'batch' | 'index'>;
+type Brief = Omit<ComposeOptions, 'seed' | 'batch' | 'index'> | Omit<StingerOptions, 'seed' | 'batch' | 'index'>;
 
 export const BATCH_2: Brief[] = [
   {
@@ -29,8 +31,8 @@ export const BATCH_2: Brief[] = [
     feel: { drums: 'march', bass: 'walk', bassVoice: 'saw', leadVoice: 'pluck', arp: 0, sync: 0.25, density: 0.85, harmony: false },
   },
   {
-    name: 'Coastline', style: '2000s pop-flavored seaside drive', mood: 'triumphant', form: 'oneshot', layout: 'shot-medium', description: 'A one-shot in lydian at 121 bpm with a pop shape: intro teases the hook, verse, rising pre-chorus that drops out before the chorus, bridge, then a last chorus a tone higher and a touch faster, ending on a slowing, held chord. Aiming for windows-down optimism.',
-    mode: 'lydian', meter: '4/4', bpm: [120, 126], keyLift: 2, tempoArc: 'lift', ending: 'big',
+    name: 'Coastline', style: '2000s pop-flavored seaside drive', mood: 'triumphant', form: 'loop', layout: 'loop-16', description: 'A seaside drive loop with a pop shape: lydian at 121 bpm, four-on-the-floor, octave bass, a saw hook doubled a third below in the chorus. Sixteen bars: verse, a pre-chorus that climbs and drops out for a beat, then an 8-bar chorus that lands hard. Windows-down optimism.',
+    mode: 'lydian', meter: '4/4', bpm: [120, 126],
     feel: { drums: 'four', bass: 'octaves', bassVoice: 'saw', leadVoice: 'saw', arpVoice: 'pluck', arp: 0.8, sync: 0.6, drop: true, harmony: true },
   },
   {
@@ -44,19 +46,9 @@ export const BATCH_2: Brief[] = [
     feel: { drums: 'funk', bass: 'sync', bassVoice: 'sub', leadVoice: 'pluck', arpVoice: 'bell', arp: 0.3, sync: 0.45, harmony: false },
   },
   {
-    name: 'Last Throne', style: '16-bit final boss', mood: 'urgent', form: 'oneshot', layout: 'shot-full', description: 'Final boss as a one-shot, phrygian at 152 bpm (the flat 2nd is menace). Mostly 4/4 but every fourth bar drops a beat to 3/4, which makes it lurch. Intro, verse, climbing pre-chorus, chorus, bridge, then a last chorus a semitone up and faster, ending in a big resolve.',
-    mode: 'phrygian', meter: { cycle: ['4/4', '4/4', '4/4', '3/4'] }, bpm: [150, 156], keyLift: 1, tempoArc: 'lift', ending: 'big',
+    name: 'Last Throne', style: '16-bit final boss', mood: 'urgent', form: 'loop', layout: 'loop-16', description: 'A final-boss loop: phrygian at 152 bpm (the flat 2nd is menace). Mostly 4/4, but every fourth bar drops a beat to 3/4, which makes it lurch. Galloping bass, a saw hook doubled in the chorus, a pre-chorus that climbs and cuts out before the chorus hits.',
+    mode: 'phrygian', meter: { cycle: ['4/4', '4/4', '4/4', '3/4'] }, bpm: [150, 156],
     feel: { drums: 'rock', bass: 'gallop', bassVoice: 'saw', leadVoice: 'saw', arpVoice: 'square', arp: 0.8, arpStep: 0.5, sync: 0.5, drop: true, harmony: true },
-  },
-  {
-    name: 'Press Start', style: '16-bit title screen fanfare', mood: 'triumphant', form: 'oneshot', layout: 'shot-short', description: 'A one-shot title-screen fanfare: major at 101 bpm, steady rock backbeat, bold square hook. It states the hook in the intro, builds through verse and chorus, and lands on a big final chord. Wanted the simplest, most direct tune in the batch.',
-    mode: 'major', meter: '4/4', bpm: [98, 104], ending: 'big',
-    feel: { drums: 'rock', bass: 'groups', bassVoice: 'saw', leadVoice: 'square', arpVoice: 'pluck', arp: 0.5, harmony: true },
-  },
-  {
-    name: 'Level Clear', style: '8-bit victory jingle', mood: 'playful', form: 'oneshot', layout: 'shot-tiny', description: 'A short win jingle as a one-shot: lydian at 136 bpm, busy square hook, octave-bouncing bass, a chorus repeated with the second one a tone higher, then a held final chord. Pure celebration in about 22 seconds.',
-    meter: '4/4', vibe: { valence: 0.95, energy: 0.75 }, bpm: [124, 140], ending: 'big', keyLift: 2,
-    feel: { drums: 'rock', bass: 'octaves', bassVoice: 'saw', leadVoice: 'square', arpVoice: 'square', arp: 0.6, sync: 0.5, density: 0.8, harmony: true },
   },
   {
     name: 'Glass Tide', style: '16-bit underwater, ambient', mood: 'eerie', form: 'loop', layout: 'loop-8', character: 'vibe', description: 'A vibe piece: slow underwater drift in 12/8 (four rolling groups of three), lydian at 67 bpm. No drums, a sub bass, a constant bell arp like light through water, and a sparse bell motif. Meant to be heard, not hummed. Floating, a little wonder.',
@@ -79,18 +71,8 @@ export const BATCH_2: Brief[] = [
     feel: { drums: 'funk', bass: 'sync', bassVoice: 'saw', leadVoice: 'saw', arpVoice: 'pluck', arp: 0.4, sync: 0.6, harmony: false },
   },
   {
-    name: 'Hold Forward', style: '16-bit speed run, bright', mood: 'triumphant', form: 'oneshot', layout: 'shot-short', description: 'A speed-run one-shot: lydian at 172 bpm and getting faster, bright square hook over octave bass and a plucked arp. Intro, verse, chorus, and a ritardando into a held final chord. Wanted the feeling of keeping the stick pushed forward.',
-    meter: '4/4', vibe: { valence: 0.8, energy: 0.95 }, bpm: [160, 172], tempoArc: 'accel', ending: 'big',
-    feel: { drums: 'rock', bass: 'octaves', bassVoice: 'saw', leadVoice: 'square', arpVoice: 'pluck', arp: 0.7, sync: 0.5, harmony: true },
-  },
-  {
-    name: 'Turn Order', style: '16-bit RPG battle', mood: 'tense', form: 'oneshot', layout: 'shot-medium', description: "A turn-based battle as a one-shot: minor at 150 bpm, octave bass, saw hook doubled a third below in the choruses. Intro, verse, pre-chorus that drops out, chorus, bridge, last chorus a tone higher and faster, then a slowing, held ending. Epic, hero's-phrase melody.",
-    mode: 'minor', meter: '4/4', bpm: [150, 154], keyLift: 2, tempoArc: 'lift', ending: 'big',
-    feel: { drums: 'rock', bass: 'octaves', bassVoice: 'saw', leadVoice: 'saw', arpVoice: 'pluck', arp: 0.5, sync: 0.45, drop: true, harmony: true },
-  },
-  {
-    name: 'Last Light', style: '16-bit ending, wistful ballad', mood: 'melancholy', form: 'oneshot', layout: 'shot-short', description: 'A wistful ballad as a one-shot: minor at 62 bpm in 3/4, flute-like hook over whole-note bass and a bell arp. It states the hook in the intro, grows through verse and chorus, and dies away rather than ending on a bang. A quiet end-credits feel.',
-    mode: 'minor', meter: '3/4', bpm: [62, 66], ending: 'fade', tempoArc: 'steady', keyLift: 0,
+    name: 'Last Light', style: '16-bit ending, wistful ballad', mood: 'melancholy', form: 'loop', layout: 'loop-16', description: 'A wistful ballad loop: minor at 62 bpm in 3/4, a flute-like hook over whole-note bass and a bell arp. Twelve bars: verse, a pre-chorus that climbs, and a chorus that resolves on the tonic and then turns around into the verse. A quiet end-credits feel.',
+    mode: 'minor', meter: '3/4', bpm: [62, 66],
     feel: { drums: 'none', bass: 'whole', bassVoice: 'sub', leadVoice: 'flute', arpVoice: 'bell', arp: 0.5 },
   },
   {
@@ -99,13 +81,28 @@ export const BATCH_2: Brief[] = [
     feel: { drums: 'sparse', bass: 'walk', bassVoice: 'sub', leadVoice: 'bell', arpVoice: 'pluck', arp: 0.7 },
   },
   {
-    name: 'Panic Arcade', style: '8-bit arcade chase, frantic', mood: 'urgent', form: 'oneshot', layout: 'shot-short', character: 'vibe', description: 'A frantic vibe one-shot: phrygian at 176 bpm and speeding up, relentless eighth-note bass, sixteenth arps, four-on-the-floor drums, a sparse lead. A chase you feel in your pulse. It ends in a big resolve. Not built to be hummed.',
-    meter: '4/4', vibe: { energy: 1, tension: 0.8, valence: 0.3 }, bpm: [168, 176], tempoArc: 'accel', ending: 'big',
-    feel: { drums: 'four', bass: 'eighths', bassVoice: 'saw', leadVoice: 'square', arpVoice: 'square', arp: 0.9, arpStep: 0.5, sync: 0.5, harmony: true },
-  },
-  {
     name: 'Cloud Drift', style: '16-bit sky stage, dreamy', mood: 'cozy', form: 'loop', layout: 'loop-12', character: 'vibe', description: 'A vibe piece: a floating sky stage in 9/8 (three flowing groups of three), mixolydian at 93 bpm. Half-time drums, whole-note sub bass, a flute-like motif and a rolling plucked arp. Weightless and open, the opposite of the chase tracks.',
     mode: 'mixolydian', meter: '9/8', bpm: [92, 98],
     feel: { drums: 'half', bass: 'whole', bassVoice: 'sub', leadVoice: 'flute', arpVoice: 'pluck', arp: 0.9 },
+  },
+  {
+    name: 'Level Clear', style: '8-bit victory stinger', mood: 'playful', form: 'oneshot', event: 'win', description: 'A stinger for beating the level: four bars of 4/4 in major at about 132 bpm. A short hook, the same hook a step higher, a climbing run, then a held final chord with a crash while the tempo slows. Meant to land a hard, happy thump when something big just happened.',
+    mode: 'major', meter: '4/4', bpm: [128, 136], bars: 4,
+  },
+  {
+    name: 'Game Over', style: '16-bit defeat stinger', mood: 'melancholy', form: 'oneshot', event: 'lose', character: 'vibe', description: 'A stinger for dying, three bars of 4/4 in minor at about 96 bpm: a falling line over a sinking chord, slowing to about half speed and ending on a very low held tonic. No celebration, no hook, just a heavy slump so the failure registers.',
+    mode: 'minor', meter: '4/4', bpm: [92, 100], bars: 3,
+  },
+  {
+    name: 'Boss Down', style: '16-bit boss-defeated stinger', mood: 'triumphant', form: 'oneshot', event: 'boss', description: 'A stinger for a boss going down, four bars of 4/4 in mixolydian at about 112 bpm: a heavy low motif said twice, a leap onto the dominant, then a crash on a deep tonic with the tempo dragging to a stop. Weighty and victorious rather than bright.',
+    mode: 'mixolydian', meter: '4/4', bpm: [108, 116], bars: 4,
+  },
+  {
+    name: 'Power Up', style: '8-bit pickup stinger', mood: 'playful', form: 'oneshot', event: 'powerup', character: 'vibe', description: 'A stinger for a power-up, two bars in 6/8 at about 160 bpm and speeding up: a rising lydian arpeggio that climbs two octaves, then the top note rings with a sparkle of bells. Short and bright, under three seconds. A reward cue, not a tune.',
+    mode: 'lydian', meter: '6/8', bpm: [150, 168], bars: 2,
+  },
+  {
+    name: 'Secret Found', style: '16-bit discovery stinger', mood: 'eerie', form: 'oneshot', event: 'secret', character: 'vibe', description: 'A stinger for finding a secret, three bars in 3/4 at about 76 bpm: bells climbing out of the dark over a swelling pad, ending on a shimmering lydian chord as it slows. Wonder and mystery, no beat.',
+    mode: 'lydian', meter: '3/4', bpm: [72, 80], bars: 3,
   },
 ];
