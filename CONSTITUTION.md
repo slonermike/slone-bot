@@ -85,7 +85,7 @@ Chat-only for now. Each prototype ships a feedback sheet (template in `docs/desi
 
 **Default procedure when Slone gives feedback in chat** (applies unless he says otherwise):
 1. **Capture** what the feedback teaches about his design philosophy and preferences.
-2. **Update the Bible** (and the feel checklist or taste cards where the lesson belongs) directly, bump its version and revision log, and record the evidence in `pending-lessons.md`. Lessons stay labeled "one data point" until repeated on another night.
+2. **Update the Bible** (and the feel checklist or taste cards where the lesson belongs) directly, bump its version and revision log, and record the evidence in `pending-lessons.md`. Lessons stay labeled "one data point" until repeated on another night. **Write every Bible, feel-checklist and taste-card lesson to apply to any kind of game.** State the underlying principle in genre-neutral terms (what the player perceives, controls and understands), not in the vocabulary of the game that prompted it. Do not name the prototype, its mechanics or its genre, and avoid words that imply one (aim, shoot, jump, build, drive, level). Check each lesson by asking whether it would still make sense for a puzzle game, a sim, a platformer and a card game. The evidence, with the prototype's details, belongs in `pending-lessons.md` and git history; the Bible keeps only the principle.
 3. **Then ask** whether to update the game that prompted the feedback, or to use it only as information for future games. Do not change the game before he answers.
 Feedback quotes keep only gameplay-relevant words (see `docs/tech/08`).
 

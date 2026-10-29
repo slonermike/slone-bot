@@ -1,6 +1,6 @@
 # 00 The Bible (READ-ONLY during nightly runs)
 
-Design principles for making prototypes Slone will like. Nightly runs read and follow this file but never edit it. It changes when Slone gives feedback in chat (the chat agent updates it directly as the first step, see `CONSTITUTION.md` section 15) or runs an assessment of `pending-lessons.md`.
+Design principles for making prototypes Slone will like. Nightly runs read and follow this file but never edit it. It changes when Slone gives feedback in chat (the chat agent updates it directly as the first step, see `CONSTITUTION.md` section 15) or runs an assessment of `pending-lessons.md`. **Every lesson here is written to apply to any kind of game**: principles in genre-neutral terms, no prototype names, no vocabulary that implies a genre (see `CONSTITUTION.md` section 15). Keep it that way in every edit.
 
 Version: 4 (seeded from six GMTK sources and Slone's taste; feedback incorporated from the `_demo` prototype and from a first nightly prototype, 2026-10-29. One data point per lesson so far; see the revision log at the end).
 
