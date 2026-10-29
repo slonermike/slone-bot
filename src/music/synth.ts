@@ -1,10 +1,12 @@
 // WebAudio player for Song data. Small and self-contained: a handful of subtractive voices and a noise drum kit,
 // scheduled a little ahead of the clock so the loop never drifts. Not used by the sim (audio is render-side only).
-import { BEATS_PER_BAR } from './types.ts';
+import { beatAt, secondsAt } from './timing.ts';
 import type { Note, Song, Voice } from './types.ts';
 
 interface Ev {
-  t: number;
+  /** Seconds from the start of a pass, and the note's length in seconds (both honor tempo changes). */
+  sec: number;
+  dur: number;
   note: Note;
   voice: Voice;
   inst: string;
@@ -14,8 +16,10 @@ export class SongPlayer {
   private bus: GainNode | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private startTime = 0;
-  private loopBeats = 0;
-  private spb = 0.5;
+  private loopSeconds = 0;
+  private lastEnd = 0;
+  private oneShot = false;
+  private onEnd: (() => void) | null = null;
   private events: Ev[] = [];
   private i = 0;
   private iter = 0;
@@ -36,10 +40,11 @@ export class SongPlayer {
     return this.playing ? this.song : null;
   }
 
-  /** Position in the loop, in beats (for the playhead). */
+  /** Position in the song, in beats (for the playhead; wraps for a loop). */
   get beat(): number {
-    if (!this.playing) return 0;
-    return Math.max(0, ((this.ctx.currentTime - this.startTime) / this.spb) % this.loopBeats);
+    if (!this.playing || !this.song) return 0;
+    const el = Math.max(0, this.ctx.currentTime - this.startTime);
+    return beatAt(this.song.tempoMap, this.oneShot ? Math.min(el, this.loopSeconds) : el % this.loopSeconds);
   }
 
   setVolume(v: number): void {
@@ -47,13 +52,22 @@ export class SongPlayer {
     if (this.bus) this.bus.gain.setTargetAtTime(this.volume, this.ctx.currentTime, 0.03);
   }
 
-  play(song: Song): void {
+  /** Play from the start. A one-shot stops by itself after its last note rings out and then calls `onEnd`. */
+  play(song: Song, onEnd?: () => void): void {
     this.stop();
     void this.ctx.resume();
     this.song = song;
-    this.spb = 60 / song.tempo;
-    this.loopBeats = song.bars * BEATS_PER_BAR;
-    this.events = song.tracks.flatMap((tr) => tr.notes.map((note) => ({ t: note.t, note, voice: tr.voice, inst: tr.inst }))).sort((a, b) => a.t - b.t);
+    this.oneShot = song.form === 'oneshot';
+    this.onEnd = onEnd ?? null;
+    const last = song.bars[song.bars.length - 1]!;
+    this.loopSeconds = secondsAt(song.tempoMap, last.start + last.beats);
+    this.events = song.tracks
+      .flatMap((tr) => tr.notes.map((note) => {
+        const sec = secondsAt(song.tempoMap, note.t);
+        return { sec, dur: secondsAt(song.tempoMap, note.t + note.d) - sec, note, voice: tr.voice, inst: tr.inst };
+      }))
+      .sort((a, b) => a.sec - b.sec);
+    this.lastEnd = Math.max(this.loopSeconds, ...this.events.map((e) => e.sec + e.dur));
     this.i = 0;
     this.iter = 0;
     this.startTime = this.ctx.currentTime + 0.12;
@@ -82,13 +96,20 @@ export class SongPlayer {
     const bus = this.bus;
     if (!bus) return;
     const horizon = this.ctx.currentTime + 0.25;
+    if (this.oneShot && this.ctx.currentTime > this.startTime + this.lastEnd + 0.6) {
+      const done = this.onEnd;
+      this.stop();
+      done?.();
+      return;
+    }
     for (;;) {
       if (this.i >= this.events.length) {
+        if (this.oneShot) break;
         this.i = 0;
         this.iter++;
       }
       const e = this.events[this.i]!;
-      const at = this.startTime + (this.iter * this.loopBeats + e.t) * this.spb;
+      const at = this.startTime + this.iter * this.loopSeconds + e.sec;
       if (at > horizon) break;
       this.i++;
       if (at >= this.ctx.currentTime - 0.05) this.voiceFor(bus, e, Math.max(at, this.ctx.currentTime));
@@ -113,7 +134,7 @@ export class SongPlayer {
   private voiceFor(out: AudioNode, e: Ev, at: number): void {
     const { ctx } = this;
     const n = e.note;
-    const dur = Math.max(0.05, n.d * this.spb);
+    const dur = Math.max(0.05, e.dur);
     const vel = (n.v / 127) ** 1.2;
     if (e.inst === 'drums') return this.drum(out, n.n, at, vel);
     const freq = 440 * 2 ** ((n.n - 69) / 12);
@@ -245,6 +266,8 @@ export class SongPlayer {
       o.stop(at + 0.12);
     } else if (note === 37) {
       burst('bandpass', 2600, 0.04, 0.3);
+    } else if (note === 49) {
+      burst('highpass', 4500, 1.1, 0.3);
     } else {
       burst('highpass', 7000, note === 46 ? 0.22 : 0.05, 0.2);
     }

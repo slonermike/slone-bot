@@ -1,29 +1,111 @@
-// The first batch: twenty loops written in the spirit of 8-bit and 16-bit era game music, spread across tempo,
-// mode and genre. These are style sketches (instrumentation, tempo, scale, rhythm feel), not copies of any
-// existing tune: every melody is generated from a seed.
+// The second batch (b02): twenty songs in the spirit of 8-bit and 16-bit era game music, with 80s rock and 2000s pop
+// hook craft mixed in. 12 loops and 8 one-shots; 13 are built around a hook and 7 are vibe pieces (texture and mood first, at any tempo: two of them are fast and frantic); time signatures
+// range over 4/4, 2/4, 3/4, 6/8, 7/8, 5/4, 9/8, 12/8, one song changes meter by section and one every few bars.
+// Where a brief leaves mode or tempo open, the vibe formula (vibe.ts) picks them from the target vibe.
+// Style sketches, not copies: every melody is generated from a seed.
 import type { ComposeOptions } from './compose.ts';
 
 type Brief = Omit<ComposeOptions, 'seed' | 'batch' | 'index'>;
 
-export const BATCH_1: Brief[] = [
-  { name: 'Hero Sprint', description: 'Aimed for the fast, heroic run-and-gun stage feel: minor key at 168, galloping saw bass, square-wave lead and a constant arp on top. Should feel like sprinting while shooting. Risk: the lead may be too busy to hum.', mood: 'triumphant', style: '8-bit action stage, run-and-gun', override: { intent: 'a fast, heroic run-and-gun stage theme', scales: ['minor'], tempo: [166, 170], drums: ['driving'], bass: ['gallop'], bassVoice: ['saw'], leadVoice: ['square'], arpVoice: ['square'], arp: 0.9, bars: [16] } },
-  { name: 'Overworld Stroll', description: 'A bouncy adventure-map march: mixolydian (major with a flat 7th for that open, wandering sound), snare march pattern, walking bass and a chirpy square lead. Wanted optimism with a hint of mischief.', mood: 'playful', style: '8-bit overworld march', override: { intent: 'a bouncy adventure overworld march', scales: ['mixolydian'], tempo: [112, 116], drums: ['march'], bass: ['walk'], bassVoice: ['saw'], leadVoice: ['square'], arpVoice: ['pluck'], melodyDensity: 0.8, arp: 0.3, bars: [16] } },
-  { name: 'Cathedral Run', description: 'Gothic castle chase: harmonic minor, 140 bpm, galloping bass and a saw lead that wants to sound dramatic. The raised 7th is where the drama lives. Meant to be relentless without being frantic.', mood: 'tense', style: '8-bit gothic castle, driving', override: { intent: 'a gothic castle theme, relentless and dramatic', scales: ['harmonic minor'], tempo: [136, 140], drums: ['driving'], bass: ['gallop'], bassVoice: ['saw'], leadVoice: ['saw'], arpVoice: ['square'], arp: 0.7, bars: [16] } },
-  { name: 'Spinning Blocks', description: 'Folk-flavored puzzle loop: minor, brisk and march-like, a plucky melody that circles and keeps going. I wanted something you could listen to for an hour without tiring of it. Dense melody, no arp.', mood: 'melancholy', style: 'folk puzzle tune', override: { intent: 'a spinning, folk-flavored puzzle loop that keeps going', scales: ['minor'], tempo: [148, 152], drums: ['march'], bass: ['walk'], bassVoice: ['saw'], leadVoice: ['pluck', 'square'], arpVoice: ['pluck'], melodyDensity: 0.85, arp: 0.15, bars: [16] } },
-  { name: 'Coastline', description: 'Breezy seaside drive: lydian (major with a raised 4th, which sounds like sunshine), a steady backbeat, octave-bouncing bass and a bright saw lead with a plucked arp. Aiming for windows-down optimism.', mood: 'triumphant', style: '16-bit seaside drive, breezy', override: { intent: 'a breezy coastal-drive loop with a bright lead', scales: ['lydian'], tempo: [124, 128], drums: ['backbeat'], bass: ['octaves'], bassVoice: ['saw'], leadVoice: ['saw'], arpVoice: ['pluck'], melodyDensity: 0.75, arp: 0.8, bars: [16] } },
-  { name: 'Hearth and Home', description: 'A safe village theme: major, slow 84 bpm, soft rim-click drums, walking sub bass and a flute-like lead. Wanted warmth and low stakes, a place to catch your breath between harder stages.', mood: 'cozy', style: '16-bit village, pastoral', override: { intent: 'a warm village theme for a safe place', scales: ['major'], tempo: [82, 86], drums: ['soft'], bass: ['walk'], bassVoice: ['sub'], leadVoice: ['flute'], arpVoice: ['pluck'], arp: 0.5, bars: [16] } },
-  { name: 'Backroom Bazaar', description: 'A relaxed, jazzy shop loop: dorian, a light funk groove, walking bass and a plucked lead with bell accents. The goal is a cool, unbothered mood while you spend your hard-won coins.', mood: 'playful', style: '16-bit shop, jazzy', override: { intent: 'a relaxed, jazzy shop loop', scales: ['dorian'], tempo: [94, 98], drums: ['funk'], bass: ['walk'], bassVoice: ['sub'], leadVoice: ['pluck'], arpVoice: ['bell'], melodyDensity: 0.6, arp: 0.3, bars: [8] } },
-  { name: 'Last Throne', description: 'Final-boss dread and speed: phrygian (the flat 2nd makes it menacing), 160 bpm, galloping saw bass, big saw lead and a square arp. Meant to feel like the room is closing in. Risk: too heavy for long listening.', mood: 'urgent', style: '16-bit final boss, dread and speed', override: { intent: 'a final-boss loop: dark, fast and heavy', scales: ['phrygian'], tempo: [158, 162], drums: ['driving'], bass: ['gallop'], bassVoice: ['saw'], leadVoice: ['saw'], arpVoice: ['square'], arp: 0.8, bars: [16] } },
-  { name: 'Press Start', description: 'A bold, hopeful title-screen theme: major, mid tempo, solid backbeat, a square or bell lead. It should sound like the start of something. The simplest, most direct tune in the batch on purpose.', mood: 'triumphant', style: '16-bit title screen fanfare', override: { intent: 'a bold, hopeful title-screen theme', scales: ['major'], tempo: [98, 102], drums: ['backbeat'], bass: ['whole'], bassVoice: ['saw'], leadVoice: ['square', 'bell'], arpVoice: ['pluck'], melodyDensity: 0.7, arp: 0.5, bars: [8] } },
-  { name: 'Level Clear', description: 'A short, joyful victory loop: major, 132 bpm, a very busy square lead and octave bass. The point is pure celebration. Probably too short to loop well; I want to know if it still feels good.', mood: 'playful', style: '8-bit victory loop', override: { intent: 'a short, joyful loop for a win screen', scales: ['major'], tempo: [130, 134], drums: ['backbeat'], bass: ['octaves'], bassVoice: ['saw'], leadVoice: ['square'], arpVoice: ['square'], melodyDensity: 0.95, arp: 0.6, bars: [8] } },
-  { name: 'Glass Tide', description: 'Slow, glassy underwater level: lydian, 64 bpm, no drums, sub bass, bell lead and a constant bell arp like light moving through water. Aiming for floating calm with a little wonder.', mood: 'eerie', style: '16-bit underwater, ambient', override: { intent: 'a slow, glassy underwater level', scales: ['lydian'], tempo: [64, 68], drums: ['none'], bass: ['whole'], bassVoice: ['sub'], leadVoice: ['bell'], arpVoice: ['bell'], melodyDensity: 0.35, arp: 1, bars: [16] } },
-  { name: 'Something Listens', description: 'A sparse dungeon where something is listening: phrygian, 60 bpm, almost no drums, a lone flute-like lead with long gaps. Meant to be uneasy through silence rather than noise. Risk: may be too quiet to notice.', mood: 'eerie', style: '16-bit haunted dungeon, ambient', override: { intent: 'a sparse dungeon crawl where something is listening', scales: ['phrygian'], tempo: [58, 62], drums: ['sparse'], bass: ['sparse'], bassVoice: ['sub'], leadVoice: ['flute'], arpVoice: ['bell'], melodyDensity: 0.25, arp: 0.4, bars: [16] } },
-  { name: 'Hyperdrive', description: 'Space-shooter pulse: minor, 150 bpm, driving drums, steady eighth-note bass and a fast square arp climbing over it. Wanted momentum and a sense of speed, like a scrolling starfield.', mood: 'urgent', style: '8-bit space shooter, driving', override: { intent: 'a space-shooter loop with a steady pulse and a high arp', scales: ['minor'], tempo: [148, 152], drums: ['driving'], bass: ['eighths'], bassVoice: ['saw'], leadVoice: ['saw'], arpVoice: ['square'], arp: 1, bars: [8] } },
-  { name: 'Neon Groove', description: 'Funk stage with a groove: dorian, 110 bpm, syncopated bass, funk drums and a gritty saw lead. Aiming for a head-nod that still feels like a game level, not a band. The bass is the star.', mood: 'playful', style: '16-bit funk stage, groove', override: { intent: 'a funky, syncopated stage theme', scales: ['dorian'], tempo: [108, 112], drums: ['funk'], bass: ['syncopated'], bassVoice: ['saw'], leadVoice: ['saw', 'square'], arpVoice: ['pluck'], melodyDensity: 0.6, arp: 0.5, bars: [16] } },
-  { name: 'Hold Forward', description: 'Bright speed-run tune: major, 168 bpm, backbeat drums, octave bass and a fast square lead. It should make you want to keep the stick pushed forward. The fastest major-key track here.', mood: 'triumphant', style: '16-bit speed run, bright', override: { intent: 'a bright, fast loop that wants you to hold forward', scales: ['major'], tempo: [166, 172], drums: ['backbeat'], bass: ['octaves'], bassVoice: ['saw'], leadVoice: ['square'], arpVoice: ['pluck'], melodyDensity: 0.85, arp: 0.7, bars: [16] } },
-  { name: 'Turn Order', description: "A driving turn-based battle theme: minor, 152 bpm, octave bass, big saw lead and plucked arp. Aiming for epic, with a melody that feels like a hero's phrase. Two eight-bar halves with a changed ending.", mood: 'tense', style: '16-bit RPG battle', override: { intent: 'a driving turn-based battle theme with a big lead', scales: ['minor'], tempo: [150, 154], drums: ['driving'], bass: ['octaves'], bassVoice: ['saw'], leadVoice: ['saw'], arpVoice: ['pluck'], melodyDensity: 0.7, arp: 0.5, bars: [16] } },
-  { name: 'Last Light', description: 'A slow farewell for the end of a long adventure: minor, 64 bpm, no drums, whole-note bass and a lone flute-like melody with a bell arp. Wanted wistful, not sad. A quiet end-credits feel.', mood: 'melancholy', style: '16-bit ending, wistful', override: { intent: 'a slow farewell for the end of a long adventure', scales: ['minor'], tempo: [62, 66], drums: ['none'], bass: ['whole'], bassVoice: ['sub'], leadVoice: ['flute'], arpVoice: ['bell'], melodyDensity: 0.4, arp: 0.5, bars: [16] } },
-  { name: 'Echo Cavern', description: 'A curious cave-exploration loop: dorian, 78 bpm, sparse drums, walking bass, bell melody and a plucked arp that sounds like dripping echo. Mysterious but friendly, like you expect treasure.', mood: 'cozy', style: '16-bit cave exploration', override: { intent: 'a curious, echoing cave-exploration loop', scales: ['dorian'], tempo: [76, 80], drums: ['sparse'], bass: ['walk'], bassVoice: ['sub'], leadVoice: ['bell'], arpVoice: ['pluck'], melodyDensity: 0.45, arp: 0.7, bars: [16] } },
-  { name: 'Panic Arcade', description: 'A frantic arcade chase: harmonic minor, 176 bpm, driving drums, relentless eighth-note bass and a square lead with a fast arp. Meant to spike your heart rate. The fastest and shortest-looping tune in the batch.', mood: 'urgent', style: '8-bit arcade chase', override: { intent: 'a frantic arcade chase that speeds your pulse', scales: ['harmonic minor'], tempo: [174, 178], drums: ['driving'], bass: ['eighths'], bassVoice: ['saw'], leadVoice: ['square'], arpVoice: ['square'], melodyDensity: 0.7, arp: 0.9, bars: [8] } },
-  { name: 'Cloud Drift', description: 'A floating, dreamy sky stage: mixolydian, 92 bpm, half-time drums, sub bass, a flute-like lead and a rolling plucked arp. Aiming for weightless and open, the opposite of the chase tracks.', mood: 'cozy', style: '16-bit sky stage, dreamy', override: { intent: 'a floating, dreamy sky stage', scales: ['mixolydian'], tempo: [90, 94], drums: ['halftime'], bass: ['whole'], bassVoice: ['sub'], leadVoice: ['flute'], arpVoice: ['pluck'], melodyDensity: 0.5, arp: 0.9, bars: [16] } },
+export const BATCH_2: Brief[] = [
+  {
+    name: 'Hero Sprint', style: '8-bit action stage, run-and-gun', mood: 'triumphant', form: 'loop', layout: 'loop-16', description: 'Run-and-gun stage: minor at 167 bpm, galloping saw bass, a nonstop sixteenth-note square arp, and a hook that arrives in the chorus after a pre-chorus climb. A loop, so the last bar leans back into the first. Testing whether the hook cuts through all that arp.',
+    mode: 'minor', meter: '4/4', bpm: [164, 170],
+    feel: { drums: 'four', bass: 'gallop', bassVoice: 'saw', leadVoice: 'square', arpVoice: 'square', arp: 0.9, arpStep: 0.5, sync: 0.5, harmony: false },
+  },
+  {
+    name: 'Overworld Stroll', style: '8-bit overworld march', mood: 'playful', form: 'loop', layout: 'loop-12', description: 'A bouncy adventure map in 2/4 (a march), lydian at 108 bpm: the raised 4th gives it a sunny, wide-open feel. Snare-march drums, a chirpy square hook, 12 bars that climb through a pre-chorus. Wanted optimism with a skip in its step.',
+    meter: '2/4', vibe: { valence: 0.8, energy: 0.55 }, bpm: [100, 126],
+    feel: { drums: 'march', bass: 'groups', bassVoice: 'saw', leadVoice: 'square', arpVoice: 'pluck', arp: 0.3, sync: 0.3, density: 0.8 },
+  },
+  {
+    name: 'Cathedral Run', style: '8-bit gothic castle, driving', mood: 'tense', form: 'loop', layout: 'loop-16', description: 'Gothic castle chase: harmonic minor at 137 bpm, galloping bass, saw lead and a fast arp. The raised 7th is the drama. Sixteen bars: verse, a pre-chorus that climbs and drops out for a beat, then an 8-bar chorus with the hook coming back four times.',
+    mode: 'harmonic minor', meter: '4/4', bpm: [136, 142],
+    feel: { drums: 'rock', bass: 'gallop', bassVoice: 'saw', leadVoice: 'saw', arpVoice: 'square', arp: 0.7, arpStep: 0.5, sync: 0.45, harmony: false },
+  },
+  {
+    name: 'Spinning Blocks', style: 'folk puzzle tune', mood: 'melancholy', form: 'loop', layout: 'loop-8', description: 'A rolling folk-flavored puzzle loop in 6/8 (two groups of three), minor at 130 bpm, plucked hook over a walking bass and a march snare. Short on purpose, 8 bars, so it can repeat for an hour. Testing whether 6/8 gives it that spinning feeling.',
+    mode: 'minor', meter: '6/8', bpm: [124, 132],
+    feel: { drums: 'march', bass: 'walk', bassVoice: 'saw', leadVoice: 'pluck', arp: 0, sync: 0.25, density: 0.85, harmony: false },
+  },
+  {
+    name: 'Coastline', style: '2000s pop-flavored seaside drive', mood: 'triumphant', form: 'oneshot', layout: 'shot-medium', description: 'A one-shot in lydian at 121 bpm with a pop shape: intro teases the hook, verse, rising pre-chorus that drops out before the chorus, bridge, then a last chorus a tone higher and a touch faster, ending on a slowing, held chord. Aiming for windows-down optimism.',
+    mode: 'lydian', meter: '4/4', bpm: [120, 126], keyLift: 2, tempoArc: 'lift', ending: 'big',
+    feel: { drums: 'four', bass: 'octaves', bassVoice: 'saw', leadVoice: 'saw', arpVoice: 'pluck', arp: 0.8, sync: 0.6, drop: true, harmony: true },
+  },
+  {
+    name: 'Hearth and Home', style: '16-bit village, pastoral waltz', mood: 'cozy', form: 'loop', layout: 'loop-8', character: 'vibe', description: 'A vibe piece, not an earworm: a safe village in 3/4 (a slow waltz sway), major at 94 bpm. Soft rim-click drums, a walking bass, a flute-like motif that comes and goes. Wanted warmth and nothing demanding your attention.',
+    mode: 'major', meter: '3/4', bpm: [90, 98],
+    feel: { drums: 'soft', bass: 'walk', bassVoice: 'sub', leadVoice: 'flute', arpVoice: 'pluck', arp: 0.5 },
+  },
+  {
+    name: 'Backroom Bazaar', style: '16-bit shop, jazzy and off-kilter', mood: 'playful', form: 'loop', layout: 'loop-12', description: 'A jazzy shop in 7/8 (grouped 2+2+3, a stumbling bustle), dorian at 121 bpm. Funk drums, syncopated bass, a plucked hook. The odd meter should feel like browsing: quick, a bit off-kilter, still a groove you can nod to.',
+    mode: 'dorian', meter: '7/8', bpm: [118, 126],
+    feel: { drums: 'funk', bass: 'sync', bassVoice: 'sub', leadVoice: 'pluck', arpVoice: 'bell', arp: 0.3, sync: 0.45, harmony: false },
+  },
+  {
+    name: 'Last Throne', style: '16-bit final boss', mood: 'urgent', form: 'oneshot', layout: 'shot-full', description: 'Final boss as a one-shot, phrygian at 152 bpm (the flat 2nd is menace). Mostly 4/4 but every fourth bar drops a beat to 3/4, which makes it lurch. Intro, verse, climbing pre-chorus, chorus, bridge, then a last chorus a semitone up and faster, ending in a big resolve.',
+    mode: 'phrygian', meter: { cycle: ['4/4', '4/4', '4/4', '3/4'] }, bpm: [150, 156], keyLift: 1, tempoArc: 'lift', ending: 'big',
+    feel: { drums: 'rock', bass: 'gallop', bassVoice: 'saw', leadVoice: 'saw', arpVoice: 'square', arp: 0.8, arpStep: 0.5, sync: 0.5, drop: true, harmony: true },
+  },
+  {
+    name: 'Press Start', style: '16-bit title screen fanfare', mood: 'triumphant', form: 'oneshot', layout: 'shot-short', description: 'A one-shot title-screen fanfare: major at 101 bpm, steady rock backbeat, bold square hook. It states the hook in the intro, builds through verse and chorus, and lands on a big final chord. Wanted the simplest, most direct tune in the batch.',
+    mode: 'major', meter: '4/4', bpm: [98, 104], ending: 'big',
+    feel: { drums: 'rock', bass: 'groups', bassVoice: 'saw', leadVoice: 'square', arpVoice: 'pluck', arp: 0.5, harmony: true },
+  },
+  {
+    name: 'Level Clear', style: '8-bit victory jingle', mood: 'playful', form: 'oneshot', layout: 'shot-tiny', description: 'A short win jingle as a one-shot: lydian at 136 bpm, busy square hook, octave-bouncing bass, a chorus repeated with the second one a tone higher, then a held final chord. Pure celebration in about 22 seconds.',
+    meter: '4/4', vibe: { valence: 0.95, energy: 0.75 }, bpm: [124, 140], ending: 'big', keyLift: 2,
+    feel: { drums: 'rock', bass: 'octaves', bassVoice: 'saw', leadVoice: 'square', arpVoice: 'square', arp: 0.6, sync: 0.5, density: 0.8, harmony: true },
+  },
+  {
+    name: 'Glass Tide', style: '16-bit underwater, ambient', mood: 'eerie', form: 'loop', layout: 'loop-8', character: 'vibe', description: 'A vibe piece: slow underwater drift in 12/8 (four rolling groups of three), lydian at 67 bpm. No drums, a sub bass, a constant bell arp like light through water, and a sparse bell motif. Meant to be heard, not hummed. Floating, a little wonder.',
+    mode: 'lydian', meter: '12/8', bpm: [66, 72],
+    feel: { drums: 'none', bass: 'whole', bassVoice: 'sub', leadVoice: 'bell', arpVoice: 'bell', arp: 0.9 },
+  },
+  {
+    name: 'Something Listens', style: '16-bit haunted dungeon, ambient', mood: 'eerie', form: 'loop', layout: 'loop-8', character: 'vibe', description: 'A vibe piece: a dungeon in 5/4 (a 4/4 bar with one beat too many, never quite settled), phrygian at 60 bpm. Sparse drums, a lone flute-like motif with long gaps, a faint bell arp. Uneasy through space rather than noise.',
+    mode: 'phrygian', meter: '5/4', bpm: [56, 62],
+    feel: { drums: 'sparse', bass: 'sparse', bassVoice: 'sub', leadVoice: 'flute', arpVoice: 'bell', arp: 0.4 },
+  },
+  {
+    name: 'Hyperdrive', style: '8-bit space shooter, relentless', mood: 'urgent', form: 'loop', layout: 'loop-12', character: 'vibe', description: 'A frantic vibe piece: phrygian at 160 bpm, relentless eighth-note bass, a nonstop sixteenth square arp and driving drums with only a sparse lead over the top. The texture is the point, a scrolling starfield at speed. Not built to be hummed.',
+    meter: '4/4', vibe: { energy: 0.92, tension: 0.6 }, bpm: [140, 160],
+    feel: { drums: 'rock', bass: 'eighths', bassVoice: 'saw', leadVoice: 'saw', arpVoice: 'square', arp: 1, arpStep: 0.5, sync: 0.5, harmony: false },
+  },
+  {
+    name: 'Neon Groove', style: '16-bit funk stage', mood: 'playful', form: 'loop', layout: 'loop-16', description: 'A funk stage: dorian at 108 bpm in 4/4, syncopated bass as the star, funk drums, a gritty saw hook. Sixteen bars with a climbing pre-chorus into an 8-bar chorus. Aiming for a head-nod that still sounds like a game level.',
+    mode: 'dorian', meter: '4/4', bpm: [106, 112],
+    feel: { drums: 'funk', bass: 'sync', bassVoice: 'saw', leadVoice: 'saw', arpVoice: 'pluck', arp: 0.4, sync: 0.6, harmony: false },
+  },
+  {
+    name: 'Hold Forward', style: '16-bit speed run, bright', mood: 'triumphant', form: 'oneshot', layout: 'shot-short', description: 'A speed-run one-shot: lydian at 172 bpm and getting faster, bright square hook over octave bass and a plucked arp. Intro, verse, chorus, and a ritardando into a held final chord. Wanted the feeling of keeping the stick pushed forward.',
+    meter: '4/4', vibe: { valence: 0.8, energy: 0.95 }, bpm: [160, 172], tempoArc: 'accel', ending: 'big',
+    feel: { drums: 'rock', bass: 'octaves', bassVoice: 'saw', leadVoice: 'square', arpVoice: 'pluck', arp: 0.7, sync: 0.5, harmony: true },
+  },
+  {
+    name: 'Turn Order', style: '16-bit RPG battle', mood: 'tense', form: 'oneshot', layout: 'shot-medium', description: "A turn-based battle as a one-shot: minor at 150 bpm, octave bass, saw hook doubled a third below in the choruses. Intro, verse, pre-chorus that drops out, chorus, bridge, last chorus a tone higher and faster, then a slowing, held ending. Epic, hero's-phrase melody.",
+    mode: 'minor', meter: '4/4', bpm: [150, 154], keyLift: 2, tempoArc: 'lift', ending: 'big',
+    feel: { drums: 'rock', bass: 'octaves', bassVoice: 'saw', leadVoice: 'saw', arpVoice: 'pluck', arp: 0.5, sync: 0.45, drop: true, harmony: true },
+  },
+  {
+    name: 'Last Light', style: '16-bit ending, wistful ballad', mood: 'melancholy', form: 'oneshot', layout: 'shot-short', description: 'A wistful ballad as a one-shot: minor at 62 bpm in 3/4, flute-like hook over whole-note bass and a bell arp. It states the hook in the intro, grows through verse and chorus, and dies away rather than ending on a bang. A quiet end-credits feel.',
+    mode: 'minor', meter: '3/4', bpm: [62, 66], ending: 'fade', tempoArc: 'steady', keyLift: 0,
+    feel: { drums: 'none', bass: 'whole', bassVoice: 'sub', leadVoice: 'flute', arpVoice: 'bell', arp: 0.5 },
+  },
+  {
+    name: 'Echo Cavern', style: '16-bit cave exploration', mood: 'cozy', form: 'loop', layout: 'loop-12', character: 'vibe', description: 'A vibe piece: a cave in changing meter. Verses are in 5/4 and the rest in 4/4, so the floor shifts under you at each section. Dorian at 77 bpm, sparse drums, bell motif, plucked arp like dripping echo. Mysterious but friendly.',
+    mode: 'dorian', meter: { bySection: { verse: '5/4' }, fallback: '4/4' }, bpm: [76, 82],
+    feel: { drums: 'sparse', bass: 'walk', bassVoice: 'sub', leadVoice: 'bell', arpVoice: 'pluck', arp: 0.7 },
+  },
+  {
+    name: 'Panic Arcade', style: '8-bit arcade chase, frantic', mood: 'urgent', form: 'oneshot', layout: 'shot-short', character: 'vibe', description: 'A frantic vibe one-shot: phrygian at 176 bpm and speeding up, relentless eighth-note bass, sixteenth arps, four-on-the-floor drums, a sparse lead. A chase you feel in your pulse. It ends in a big resolve. Not built to be hummed.',
+    meter: '4/4', vibe: { energy: 1, tension: 0.8, valence: 0.3 }, bpm: [168, 176], tempoArc: 'accel', ending: 'big',
+    feel: { drums: 'four', bass: 'eighths', bassVoice: 'saw', leadVoice: 'square', arpVoice: 'square', arp: 0.9, arpStep: 0.5, sync: 0.5, harmony: true },
+  },
+  {
+    name: 'Cloud Drift', style: '16-bit sky stage, dreamy', mood: 'cozy', form: 'loop', layout: 'loop-12', character: 'vibe', description: 'A vibe piece: a floating sky stage in 9/8 (three flowing groups of three), mixolydian at 93 bpm. Half-time drums, whole-note sub bass, a flute-like motif and a rolling plucked arp. Weightless and open, the opposite of the chase tracks.',
+    mode: 'mixolydian', meter: '9/8', bpm: [92, 98],
+    feel: { drums: 'half', bass: 'whole', bassVoice: 'sub', leadVoice: 'flute', arpVoice: 'pluck', arp: 0.9 },
+  },
 ];

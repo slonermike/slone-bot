@@ -22,6 +22,7 @@ A factory for small, playable 2D game prototypes, built unattended one per night
 - `docs/design/03-concept-library.md`: low-level atoms for mixing. Read-only.
 - `docs/design/04-feedback-and-postmortem.md`: templates for the feedback sheet and post mortem
 - `docs/design/05-source-notes.md`: distilled lessons from the source videos. Read-only.
+- `docs/design/06-music-craft.md`: hooks, song structure, meter/mode/tempo vibe formula. Read-only.
 - `docs/design/pending-lessons.md`: the ONLY design file a nightly run may append to
 - `docs/design/ledger.md`: atoms and pairings used so far; nightly runs append one line
 - `themes/`: theme pool data. **Never open these directly. Use `node scripts/themes.mjs`.**
