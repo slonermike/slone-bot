@@ -49,14 +49,15 @@ async function session() {
   let n = 0;
   return {
     page,
-    async tick() {
+    /** Play one captured frame; `draw` false skips rendering (fast-forward). Rendering only the frames that are screenshotted keeps the GPU queue empty so screenshots never stall behind a backlog. */
+    async tick(draw = false) {
       const { obs, events } = await page.evaluate(() => {
         const s = window.__scaffold;
         const fired = s.snapshot().feel?.eventsFired ?? {};
         return { obs: s.proto.getState?.() ?? s.proto.telemetry(), events: Object.values(fired).reduce((a, b) => a + b, 0) };
       });
       const b = bot.act(obs, n++);
-      await page.evaluate(([inp, sub]) => { window.__scaffold.input.inject({ left: inp.left, right: inp.right, hold: inp.hold }); window.__scaffold.stepFrames(sub); }, [b, SUB]);
+      await page.evaluate(([inp, sub, draw]) => { window.__scaffold.input.inject({ left: inp.left, right: inp.right, hold: inp.hold }); window.__scaffold.stepFrames(sub, draw ? 'last' : 'none'); }, [b, SUB, draw]);
       return events;
     },
   };
@@ -83,9 +84,11 @@ try {
   for (let i = 0; i < best.start; i++) await b.tick();
   const files = [];
   for (let k = 0; k < W; k++) {
-    await b.tick();
+    await b.tick(true);
     const file = path.join(tmp, `f${String(k).padStart(4, '0')}.jpg`);
-    await b.page.screenshot({ path: file, type: 'jpeg', quality: 90 });
+    // a software-GL browser can be slow to hand back a frame; give it time, and one retry, before giving up
+    try { await b.page.screenshot({ path: file, type: 'jpeg', quality: 90, timeout: 90000 }); }
+    catch { await b.page.screenshot({ path: file, type: 'jpeg', quality: 90, timeout: 90000 }); }
     files.push(file);
   }
 
