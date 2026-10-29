@@ -1,6 +1,6 @@
 # SCAFFOLD_API
 
-How a nightly agent uses everything the scaffold provides. Read this instead of the internals. This document is the whole contract: there is deliberately no example game to copy. (`src/protos/_demo/` is a smoke-test fixture with its own look and feel; do not open it, and never take its palette, shapes, UI or juice recipes. Every night has a different look; see Step 1 of `docs/tech/06` and the brief template.)
+How a nightly agent uses everything the scaffold provides. Read this instead of the internals. This document is the whole contract: there is deliberately no example game to copy. (`src/protos/_fixture/` is a bare smoke-test fixture (the file in section 1a); earlier games live on their own branches and are not to be opened or imitated. Every night has a different look; see Step 1 of `docs/tech/06` and the brief template.)
 
 Imports from a prototype at `src/protos/<slug>/index.ts`:
 ```ts
@@ -77,6 +77,7 @@ export function createPrototype(): Prototype {
     init(c: Ctx) { ctx = c; },
     step(dt: number, input: InputState) {
       px = x; py = y;
+      if (input.buttons.a.pressed) out.push({ type: 'ping', magnitude: 0.5, x, y }); // buttons become events too
       const speed = ctx.balance.speed ?? 420;
       x = Math.max(R, Math.min(1280 - R, x + input.left.x * speed * dt));
       y = Math.max(R, Math.min(800 - R, y + input.left.y * speed * dt));
@@ -99,10 +100,13 @@ export function createPrototype(): Prototype {
       body.position.set(px + (x - px) * alpha, py + (y - py) * alpha);
       goal.position.set(gx, gy);
     },
-    onEvent(e: SimEvent) { if (e.type === 'reach') play('pickup'); },
+    onEvent(e: SimEvent) {
+      if (e.type === 'reach') play('pickup');
+      if (e.type === 'ping') play('dash');
+    },
 
     // what the bots and telemetry can see: small, numeric
-    telemetry: () => ({ reached }),
+    telemetry: () => ({ reached, scoreOrProgress: reached }), // scoreOrProgress lets the suite compare bots
     getState: () => ({ x, y, gx, gy }),
   };
 }

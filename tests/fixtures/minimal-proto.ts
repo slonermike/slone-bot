@@ -25,6 +25,7 @@ export function createPrototype(): Prototype {
     init(c: Ctx) { ctx = c; },
     step(dt: number, input: InputState) {
       px = x; py = y;
+      if (input.buttons.a.pressed) out.push({ type: 'ping', magnitude: 0.5, x, y }); // buttons become events too
       const speed = ctx.balance.speed ?? 420;
       x = Math.max(R, Math.min(1280 - R, x + input.left.x * speed * dt));
       y = Math.max(R, Math.min(800 - R, y + input.left.y * speed * dt));
@@ -47,10 +48,13 @@ export function createPrototype(): Prototype {
       body.position.set(px + (x - px) * alpha, py + (y - py) * alpha);
       goal.position.set(gx, gy);
     },
-    onEvent(e: SimEvent) { if (e.type === 'reach') play('pickup'); },
+    onEvent(e: SimEvent) {
+      if (e.type === 'reach') play('pickup');
+      if (e.type === 'ping') play('dash');
+    },
 
     // what the bots and telemetry can see: small, numeric
-    telemetry: () => ({ reached }),
+    telemetry: () => ({ reached, scoreOrProgress: reached }), // scoreOrProgress lets the suite compare bots
     getState: () => ({ x, y, gx, gy }),
   };
 }

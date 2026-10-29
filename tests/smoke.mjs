@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { runSuite } from '../src/bots/suite.ts';
 import { validateTelemetry } from '../src/bots/telemetry.ts';
 import { validateManifest } from '../src/core/manifest.ts';
-import * as demo from '../src/protos/_demo/index.ts';
+import * as fixture from '../src/protos/_fixture/index.ts';
 import { BTN, launchBrowser, newPage, pngIsNonBlank, tap } from './lib/browser.mjs';
 import { serveDir } from './lib/server.mjs';
 
@@ -15,7 +15,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SITE = path.join(ROOT, 'dist-site');
 const OUT = path.join(ROOT, 'runs/_smoke');
 const STRICT_FPS = process.env.SMOKE_STRICT_FPS === '1';
-const SLUG = '_demo';
+const SLUG = '_fixture';
 fs.mkdirSync(path.join(OUT, 'screens'), { recursive: true });
 
 const results = [];
@@ -47,12 +47,13 @@ try {
   await L.page.goto(srv.url + '/');
   await L.page.waitForSelector('.card', { timeout: 10000 });
   const cardText = await L.page.textContent('.card');
-  check('launcher shows the demo card', /Demo Ball/.test(cardText ?? ''));
+  check('launcher lists a card', (cardText ?? '').length > 0, (cardText ?? '').slice(0, 60));
   await L.page.screenshot({ path: path.join(OUT, 'screens/launcher.png') });
 
   // launch with the gamepad (A)
-  await tap(L.page, [BTN.a], 300);
-  await L.page.waitForURL(/\/p\/_demo\/$/, { timeout: 8000 });
+  // pressing A navigates away mid-press, which can destroy the page the release is sent to; that is expected
+  await tap(L.page, [BTN.a], 300).catch(() => {});
+  await L.page.waitForURL(/\/p\/[^/]+\/$/, { timeout: 8000 });
   check('press A launches the card', true);
 
   // 1. headless boot, no console errors
@@ -69,14 +70,12 @@ try {
   const x0 = await P.evaluate(() => window.__scaffold.proto.getState().x);
   await tap(P, [], 700, [1, 0, 0, 0]);
   const x1 = await P.evaluate(() => window.__scaffold.proto.getState().x);
-  check('stick input moves the ball', x1 - x0 > 40, `x ${x0.toFixed(0)} -> ${x1.toFixed(0)}`);
+  check('stick input moves the player', x1 - x0 > 40, `x ${x0.toFixed(0)} -> ${x1.toFixed(0)}`);
 
   // 4. audio event fires (spy on play log)
   await tap(P, [BTN.a], 300, [1, 0, 0, 0]);
   const played = await P.evaluate(() => window.__scaffold.audioLog.map((e) => e.name));
   check('audio event fired (dash)', played.includes('dash'), `log: ${[...new Set(played)].join(',')}`);
-  const mlog = await P.evaluate(() => window.__scaffold.music.log.map((e) => e.type + (e.parts ? ':' + e.parts.join('+') : '')));
-  check('music started with the base parts', mlog.some((m) => m === 'play:pad+bass'), `log: ${mlog.join(' ')}`);
 
   // 3. frame rate over 5 s real time
   const f0 = await P.evaluate(() => window.__scaffold.stats().frames);
@@ -95,7 +94,7 @@ try {
   check('realtime telemetry validates and is written', terrs.length === 0 && fs.existsSync(path.join(OUT, 'telemetry-realtime.json')), terrs.join('; '));
 
   // sim-only bots: reproducible, no crashes
-  const suite = runSuite(demo.createPrototype, demo.bots ?? [], { maxSimSeconds: 60, seeds: [1, 2] });
+  const suite = runSuite(fixture.createPrototype, fixture.bots ?? [], { maxSimSeconds: 60, seeds: [1, 2] });
   fs.mkdirSync(path.join(OUT, 'bots'), { recursive: true });
   let botErrs = [];
   for (const r of suite.runs) {
@@ -103,12 +102,14 @@ try {
     fs.writeFileSync(path.join(OUT, 'bots', `${r.telemetry.bot}-seed${r.telemetry.seed}.json`), JSON.stringify(r.telemetry, null, 2));
   }
   check('sim-only bot telemetry validates', botErrs.length === 0, botErrs.slice(0, 2).join('; '));
-  check('bot suite has no flags', suite.flags.length === 0, suite.flags.join(' | '));
+  // the fixture has no pressure on purpose; the only flag a bare fixture may raise is that an idle player sees nothing happen
+  const unexpectedFlags = suite.flags.filter((f) => !/^idle bot: nothing happened/.test(f));
+  check('bot suite has no unexpected flags', unexpectedFlags.length === 0, unexpectedFlags.join(' | '));
 
   // 6. screenshot non-blank
   const shot = await P.screenshot({ path: path.join(OUT, 'screens/play.png') });
   const colors = await pngIsNonBlank(browser, shot);
-  check('screenshot is non-blank', colors > 8, `${colors} distinct colors`);
+  check('screenshot is non-blank', colors > 3, `${colors} distinct colors`);
 
   // pause toggles (gamepad Start)
   await tap(P, [BTN.start], 300);
@@ -152,11 +153,11 @@ try {
   await P.keyboard.press('Space');
   const inBalance = await until(() => document.querySelector('.mgb-menu h2')?.textContent === 'Balance');
   const rows = await P.evaluate(() => document.querySelectorAll('.mgb-menu .mgb-item').length);
-  const rampBefore = await P.evaluate(() => window.__scaffold.balance.heatRamp);
+  const rampBefore = await P.evaluate(() => window.__scaffold.balance.speed);
   await P.keyboard.press('ArrowRight');
-  const changed = await until((b) => window.__scaffold.balance.heatRamp > b, rampBefore);
+  const changed = await until((b) => window.__scaffold.balance.speed > b, rampBefore);
   await P.screenshot({ path: path.join(OUT, 'screens/balance.png') });
-  check('Balance screen lists the knobs and changes apply live', hasBalance && inBalance && rows >= 5 && changed, `rows ${rows}, heatRamp ${rampBefore} -> ${await P.evaluate(() => window.__scaffold.balance.heatRamp)}`);
+  check('Balance screen lists the knobs and changes apply live', hasBalance && inBalance && rows >= 2 && changed, `rows ${rows}, speed ${rampBefore} -> ${await P.evaluate(() => window.__scaffold.balance.speed)}`);
   await P.keyboard.press('Escape');
   await until(() => document.querySelector('.mgb-menu h2')?.textContent === 'Paused');
   await P.keyboard.press('Escape');

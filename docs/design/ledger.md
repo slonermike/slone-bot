@@ -7,4 +7,4 @@ Format: `YYYY-MM-DD | slug | mode | atoms: a, b | theme: <short> | wildcard: <sh
 The `look:` tag lets the look roll (`node scripts/night-state.mjs look`) avoid repeating a palette, shape language or rendering style from the last three nights.
 
 ## Nights
-(none yet; the `_demo` smoke-test prototype is not logged)
+2026-10-29 | 2026-10-29-demo-ball | systemic | atoms: f-juice-forward, p-rising-tide | theme: scaffold smoke test (the original demo, now its own branch) | wildcard: none | look: ember/circles and blobs/glow on dark | verdict: assessed (Slone: it was fun)

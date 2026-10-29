@@ -1,6 +1,7 @@
 // Assemble the static site: launcher at the root, each prototype frozen under p/<slug>/,
 // and a regenerated index.json.  Usage:
 //   node scripts/build-site.mjs                      # launcher + every prototype in src/protos -> dist-site/
+//   node scripts/build-site.mjs --out site-out --protos none --no-fixtures   # main: launcher only, fixtures (slugs starting _) hidden
 //   node scripts/build-site.mjs --out site-out --protos 2026-10-30-name --no-launcher
 //   node scripts/build-site.mjs --out site-out --broken 2026-10-30-name   # record a broken card, no build
 // Existing p/<other> folders in --out are never touched: published prototypes stay frozen.
@@ -121,10 +122,12 @@ function writeBroken(slug) {
 
 /** Regenerate index.json from every p/<slug>/prototype.json present in the site folder. */
 export function writeIndex() {
+  const hideFixtures = flag('no-fixtures');
   const pdir = path.join(out, 'p');
   const list = [];
   for (const d of fs.readdirSync(pdir, { withFileTypes: true })) {
     const f = path.join(pdir, d.name, 'prototype.json');
+    if (hideFixtures && d.name.startsWith('_')) continue; // smoke-test fixtures never appear on the published launcher
     if (d.isDirectory() && fs.existsSync(f)) {
       try { list.push(JSON.parse(fs.readFileSync(f, 'utf8'))); } catch { console.warn(`skipping unreadable manifest: ${f}`); }
     }

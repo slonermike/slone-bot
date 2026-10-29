@@ -1,0 +1,20 @@
+{
+  "slug": "_fixture",
+  "title": "Fixture",
+  "date": "2026-10-29",
+  "question": "Does the scaffold contract work end to end? (Smoke-test fixture.)",
+  "targetFeeling": "neutral",
+  "mode": "systemic",
+  "tags": [],
+  "theme": "Scaffold smoke test (not a themed night)",
+  "wildcard": null,
+  "juiceLayers": [],
+  "metrics": [
+    "reached"
+  ],
+  "assets": [],
+  "buildStatus": "ok",
+  "feedbackStatus": "needs-feedback",
+  "sizeKB": 0,
+  "thumbnail": ""
+}
