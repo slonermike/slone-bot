@@ -287,6 +287,7 @@ function menuItems() {
   const rows = [
     { label: () => 'Volume', value: () => `${Math.round(audio.getVolume('master') * 100)}%`, adjust: (d: number) => audio.setVolume('master', audio.getVolume('master') + d * 0.1) },
     { label: () => 'Mute', value: () => (audio.muted ? 'ON' : 'off'), activate: () => audio.setMuted(!audio.muted) },
+    { label: () => 'Jukebox (music test)', activate: () => { location.href = './jukebox/'; } },
     ...(host
       ? [{ label: () => 'App update', value: () => updateText(), activate: () => void updateAction() }]
       // only in a plain browser: inside the desktop app the update flow above replaces the download page

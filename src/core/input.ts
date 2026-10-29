@@ -68,12 +68,15 @@ export class InputManager {
     if (this.listening || !this.keyboard) return;
     this.listening = true;
     target.addEventListener('keydown', (e) => {
+      if (isTypingTarget(e.target)) return; // a text box keeps its own keys (e.g. the jukebox note field)
       if (KEY_BUTTONS[e.code] || KEY_STICK[e.code]) e.preventDefault();
       this.keys.add(e.code);
       this.tapped.add(e.code);
       setDevice('keyboard');
     });
-    target.addEventListener('keyup', (e) => this.keys.delete(e.code));
+    target.addEventListener('keyup', (e) => {
+      if (!isTypingTarget(e.target)) this.keys.delete(e.code);
+    });
     target.addEventListener('blur', () => this.keys.clear());
   }
 
@@ -218,4 +221,9 @@ export class InputManager {
 
 function clampAxis(v: number): number {
   return v < -1 ? -1 : v > 1 ? 1 : v;
+}
+
+function isTypingTarget(t: EventTarget | null): boolean {
+  const el = t as HTMLElement | null;
+  return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
 }
