@@ -79,11 +79,11 @@ Run this on every build before wrap-up. For each item, mark: yes, no, n/a, or un
 - [ ] The bare core (juice off) is still interesting for at least 30 seconds of play. State how you judged this (bot variance, decision rate, your own reading of the loop). Never use juice to rescue a flat core.
 
 ## J. Agency and clarity (v4)
-- [ ] The main verb acts directly on a specific target the player can aim at (no "mittens": not only an area shove or an indirect lever). [Slone]
+- [ ] The player's main input produces the effect they intend, with precision and predictability (no "mittens": control is not coarse or approximate where it matters). [Slone]
 - [ ] A new player could say, from ten seconds of play with no text, what the goal is, what they control, and whether the last action was good. [Slone]
 - [ ] Doing the right thing has distinct, positive feedback where the action happened, readable without any written explanation; wrong or wasted actions look different. [Slone]
 - [ ] Progress toward the goal is a first-class on-screen element that changes visibly when the player plays well. [Slone]
-- [ ] Motion that carries no information is quiet; the moving things the player must track are few and each says what it is. [Slone]
+- [ ] Activity that carries no information is quiet; the things the player must track at once are few and each says what it is. [Slone]
 - [ ] An outcome can be traced to the action that caused it (the cause is highlighted or the consequence visibly arrives). [Slone]
 
 ## Reporting
