@@ -46,13 +46,14 @@ Written to `runs/<slug>/postmortem.md`, copied to the manifest card and the top 
 ## Publishing
 Push the branch; CI builds and publishes per doc 05. Confirm the card appears (check `index.json` on the published site if the network allows; otherwise rely on CI status).
 
-## Feedback processing (when Slone's replies have been logged)
-1. Tag his answers: feelings, behaviors, quit moment, what pulled him back, constants compared to earlier nights.
-2. Cross-reference the night's telemetry.
-3. Write proposed lessons to `pending-lessons.md`, each marked **one data point** until repeated.
-4. Update the prototype's log and set `feedbackStatus: assessed`.
-5. Flag contradictions with earlier feedback for Slone to resolve at assessment.
-6. Do not edit the Bible.
+## Feedback processing (in Slone's chat session, when he gives feedback)
+Default order (see `CONSTITUTION.md` section 15):
+1. Tag his answers: feelings, behaviors, quit moment, what pulled him back, constants compared to earlier nights. Cross-reference the night's telemetry.
+2. Capture what it teaches about his design philosophy and preferences.
+3. Update the Bible (and feel checklist or taste cards where they fit): bump the version, add to the revision log, and record the evidence in `pending-lessons.md`, each lesson marked **one data point** until repeated. Flag contradictions with earlier feedback for him to resolve.
+4. Set the prototype's `feedbackStatus: assessed` and update its log.
+5. Then ask whether to update the game or use the feedback only for future games. Do not change the game before he answers.
+A nightly run that finds unprocessed feedback files at start only does steps 1 and 4 and writes proposed lessons to `pending-lessons.md`; it never edits the Bible.
 
 ## Failure and recovery
 - A dead or compacted run resumes from `NIGHT_STATE.md` (phase, start time, brief path, branch name, last good build).

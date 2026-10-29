@@ -1,4 +1,4 @@
-import { num, steerToward } from '../../bots/builtin.ts';
+import { num } from '../../bots/builtin.ts';
 import type { Bot, BotInput, Observation } from '../../core/types.ts';
 
 interface DemoObs extends Observation {
@@ -8,9 +8,10 @@ interface DemoObs extends Observation {
   vy: number;
   dashCd: number;
   pickups: { x: number; y: number }[];
+  hazards: { x: number; y: number; active: boolean }[];
 }
 
-/** Competent policy: chase the nearest pickup, dash when it is far and the dash is ready. */
+/** Competent policy: chase the nearest pickup, steer around live drifters, dash when the pickup is far. */
 export function greedyBot(): Bot {
   let lastDash = false;
   return {
@@ -24,11 +25,26 @@ export function greedyBot(): Bot {
         const d = Math.hypot(p.x - o.x, p.y - o.y);
         if (d < bd) { bd = d; best = p; }
       }
-      if (!best) return {};
-      const left = steerToward(o.x, o.y, best.x, best.y);
-      const wantDash = bd > 260 && o.dashCd === 0 && !lastDash && Math.hypot(num(obs, 'vx'), num(obs, 'vy')) < 600;
+      let dx = 0;
+      let dy = 0;
+      if (best) {
+        dx = (best.x - o.x) / Math.max(bd, 1);
+        dy = (best.y - o.y) / Math.max(bd, 1);
+      }
+      for (const h of o.hazards) {
+        if (!h.active) continue;
+        const d = Math.hypot(o.x - h.x, o.y - h.y);
+        if (d < 170) {
+          const k = ((170 - d) / 170) * 2.2;
+          dx += ((o.x - h.x) / Math.max(d, 1)) * k;
+          dy += ((o.y - h.y) / Math.max(d, 1)) * k;
+        }
+      }
+      const m = Math.hypot(dx, dy);
+      if (m > 1) { dx /= m; dy /= m; }
+      const wantDash = !!best && bd > 260 && o.dashCd === 0 && !lastDash && Math.hypot(num(obs, 'vx'), num(obs, 'vy')) < 600;
       lastDash = wantDash;
-      return { left, hold: wantDash ? ['a'] : [] };
+      return { left: { x: dx, y: dy }, hold: wantDash ? ['a'] : [] };
     },
   };
 }

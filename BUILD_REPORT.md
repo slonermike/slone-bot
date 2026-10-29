@@ -44,6 +44,9 @@ Scaffold build, 2026-10-29. Everything in the kickoff list was built. Nothing is
 ## Doc conflicts
 None that needed the constitution to win. Notes: doc 05's Vercel default vs the allowance for Pages (above); doc 07's "minimum pool 15" and "fewer than n" fallback are implemented as two separate checks.
 
+## UX pass after first play (Slone's feedback)
+Menus and launcher scale to small screens (tested at 1366x768 and 1024x600); labels follow the last-used device (keyboard or gamepad); Esc is Start/Back; keys tapped inside one frame are never lost; a button pressed on the frame the pause menu opens no longer triggers it. Demo: the heat ramp restarts after a failure, the pickup pitch rises in whole-tone steps with a cap and a chime layer past it, and the failure has a full effect stack (boom, crunch, long freeze, zoom punch, flash, shockwave ring, debris, "CRUNCH!"). Lessons recorded in `docs/design/pending-lessons.md` as one data point each.
+
 ## Run plan
 Start by running the site in a desktop browser with a gamepad; build the Steam wrapper once that is stable (added to `ROADMAP.md`). Deck-in-browser notes: launch the browser in kiosk mode and set the Steam Input template to Gamepad, otherwise the page sees no controller.
 

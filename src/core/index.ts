@@ -5,6 +5,8 @@ export { InputManager } from './input.ts';
 export { blankInput, shapeStick, expandBotInput, InputBuffer, Coyote } from './input-state.ts';
 export type { StickShape } from './input-state.ts';
 export { track } from './track.ts';
+export { glyph, stickGlyph, getDevice, setDevice, onDeviceChange, KEY_BUTTONS } from './glyphs.ts';
+export type { Device } from './glyphs.ts';
 export type { TrackProps } from './track.ts';
 export { startPrototype, launcherUrl, WIDTH, HEIGHT } from './shell.ts';
 export type { Scaffold, ShellState } from './shell.ts';

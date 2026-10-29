@@ -1,4 +1,5 @@
 import { audio } from '../audio/audio.ts';
+import { glyph, onDeviceChange } from './glyphs.ts';
 import { dial, LAYERS } from '../juice/dial.ts';
 import type { NavAction } from './nav.ts';
 
@@ -35,6 +36,7 @@ export class PauseMenu {
     this.panel.className = 'mgb-panel';
     this.el.appendChild(this.panel);
     document.body.appendChild(this.el);
+    onDeviceChange(() => { if (this.open) this.draw(); });
   }
 
   get isOpen(): boolean {
@@ -108,7 +110,9 @@ export class PauseMenu {
   private draw(): void {
     const items = this.items();
     const title = this.screen === 'main' ? 'Paused' : 'Juice dial';
-    const hint = this.screen === 'main' ? 'A select   B resume   Start resume' : 'A / left-right change   B back';
+    const hint = this.screen === 'main'
+      ? `${glyph('a')} select    ${glyph('b')} or ${glyph('start')} resume`
+      : `${glyph('a')} or left/right change    ${glyph('b')} or ${glyph('start')} back`;
     this.panel.innerHTML = '';
     const h2 = document.createElement('h2');
     h2.textContent = title;
@@ -125,6 +129,7 @@ export class PauseMenu {
         row.appendChild(v);
       }
       this.panel.appendChild(row);
+      if (i === this.index) queueMicrotask(() => row.scrollIntoView({ block: 'nearest' }));
     });
     const p = document.createElement('div');
     p.className = 'mgb-hint';
