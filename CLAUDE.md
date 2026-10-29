@@ -35,7 +35,7 @@ A factory for small, playable 2D game prototypes, built unattended one per night
 2. Read `CONSTITUTION.md`, `docs/tech/SCAFFOLD_API.md`, Bible, feel checklist, taste cards, concept library, ledger.
 3. `node scripts/themes.mjs roll`, then choose and resolve (see `docs/tech/07-themes-script.md`).
 4. Write the brief (`docs/design/04` template), then build, test with bots, run the feel checklist.
-5. Before publishing, run `npm run media -- <slug>`: it records the greedy bot playing and writes `preview.gif` (a few seconds, shown on the launcher card while it is focused) and `thumb.png` from the same footage. Needs ffmpeg; if missing, log it and move on.
+5. Before publishing, run `npm run media -- <slug>`: it plays the greedy bot at a fixed 20 fps (time is stepped frame by frame, so it is smooth on any machine) and writes `preview.gif` (4 seconds, shown on the launcher card while it is focused) and `thumb.png` from the same footage. It takes a minute or two. Needs ffmpeg; if missing, log it and move on.
 6. At 3:00 elapsed: wrap up. At 3:30: pencils down. Post mortem. Publish.
 
 ## When Slone gives feedback in chat

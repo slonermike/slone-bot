@@ -53,6 +53,10 @@ export interface Scaffold {
     leaving: boolean;
   };
   audioLog: typeof audio.log;
+  /** Park the real-time loop; time then moves only through stepFrames. */
+  captureMode(on: boolean): void;
+  /** Advance exactly n frames of 1/60 s (capture mode only). Only the last is drawn unless `drawAll` is set. */
+  stepFrames(n: number, drawAll?: boolean): void;
 }
 
 declare global {
@@ -304,8 +308,7 @@ export async function startPrototype(mod: PrototypeModule): Promise<Scaffold> {
   };
 
   // ---- the frame ----
-  const frame = (now: number) => {
-    requestAnimationFrame(frame);
+  const stepFrame = (now: number, draw = true) => {
     const rawMs = now - lastNow;
     lastNow = now;
     const dtSec = Math.min(rawMs / 1000, 0.1);
@@ -384,12 +387,21 @@ export async function startPrototype(mod: PrototypeModule): Promise<Scaffold> {
     } else {
       proto.render(1);
     }
-    app.render();
+    if (draw) app.render();
     if (latency.pendingFrom >= 0 && stepsThisFrame > 0) {
       latency.visual = performance.now() - latency.pendingFrom;
       latency.pendingFrom = latency.audioDone ? -1 : latency.pendingFrom;
     }
     debug.update(debugData(), now);
+  };
+
+  // Capture mode (npm run media): the real-time loop is parked and time only moves when stepFrames() is called, one
+  // exact 1/60 s frame at a time, so footage is smooth and identical on every machine however slow its renderer is.
+  let manual = false;
+  let virtualNow = 0;
+  const frame = (now: number) => {
+    requestAnimationFrame(frame);
+    if (!manual) stepFrame(now);
   };
 
   const sortedFrames = () => [...frameTimes].sort((a, b) => a - b);
@@ -447,6 +459,20 @@ export async function startPrototype(mod: PrototypeModule): Promise<Scaffold> {
       return { frames, simSteps, fps: p.fps, avgFrameMs: p.avg, p95FrameMs: p.p95, gamepad: input.frame.connected, audioCalls: audio.log.length, leaving };
     },
     audioLog: audio.log,
+    captureMode(on: boolean) {
+      manual = on;
+      // restart the virtual clock from exactly zero so every capture session sees identical float arithmetic
+      virtualNow = 0;
+      lastNow = 0;
+      stepper.reset();
+    },
+    stepFrames(n: number, drawAll = false) {
+      if (!manual) throw new Error('stepFrames needs captureMode(true)');
+      for (let i = 0; i < n; i++) {
+        virtualNow += 1000 / 60;
+        stepFrame(virtualNow, drawAll || i === n - 1);
+      }
+    },
   };
   window.__scaffold = scaffold;
   requestAnimationFrame((t) => {

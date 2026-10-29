@@ -151,6 +151,7 @@ Helpers: `idleBot()`, `randomBot()`, `steerToward(fx, fy, tx, ty)` (unit vector)
 npm run bots -- <slug>                  # sim-only, 3 seeds x all bots, writes runs/<slug>/telemetry/*.json, prints a few lines + flags
 npm run bots -- <slug> --shots          # also builds, plays in real time in headless Chromium, saves runs/<slug>/screens/*.png
 npm run bots -- <slug> --shots --thumb  # also writes src/protos/<slug>/thumb.png for the launcher card
+npm run media -- <slug>                 # smooth fixed-frame-rate preview.gif + thumb.png (see Capture mode)
 ```
 Programmatic: `runSim(createPrototype, bot, { seed, maxSimSeconds, maxWallMs, stepsPerTick })` returns `{ telemetry, inputLog, samples }`; `runSuite(createPrototype, bots, { seeds })` returns `{ runs, flags, summary }`; `replay(createPrototype, seed, inputLog, steps)` reproduces a run at 1x. Fast-forward runs more fixed steps per tick; it never enlarges dt. Flags: idle bot saw nothing happen, greedy no better than idle, a degenerate bot near greedy's score, crashes, NaN/Infinity telemetry.
 
@@ -213,3 +214,6 @@ Reusable helpers go in `src/core` or `src/juice` with a unit test and a short en
 | `audio`: `audio` | The engine singleton behind `play`: `define`, `has`, `names`, `samples`, `unlock`, `setVolume`, `getVolume`, `setMuted`, `resetStats`, `log`, `counts`. |
 | `audio`: `renderSfx`, `sfxDuration`, `peakOf`, `rmsOf`, `SAMPLE_RATE`, `SfxParams`, `Wave`, `PlayOptions`, `BusName`, `PlayLogEntry` | Sample generator, loudness helpers, and types. |
 | `bots`: `makeCtx`, `emptyTelemetry`, `STANDARD_METRICS`, `RunOptions`, `RunResult`, `SuiteResult`, `Telemetry` | Harness internals and types. |
+
+## Capture mode (smooth media)
+`window.__scaffold.captureMode(true)` parks the real-time loop; time then moves only when `stepFrames(n)` is called, n exact frames of 1/60 s (only the last is drawn unless `drawAll`). The sim, juice and tweens all see the same fixed steps they would at 60 fps, so footage is smooth and identical on every machine, however slow its renderer. `npm run media -- <slug> [--fps 20] [--seconds 4]` uses it: pass 1 plays the greedy bot without drawing to find the busiest window, pass 2 replays to it and screenshots each captured frame. Prototypes need nothing special, but must be deterministic for a given `?seed=` (anything visual that uses `Math.random` or wall-clock time will differ between passes).
