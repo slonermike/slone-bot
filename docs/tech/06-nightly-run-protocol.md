@@ -44,7 +44,7 @@ Check elapsed time at every phase boundary and before any long command.
 Written to `runs/<slug>/postmortem.md`, copied to the manifest card and the top of the feedback sheet. Facts first (telemetry), beliefs labeled, no self-congratulation, run-health line separate.
 
 ## Publishing
-Push the branch; CI builds and publishes per doc 05. Confirm the card appears (check `index.json` on the published site if the network allows; otherwise rely on CI status).
+Run `npm run media -- <slug>` first (records the greedy bot, writes `preview.gif` and `thumb.png`; skip with a logged note if ffmpeg is missing). Then push the branch; CI builds and publishes per doc 05. Confirm the card appears (check `index.json` on the published site if the network allows; otherwise rely on CI status).
 
 ## Feedback processing (in Slone's chat session, when he gives feedback)
 Default order (see `CONSTITUTION.md` section 15):

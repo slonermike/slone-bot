@@ -156,6 +156,10 @@ describe('manifest and attribution', () => {
     wildcard: null, juiceLayers: [], metrics: [], assets: [], buildStatus: 'ok', feedbackStatus: 'needs-feedback', sizeKB: 1, thumbnail: 'thumb.png',
   };
   it('accepts a valid manifest', () => expect(validateManifest(good)).toEqual([]));
+  it('allows an optional preview and rejects a non-string one', () => {
+    expect(validateManifest({ ...good, preview: 'preview.gif' })).toEqual([]);
+    expect(validateManifest({ ...good, preview: 3 }).join()).toMatch(/preview/);
+  });
   it('rejects bad fields and disallowed asset licenses', () => {
     expect(validateManifest({ ...good, mode: 'x' }).join()).toMatch(/mode/);
     expect(validateManifest({ ...good, date: 'yesterday' }).join()).toMatch(/date/);

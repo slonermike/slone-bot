@@ -104,6 +104,15 @@ function card(p: PrototypeManifest, i: number, hero: boolean, rec?: { count: num
     img.onerror = () => img.remove();
     thumb.append(img);
   }
+  // the focused card plays its gameplay GIF over the still thumbnail (only the focused one is fetched)
+  if (p.preview && i === focus && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const gif = document.createElement('img');
+    gif.className = 'preview';
+    gif.alt = '';
+    gif.src = `./p/${p.slug}/${p.preview}`;
+    gif.onerror = () => gif.remove();
+    thumb.append(gif);
+  }
   const body = h('div', 'body');
   body.append(h('h2', '', p.title), h('div', 'q', p.question), h('div', 'feel', p.targetFeeling));
   const meta = h('div', 'meta', p.date);
