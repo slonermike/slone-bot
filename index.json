@@ -5,13 +5,14 @@
       "slug": "_demo",
       "title": "Demo Ball",
       "date": "2026-10-29",
-      "question": "Does pushing a ball around feel good before anything else happens? (Scaffold smoke test.)",
+      "question": "Does pushing a ball around feel good, and does a run with layered pressure and a real ending hold together? (Scaffold smoke test.)",
       "targetFeeling": "a small, springy toy that talks back",
       "mode": "systemic",
       "tags": [
         "f-toy-movement",
         "f-juice-forward",
-        "p-rising-tide"
+        "p-rising-tide",
+        "l-short-run"
       ],
       "theme": "Scaffold smoke test (not a themed night)",
       "wildcard": null,
@@ -31,12 +32,16 @@
         "firstPressureSimSec",
         "idleSurvivalSec",
         "mainVerbCount",
-        "scoreOrProgress"
+        "scoreOrProgress",
+        "lives",
+        "layer",
+        "runs",
+        "survivalSec"
       ],
       "assets": [],
       "buildStatus": "ok",
       "feedbackStatus": "needs-feedback",
-      "sizeKB": 669,
+      "sizeKB": 680,
       "thumbnail": "thumb.png"
     }
   ]
