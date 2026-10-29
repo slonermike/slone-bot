@@ -87,3 +87,25 @@ describe('look roll', () => {
     }
   });
 });
+
+describe('build-site index', () => {
+  it('leaves smoke-test fixtures (slugs starting _) out of index.json unless --fixtures is passed', async () => {
+    const fs2 = await import('node:fs');
+    const os2 = await import('node:os');
+    const path2 = await import('node:path');
+    const { execFileSync } = await import('node:child_process');
+    const out = fs2.mkdtempSync(path2.join(os2.tmpdir(), 'site-'));
+    const manifest = (slug: string) => ({ slug, title: slug, date: '2030-01-01', question: 'q', targetFeeling: 'f', mode: 'systemic', tags: [], theme: 't', wildcard: null, juiceLayers: [], metrics: [], assets: [], buildStatus: 'ok', feedbackStatus: 'needs-feedback', sizeKB: 1, thumbnail: '' });
+    for (const slug of ['_old-fixture', '2030-01-01-real']) {
+      fs2.mkdirSync(path2.join(out, 'p', slug), { recursive: true });
+      fs2.writeFileSync(path2.join(out, 'p', slug, 'prototype.json'), JSON.stringify(manifest(slug)));
+    }
+    const root = path2.resolve(__dirname, '../..');
+    const slugs = (extra: string[]) => {
+      execFileSync('node', ['scripts/build-site.mjs', '--out', out, '--no-launcher', '--protos', 'none', ...extra], { cwd: root, stdio: 'pipe' });
+      return JSON.parse(fs2.readFileSync(path2.join(out, 'index.json'), 'utf8')).prototypes.map((p: any) => p.slug).sort();
+    };
+    expect(slugs([])).toEqual(['2030-01-01-real']);
+    expect(slugs(['--fixtures'])).toEqual(['2030-01-01-real', '_old-fixture']);
+  });
+});
