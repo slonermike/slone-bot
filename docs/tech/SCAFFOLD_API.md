@@ -1,0 +1,192 @@
+# SCAFFOLD_API
+
+How a nightly agent uses everything the scaffold provides. Read this instead of the internals. Examples are short on purpose; copy `src/protos/_demo/` (scaffold-owned, safe to read) as your starting structure.
+
+Imports from a prototype at `src/protos/<slug>/index.ts`:
+```ts
+import { Rng, InputBuffer, Coyote, shapeStick, track } from '../../core/index.ts';
+import { play, defineSound } from '../../audio/index.ts';
+import { tween, ease, shake, hitStop, flash, punch, SquashStretch, Trail, Particles, Eyes, numberPop, dial } from '../../juice/index.ts';
+import { idleBot, randomBot, steerToward } from '../../bots/index.ts';
+```
+
+## 1. Making a prototype
+
+Folder `src/protos/<slug>/` (slug = `YYYY-MM-DD-name`, lowercase, digits, `-`, `_`):
+```
+prototype.json   manifest (section 8)
+sim.ts           PURE sim: no Pixi, no DOM, no audio, no Math.random (so bots and unit tests import it)
+index.ts         render + juice + audio; exports createPrototype and bots
+bots.ts          greedy bot + a degenerate-strategy probe
+assets/          only licensed or original assets, each in ATTRIBUTION.md
+```
+`index.ts` must export:
+```ts
+export function createPrototype(): Prototype          // required
+export const bots: Bot[]                              // required in practice: at least 'greedy' and one 'degenerate-*'
+```
+The `Prototype` contract (names are fixed; the shell calls them):
+```ts
+interface Prototype {
+  meta: { slug, title, question, targetFeeling, mode: 'content' | 'systemic' };
+  init(ctx: Ctx): void;                       // create sim state. No drawing.
+  step(dt: number, input: InputState): void;  // ONE fixed step (dt = 1/60). Pure logic.
+  events(): SimEvent[];                       // drain and return events emitted since the last call
+  mount?(view: View): void;                   // OPTIONAL but where you build Pixi objects (not called in bot runs)
+  render(alpha: number): void;                // draw from sim state; interpolate previous->current with alpha
+  onEvent(e: SimEvent): void;                 // juice + audio fire HERE, driven by sim events
+  telemetry(): Record<string, number>;        // numeric metrics for bots (finite numbers only)
+  getState?(): unknown;                       // small numeric observation for bots
+  dispose?(): void;
+}
+```
+Two additions to the doc 02 contract: `mount(view)` (the place to create display objects, since `init` must not draw) and `dispose()`.
+
+**Run it:** `npm run dev:proto -- <slug>` (hot reload on :5173), or `npm run build:site && npm run serve` (the real launcher on :4173).
+
+**Ending a run:** a sim that emits an event of type `complete` ends a bot run as `completed`; `gameover` ends it as `failed`. Systemic builds just run until the time cap (`timeout`).
+
+### Ctx (what `init` and sim code may use)
+| Field | Use |
+|---|---|
+| `ctx.rng` | THE sim RNG (`next()`, `range(a,b)`, `int(a,b)`, `chance(p)`, `pick(arr)`, `gauss()`, `shuffle(arr)`, `fork()`). Seeded from `?seed=N`. |
+| `ctx.vfxRng` | Visual-only randomness. Never use in sim code. |
+| `ctx.time.steps`, `.seconds` | Sim time. Sim code uses this, never wall time. |
+| `ctx.dt` | `1/60` |
+| `ctx.params` | URL query params, e.g. `ctx.params.hard === '1'` |
+| `ctx.seed` | The seed in use. |
+
+Default seed: random per launch (restart picks the next one); `?seed=N` pins it (restart repeats it). Bots always pass explicit seeds.
+
+### InputState (what `step` receives)
+```ts
+input.left, input.right            // {x, y} -1..1 after dead zone, y positive = DOWN
+input.buttons.a.down|pressed|released|value   // names: a b x y lb rb lt rt ls rs up down left right
+input.gyro                         // {x,y,z}, zeros if unavailable (optional input; never require it)
+```
+`pressed`/`released` are true for exactly one step. `start` and `select` are reserved by the shell and always read false. Select+A is also swallowed. D-pad doubles as the left stick when the stick is idle.
+
+Helpers (all in sim steps, so deterministic):
+```ts
+const jumpBuf = new InputBuffer(6);   // if (input.buttons.a.pressed) jumpBuf.press(); jumpBuf.step(); if (canJump && jumpBuf.consume()) jump();
+const coyote = new Coyote(6);         // if (onGround) coyote.ground(); coyote.step(); if (coyote.active) allowJump
+shapeStick(x, y, { deadzone: 0.15, curve: 2 })
+```
+
+### View (given to `mount`)
+`view.world` (Pixi Container that shakes; put game objects here), `view.ui` (never shakes; HUD), `view.app` (Pixi Application; cast `view.app as Application`), `view.width/height` (1280x800), `view.frame.dt` (real seconds), `view.onFrame(fn)` (per-frame callbacks for particles/eyes/squash updates).
+
+## 2. Shell behavior you get for free
+Fixed 60 Hz timestep, accumulator clamp, interpolation alpha, hit-stop. "PRESS A TO START" title screen (satisfies the audio-gesture rule). **Start** pauses with the menu (Resume / Restart / Back to launcher / Juice dial / Feedback sheet). **Select+Start held 0.5 s** returns to the launcher. **Select+A** toggles the debug overlay (FPS, frame ms, steps/frame, input-to-visual/audio ms, events, juice). Auto-pause when the tab is hidden. Play time is recorded for the launcher. Keyboard fallback for debugging: arrows/WASD = left stick, Space/Z = A, X = B, C = X, V = Y, Q/E = LB/RB, Enter = Start, Shift = Select.
+
+URL flags: `?seed=N`, `?autostart=1` (skip the title screen), `?debug=1`, `?juice=off` or `?juice=shake,audio` (layers), `?intensity=0.5`.
+
+## 3. Juice (`src/juice`)
+All respect the juice dial: if a layer is off, the helper does nothing.
+
+| Helper | Signature / example |
+|---|---|
+| `ease` | `ease.linear, inQuad, outQuad, outCubic, inOut, outBack, outElastic, outBounce` (each `(t) => number`) |
+| `chase` | `x = chase(x, target, 0.15)`; `chaseDt(x, target, 0.15, dtSeconds)` is frame-rate independent |
+| `lerp`, `clamp`, `lerpColor` | plain math helpers |
+| `tween` | `tween(sprite, { alpha: 0, 'scale.x': 2 }, 300, ease.outBack, { delay: 50, jitter: 40, onComplete })`. `scale: 2` sets both axes. `tint` interpolates as a color. A new tween on the same property replaces the old one. Real-time (not sim) clock. |
+| `SquashStretch` | `const ss = new SquashStretch(container)`; each render `ss.update(dt, vx, vy)`; on impact `ss.pop(0.4, 'y')`. Put it on a container, not the eyes. |
+| `punch` / `punchPosition` | `punch(obj, 0.3)` scale impulse that springs back; `punchPosition(obj, 8, 0)` |
+| `flash` | `flash(container, 0xffffff, 110)` blends toward a color and fades. Uses one color filter per object; use on the few things that matter. |
+| `shake` | `shake(0.4)`: add trauma 0..1 (felt shake is trauma squared, amplitude capped). The shell applies it to `view.world`. |
+| `hitStop` | `hitStop(4)`: freeze the sim for N steps (3 to 8 reads well). |
+| `Trail` | `const t = new Trail(view.world, { color, width, length })`; `t.push(x, y)` then `t.draw()` each render; `t.clear()` |
+| `Particles` | `const p = new Particles(view.world)`; `view.onFrame((dt) => p.update(dt))`; `p.emit('sparks', x, y, { count, color, speed, size, angle, spread })`. Presets: `puff`, `debris`, `confetti`, `sparks`, `dust`. Capped per emit (64) and in total (600). Wraps Pixi's `ParticleContainer`. |
+| `Eyes` | `const e = new Eyes({ size: 8 })`; add `e.container` to an entity; `view.onFrame((dt) => e.update(dt))`; `e.lookAt(dx, dy)`, `e.setMood('happy' | 'worried' | 'frown' | 'neutral', seconds)`, `e.blink()` |
+| `numberPop` | `numberPop(view.world, '+1', x, y, { color, size, rise, ms })` |
+| `dial` | the juice dial: `dial.enabled('shake')`, `dial.scale('shake', amount)`, `dial.toggle(layer)`, `dial.setIntensity(0.5)`, `dial.activeLayers()`. Layers: `shake, particles, hitStop, squashStretch, flash, trails, eyes, audio`. |
+| `vfx()`, `vfxRange(a, b)` | visual-only randomness (seeded from `ctx.vfxRng`) |
+
+**Effect stacking rule:** every main-verb action gets at least a motion response, a flash or squash, a sound, and a particle or shake. Scale with `e.magnitude`; do not use one strength for everything.
+
+## 4. Audio (`src/audio`)
+```ts
+play('hit', { pitch: 1 + combo * 0.08, volume: 0.4 + 0.6 * m, pan: -0.3, variation: 0.04 });
+defineSound('boom', { wave: 'noise', freq: 120, slide: -1.2, attack: 0.002, sustain: 0.05, decay: 0.3, lowpass: 900, transient: 0.4, volume: 0.5 });
+defineSound('step', [variantA, variantB, variantC]);   // round-robin variants for frequent sounds
+```
+Built-in names: `jump land hit pickup pressureUp fail recover dash click ui-move ui-select ui-back`. Call `play` only from `onEvent` (never from `step`).
+
+`SfxParams`: `wave` (`square|saw|triangle|sine|noise`), `freq` Hz, `slide` (octaves/s), `deltaSlide`, `duty`, `attack/sustain/decay` (s), `punch`, `vibratoDepth/vibratoSpeed`, `lowpass/highpass` (Hz), `crush` (bits), `transient` (layered click), `volume`. Tie params to gameplay: pitch with combo, volume with impact. Sounds are generated as sample buffers in code (original, no attribution needed) and are deterministic.
+
+Other: `audio.setVolume('master'|'sfx'|'music'|'ui', 0..1)`, `audio.setMuted(bool)`, `audio.samples(name)` (raw Float32Array, for loudness/clipping checks), `renderSfx`, `peakOf`, `rmsOf`. Every `play` call is recorded in `audio.log`/`audio.counts`, which is how bots and the smoke test verify audio events fired even with no sound hardware. Latency: the debug overlay and telemetry report input-to-audio and input-to-visual ms measured from the scaffold's poll (they exclude display and controller hardware latency).
+
+## 5. Bots and telemetry (`src/bots`)
+```ts
+interface Bot { name: string; reset(seed: number): void; act(obs: Observation, tick: number): BotInput }
+interface BotInput { left?: {x?, y?}; right?: {x?, y?}; hold?: ButtonName[]; lt?: number; rt?: number }
+```
+`BotInput` is a compact form of `Partial<InputState>`: list the buttons held this step in `hold`; the runner derives press/release edges (release a button for one tick to press it again). `obs` is whatever your `getState()` returns (or `telemetry()` if absent); keep it small and numeric.
+
+Helpers: `idleBot()`, `randomBot()`, `steerToward(fx, fy, tx, ty)` (unit vector), `num(obs, 'key')`.
+
+**Required per prototype:** idle (built in), random (built in), `greedy` (yours), and one `degenerate-*` probe (yours). Run them all:
+```
+npm run bots -- <slug>                  # sim-only, 3 seeds x all bots, writes runs/<slug>/telemetry/*.json, prints a few lines + flags
+npm run bots -- <slug> --shots          # also builds, plays in real time in headless Chromium, saves runs/<slug>/screens/*.png
+npm run bots -- <slug> --shots --thumb  # also writes src/protos/<slug>/thumb.png for the launcher card
+```
+Programmatic: `runSim(createPrototype, bot, { seed, maxSimSeconds, maxWallMs, stepsPerTick })` returns `{ telemetry, inputLog, samples }`; `runSuite(createPrototype, bots, { seeds })` returns `{ runs, flags, summary }`; `replay(createPrototype, seed, inputLog, steps)` reproduces a run at 1x. Fast-forward runs more fixed steps per tick; it never enlarges dt. Flags: idle bot saw nothing happen, greedy no better than idle, a degenerate bot near greedy's score, crashes, NaN/Infinity telemetry.
+
+Telemetry JSON (schema in `src/bots/telemetry.ts`, `validateTelemetry()`): `{ night, seed, bot, mode, simSeconds, wallMs, timescale, outcome, metrics, perf, feel, errors }`. Standard `metrics` keys: `runLength deaths firstPressureSimSec restartDelaySimSec mainVerbCount decisionsPerMinute idleSurvivalSec scoreOrProgress variance`; whatever your `telemetry()` returns is added (declare custom ones in `prototype.json`). Sim-only runs leave `perf`/`feel` at zero (real-time checks happen at 1x only). In the browser, `window.__scaffold.snapshot()` returns a real-time telemetry object with frame stats, latency, event counts, shake peak, hit-stop frames.
+
+Browser hooks (smoke test and `--shots` use these): `window.__scaffold` exposes `proto`, `input` (`input.inject({ left, right, hold })`), `state()`, `snapshot()`, `start()`, `restart()`, `setPaused()`, `attachBot(bot)`, `stats()`, `audioLog`.
+
+## 6. Physics (optional)
+```ts
+import { loadPhysics } from '../../core/physics.ts';
+const RAPIER = await loadPhysics();            // lazy; adds ~2 MB (WASM) only to builds that import it
+const world = new RAPIER.World({ x: 0, y: 980 });  // step once per sim step with a fixed timestep to stay deterministic
+```
+Rapier needs async init and so cannot be called inside the synchronous `init`; load it before returning the prototype (top-level `await` in `index.ts`) or skip physics for a night this small.
+
+## 7. Analytics stub
+`track(event, props?)` from `core` is a **no-op**. The shell calls it for `session_start`, `session_end`, `restart`, and every sim event; the launcher for `launcher_open` and `card_launch`. No network, no storage. Keep props numeric or enumerated; never pass personal or device identifiers. (Roadmap item; do not build more.)
+
+## 8. Manifest: `prototype.json`
+Fields: `slug, title, date, question, targetFeeling, mode ('content'|'systemic'), tags[], theme, wildcard (string|null), juiceLayers[], metrics[], assets[], buildStatus, feedbackStatus, sizeKB, thumbnail`. Validate with `validateManifest()` (build fails on errors). `assets[]` entries: `{ file, source, author?, license, date }`; allowed licenses are the allowlist in `docs/tech/08`. `buildStatus`, `sizeKB`, and `thumbnail` are overwritten by the build. Optional files the build picks up: `src/protos/<slug>/thumb.png`, `runs/<slug>/postmortem.md`, `runs/<slug>/feedback-sheet.md` (the launcher shows them with the X button).
+
+## 9. Build, test, publish
+| Command | What it does |
+|---|---|
+| `npm run smoke` | Builds the site, then runs the headless end-to-end gate (boot, input, fps, audio, telemetry, screenshot, manifest, return combo). Gates every merge to main and every publish. |
+| `npm run build:site` | Launcher plus every prototype into `dist-site/`. Options: `--out DIR --protos a,b\|all\|none --no-launcher --broken SLUG` |
+| `npm run bots -- <slug>` | Section 5 |
+| `npm run dev:proto -- <slug>` / `npm run serve` | Dev server / serve `dist-site` on :4173 |
+| `npm test`, `npm run typecheck`, `npm run secrets`, `npm run licenses`, `npm run check` | Unit tests, types, secret scan, license audit, all of them |
+| `node scripts/night-state.mjs start \| checkpoint <phase> [note] \| set k=v \| check \| atoms` | Run protocol (docs/tech/06). `check` exits 2 after 3:30. |
+| `node scripts/preflight.mjs` | Tool and network report |
+| `node scripts/themes.mjs roll \| resolve \| add` | Theme pool (docs/tech/07). Never read `themes/*.json` directly. |
+
+Smoke fps: headless software rendering is slow, so a low fps prints a WARN; set `SMOKE_STRICT_FPS=1` to make it fail on real hardware. Pushing `proto/<slug>` publishes that one prototype as a frozen folder (see `docs/tech/09-branches-and-deploys.md`).
+
+## 10. Dependencies (and why)
+`pixi.js` (rendering, filters, particle container; MIT), `@dimforge/rapier2d-compat` (optional physics; Apache-2.0), `@fontsource/space-grotesk` (launcher font; OFL). Dev: `vite`, `typescript`, `vitest`, `playwright`. No other runtime dependencies; sounds are synthesized in our own small generator (no audio library).
+
+## 11. Adding reusable tech (merge to main)
+Reusable helpers go in `src/core` or `src/juice` with a unit test and a short entry here, only when `npm run check` passes. Keep every export documented in this file. Prototype-specific code stays on the night's branch.
+
+## 12. Everything else that is exported (internals; rarely needed in a prototype)
+| Export | What it is |
+|---|---|
+| `core`: `DT`, `FixedStepper` | The 1/60 constant and the pure accumulator the shell uses (`advance`, `hitStop`, `timescale`). Used by tests and bots. |
+| `core`: `InputManager` | Gamepad/keyboard poller (`poll`, `takeStepInput`, `inject`, `frame`). The shell owns the instance; read via `window.__scaffold.input`. |
+| `core`: `blankInput`, `expandBotInput` | Build an all-zero `InputState`; expand a `BotInput` into one with press/release edges. |
+| `core`: `hashSeed(text)` | Stable 32-bit seed from a string. |
+| `core`: `startPrototype`, `launcherUrl`, `WIDTH`, `HEIGHT` | Shell entry (called by `src/core/shell/main.ts`), the launcher URL used by the return combo, and the 1280x800 logical size. |
+| `core`: `validateManifest`, `PrototypeManifest`, `AssetEntry` | Manifest schema and validator. |
+| `core/attribution.ts`, `core/history.ts`, `core/nav.ts`, `core/menu.ts`, `core/debug.ts` | Launcher/shell plumbing (credits parser, local play history, menu navigation, pause menu, debug overlay). Not for prototypes. |
+| `core/physics.ts`: `loadPhysics` | Section 6. |
+| `juice`: `Tweens`, `tweens` | The tween manager behind `tween()`; the shell updates `tweens` each frame and clears it on restart. |
+| `juice`: `Trauma`, `trauma`, `fxStats` | The shake model, the shared instance the shell applies, and the stats it reads into telemetry. |
+| `juice`: `JuiceDial`, `LAYERS`, `Layer` | Dial class, layer names. Use the shared `dial`. |
+| `juice`: `setVfxRandom` | Point visual randomness at a seeded source (the shell does this). |
+| `juice`: `TweenOptions`, `TrailOptions`, `EmitOptions`, `ParticlePreset`, `EyesOptions`, `Mood`, `EaseFn` | Types. |
+| `audio`: `audio` | The engine singleton behind `play`: `define`, `has`, `names`, `samples`, `unlock`, `setVolume`, `getVolume`, `setMuted`, `resetStats`, `log`, `counts`. |
+| `audio`: `renderSfx`, `sfxDuration`, `peakOf`, `rmsOf`, `SAMPLE_RATE`, `SfxParams`, `Wave`, `PlayOptions`, `BusName`, `PlayLogEntry` | Sample generator, loudness helpers, and types. |
+| `bots`: `makeCtx`, `emptyTelemetry`, `STANDARD_METRICS`, `RunOptions`, `RunResult`, `SuiteResult`, `Telemetry` | Harness internals and types. |

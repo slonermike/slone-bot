@@ -1,0 +1,18 @@
+export { ease, chase, chaseDt, lerp, clamp, lerpColor } from './ease.ts';
+export type { EaseFn } from './ease.ts';
+export { tween, tweens, Tweens } from './tween.ts';
+export type { TweenOptions } from './tween.ts';
+export { SquashStretch, punch, punchPosition } from './squash.ts';
+export { flash } from './flash.ts';
+export { shake, hitStop, trauma, fxStats } from './fx.ts';
+export { Trauma } from './shake.ts';
+export { Trail } from './trail.ts';
+export type { TrailOptions } from './trail.ts';
+export { Particles } from './particles.ts';
+export type { ParticlePreset, EmitOptions } from './particles.ts';
+export { Eyes } from './eyes.ts';
+export type { Mood, EyesOptions } from './eyes.ts';
+export { numberPop } from './numberpop.ts';
+export { dial, JuiceDial, LAYERS } from './dial.ts';
+export type { Layer } from './dial.ts';
+export { vfx, vfxRange, setVfxRandom } from './random.ts';

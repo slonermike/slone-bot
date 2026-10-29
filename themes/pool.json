@@ -1,0 +1,182 @@
+[
+  {
+    "id": "t001",
+    "text": "Limited space",
+    "type": "constraint",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t002",
+    "text": "Everything you build gets washed away on a schedule",
+    "type": "system",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t003",
+    "text": "You are the weather, not the character",
+    "type": "system",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t004",
+    "text": "The safe place keeps moving",
+    "type": "constraint",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t005",
+    "text": "Cozy, but something is slowly closing in",
+    "type": "feeling",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t006",
+    "text": "The world remembers what you did last time",
+    "type": "system",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t007",
+    "text": "One tool, many uses",
+    "type": "constraint",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t008",
+    "text": "A tiny town that needs you to keep the lights on",
+    "type": "world",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t009",
+    "text": "Escape, then explore what you escaped from",
+    "type": "feeling",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t010",
+    "text": "Every success makes the next problem bigger",
+    "type": "system",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t011",
+    "text": "Delivery under pressure",
+    "type": "world",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t012",
+    "text": "Two things you cannot do at once",
+    "type": "constraint",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t013",
+    "text": "You borrow power and must give it back",
+    "type": "system",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t014",
+    "text": "A crowd that follows your lead, whether you want it or not",
+    "type": "world",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t015",
+    "text": "The map is the puzzle",
+    "type": "system",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t016",
+    "text": "Quiet confidence that grows into recklessness",
+    "type": "feeling",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t017",
+    "text": "Things get stuck, and unsticking them is the fun",
+    "type": "system",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t018",
+    "text": "Time only moves when something breaks",
+    "type": "constraint",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t019",
+    "text": "Rebuild better after the flood",
+    "type": "feeling",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t020",
+    "text": "A toy box with a countdown",
+    "type": "world",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  }
+]

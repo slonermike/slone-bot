@@ -1,0 +1,111 @@
+name: CI
+
+# Checks run on pushes to main and proto/* and on pull requests (read-only token, no secrets).
+# Publishing happens only on pushes (owner branches), in a separate job with the only write permission.
+on:
+  push:
+    branches: [main, 'proto/**']
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Secret patterns
+        run: node scripts/check-secrets.mjs
+      - name: Dependency licenses
+        run: node scripts/check-licenses.mjs
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Smoke test
+        run: npm run smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-output
+          path: runs/_smoke
+          if-no-files-found: ignore
+
+  publish:
+    # main: publish only when checks pass.  proto/*: publish on success, or record a "broken" card on failure.
+    needs: check
+    if: ${{ always() && github.event_name == 'push' && (needs.check.result == 'success' || startsWith(github.ref, 'refs/heads/proto/')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    concurrency:
+      group: publish-site
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Prepare the site branch worktree
+        run: |
+          if git ls-remote --exit-code --heads origin site >/dev/null 2>&1; then
+            git fetch --depth 1 origin site
+            git worktree add site-out FETCH_HEAD
+            git -C site-out checkout -B site
+          else
+            git worktree add --detach site-out
+            git -C site-out checkout --orphan site
+            git -C site-out rm -rf . >/dev/null 2>&1 || true
+          fi
+
+      - name: Build into the site (only what this push owns)
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          CHECK_RESULT: ${{ needs.check.result }}
+        run: |
+          # Frozen snapshots: every other p/<slug>/ folder in site-out is left untouched.
+          if [ "$REF_NAME" = "main" ]; then
+            node scripts/build-site.mjs --out site-out --protos _demo
+          else
+            SLUG="${REF_NAME#proto/}"
+            if ! printf '%s' "$SLUG" | grep -Eq '^[a-z0-9][a-z0-9_-]{0,80}$'; then
+              echo "Refusing to publish unsafe slug: $SLUG"; exit 1
+            fi
+            if [ "$CHECK_RESULT" = "success" ]; then
+              node scripts/build-site.mjs --out site-out --no-launcher --protos "$SLUG"
+            else
+              node scripts/build-site.mjs --out site-out --no-launcher --broken "$SLUG"
+            fi
+          fi
+
+      - name: Commit and push the site branch
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          cd site-out
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "nothing to publish"; exit 0; fi
+          git commit -m "publish: $REF_NAME @ ${GITHUB_SHA::7}"
+          git push origin HEAD:site
+
+      - name: Mark main as scaffold-stable
+        if: ${{ github.ref == 'refs/heads/main' && needs.check.result == 'success' }}
+        run: |
+          # Nightly branches start from this tag, so a broken main never blocks a night.
+          git tag -f scaffold-stable "$GITHUB_SHA"
+          git push -f origin refs/tags/scaffold-stable

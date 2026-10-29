@@ -1,0 +1,16 @@
+node_modules/
+dist/
+dist-site/
+site-out/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+.vite/
+coverage/
+# scratch output of the smoke test and ad-hoc bot runs
+runs/_smoke/
+runs/_scratch/
+playwright-report/
+test-results/

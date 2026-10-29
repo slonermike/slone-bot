@@ -1,0 +1,1 @@
+**Outside pull requests are not being accepted right now.** This is a temporary policy while the project is an experiment; PRs from non-collaborators are closed automatically. Forking and reusing the code under the MIT license is welcome. Please describe your idea in an issue instead. See [CONTRIBUTING.md](../CONTRIBUTING.md).
