@@ -27,6 +27,7 @@ interface MgbHost {
   getUpdate(): Promise<HostUpdate | null>;
   checkUpdate(): Promise<HostUpdate | null>;
   installUpdate(): Promise<HostUpdate | null>;
+  quit(): Promise<void>;
   onUpdate(cb: (s: HostUpdate) => void): void;
 }
 const host = (window as unknown as { mgbHost?: MgbHost }).mgbHost;
@@ -293,6 +294,8 @@ function menuItems() {
       // only in a plain browser: inside the desktop app the update flow above replaces the download page
       : [{ label: () => 'Get the desktop app', activate: () => { location.href = './download/'; } }]),
     { label: () => 'About and credits', activate: () => void openCredits() },
+    // only inside the desktop app, which has no window chrome to close it with
+    ...(host ? [{ label: () => 'Quit app', activate: () => void host.quit() }] : []),
     { label: () => 'Close', activate: () => closeOverlay() },
   ] as { label: () => string; value?: () => string; activate?: () => void; adjust?: (d: number) => void }[];
   // a waiting update goes to the top of the menu (desktop app only; hostUpdate is null in a browser)
@@ -408,5 +411,8 @@ async function boot(): Promise<void> {
     });
   }
 }
+
+// coming back with the browser's back button must not show a frozen copy of the launcher
+window.addEventListener('pageshow', (e) => { if (e.persisted) location.reload(); });
 
 void boot();

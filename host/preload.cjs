@@ -7,5 +7,6 @@ contextBridge.exposeInMainWorld('mgbHost', {
   getUpdate: () => ipcRenderer.invoke('mgb:update-state'),
   checkUpdate: () => ipcRenderer.invoke('mgb:update-check'),
   installUpdate: () => ipcRenderer.invoke('mgb:update-install'),
+  quit: () => ipcRenderer.invoke('mgb:quit'),
   onUpdate: (cb) => { ipcRenderer.on('mgb:update', (_e, s) => cb(s)); },
 });

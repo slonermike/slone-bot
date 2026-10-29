@@ -38,4 +38,17 @@ function isAllowedNavigation(target, origin) {
   }
 }
 
-module.exports = { resolveConfig, isAllowedNavigation, DEFAULT_URL };
+/**
+ * Pages and data (the launcher, game pages, index.json) must be revalidated on every load so leaving a game always
+ * lands on a fresh launcher and a republished game is never stale. Hashed build assets never change, so they can
+ * stay cached.
+ */
+function needsRevalidation(target) {
+  try {
+    return !/\/assets\//.test(new URL(target).pathname);
+  } catch {
+    return false;
+  }
+}
+
+module.exports = { resolveConfig, isAllowedNavigation, needsRevalidation, DEFAULT_URL };
