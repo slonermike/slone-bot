@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 // Capture launcher media for a prototype: a short GIF of it being played, and the thumbnail from the same footage.
-//   npm run media -- <slug> [--seconds 4] [--search 45] [--width 420] [--no-thumb]
-// Drives the prototype's greedy bot in real time, records frames, picks the busiest window (most sim events),
-// then writes src/protos/<slug>/preview.gif and thumb.png. Needs ffmpeg on PATH.
+//   npm run media -- <slug> [--seconds 4] [--fps 20] [--search 45] [--width 420] [--no-thumb]
+// Plays the prototype's greedy bot through the shell's capture mode, which moves time one exact frame at a time
+// (see stepFrames in src/core/shell.ts), so the footage is a smooth, fixed frame rate no matter how slow the
+// browser's renderer is. Pass 1 plays without drawing to find the busiest window (most sim events); pass 2 replays
+// to that window and screenshots every captured frame. Writes src/protos/<slug>/preview.gif and thumb.png. Needs ffmpeg.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -11,15 +13,18 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
-const slug = args.find((a) => !a.startsWith('--'));
+const slug = args.find((a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1].startsWith('--') && !['--no-thumb'].includes(args[i - 1])));
 const opt = (name, def) => {
   const i = args.indexOf(`--${name}`);
   return i >= 0 ? Number(args[i + 1]) : def;
 };
-if (!slug) { console.error('usage: npm run media -- <slug> [--seconds 4] [--search 45] [--width 420] [--no-thumb]'); process.exit(1); }
+if (!slug) { console.error('usage: npm run media -- <slug> [--seconds 4] [--fps 20] [--search 45] [--width 420] [--no-thumb]'); process.exit(1); }
 const WINDOW = opt('seconds', 4);
 const SEARCH = opt('search', 45);
 const WIDTH = opt('width', 420);
+const FPS = Math.max(5, Math.min(30, opt('fps', 20)));
+const SUB = Math.round(60 / FPS); // 60 Hz sim frames per captured frame
+const W = Math.round(WINDOW * FPS);
 
 try { execFileSync('ffmpeg', ['-version'], { stdio: 'ignore' }); } catch { console.error('ffmpeg not found; skipping media capture'); process.exit(2); }
 
@@ -34,77 +39,72 @@ const srv = await serveDir(path.join(ROOT, 'dist-site'));
 const browser = await launchBrowser();
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mgb-media-'));
 
-try {
+/** A fresh page in capture mode with the bot reset; `tick()` plays one captured frame and returns the events seen so far. */
+async function session() {
   const { page } = await newPage(browser);
   await page.goto(`${srv.url}/p/${slug}/?seed=1`);
   await page.waitForFunction(() => window.__scaffold, null, { timeout: 15000 });
-  await page.evaluate(() => window.__scaffold.start());
+  await page.evaluate(() => { window.__scaffold.start(); window.__scaffold.captureMode(true); });
   bot.reset(1);
+  let n = 0;
+  return {
+    page,
+    async tick() {
+      const { obs, events } = await page.evaluate(() => {
+        const s = window.__scaffold;
+        const fired = s.snapshot().feel?.eventsFired ?? {};
+        return { obs: s.proto.getState?.() ?? s.proto.telemetry(), events: Object.values(fired).reduce((a, b) => a + b, 0) };
+      });
+      const b = bot.act(obs, n++);
+      await page.evaluate(([inp, sub]) => { window.__scaffold.input.inject({ left: inp.left, right: inp.right, hold: inp.hold }); window.__scaffold.stepFrames(sub); }, [b, SUB]);
+      return events;
+    },
+  };
+}
 
-  // Frames come from the browser's screencast (cheap, timestamped), not per-frame screenshots, which
-  // are far too slow under software rendering. Event counts are sampled alongside by the bot loop.
-  const cdp = await page.context().newCDPSession(page);
-  const frames = []; // { t ms, file }
-  const samples = []; // { t ms, events }
-  let base = null;
-  cdp.on('Page.screencastFrame', async (f) => {
-    const ts = f.metadata.timestamp * 1000; // epoch ms, same clock as Date.now()
-    base ??= ts;
-    const file = path.join(tmp, `f${String(frames.length).padStart(5, '0')}.jpg`);
-    fs.writeFileSync(file, Buffer.from(f.data, 'base64'));
-    frames.push({ t: ts - base, wall: ts, file });
-    await cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => {});
-  });
-  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 85, maxWidth: 640, maxHeight: 400, everyNthFrame: 1 });
-  const t0 = Date.now();
-  let tick = 0;
-  while (Date.now() - t0 < SEARCH * 1000) {
-    const { obs, events } = await page.evaluate(() => {
-      const s = window.__scaffold;
-      const fired = s.snapshot().feel?.eventsFired ?? {};
-      return { obs: s.proto.getState?.() ?? s.proto.telemetry(), events: Object.values(fired).reduce((a, b) => a + b, 0) };
-    });
-    const bi = bot.act(obs, tick++);
-    await page.evaluate((b) => window.__scaffold.input.inject({ left: b.left, right: b.right, hold: b.hold }), bi);
-    if (base !== null) samples.push({ wall: Date.now(), events });
-    await page.waitForTimeout(40);
+try {
+  // pass 1: play without screenshots, noting how many sim events have happened at each captured frame
+  const a = await session();
+  const events = [];
+  for (let i = 0; i < SEARCH * FPS; i++) events.push(await a.tick());
+  await a.page.close();
+  if (events.length < W + 3 * FPS) throw new Error('search window too short for the requested clip');
+
+  // busiest window, ignoring the first 3 s
+  let best = { score: -1, start: 3 * FPS };
+  for (let i = 3 * FPS; i + W < events.length; i++) {
+    const score = events[i + W] - events[i];
+    if (score > best.score) best = { score, start: i };
   }
-  await cdp.send('Page.stopScreencast').catch(() => {});
-  await page.evaluate(() => window.__scaffold.input.inject(null));
-  if (frames.length < 8) throw new Error('too few frames captured');
-  // total sim events seen by the time each frame was shown
-  for (const f of frames) f.events = samples.findLast((x) => x.wall <= f.wall)?.events ?? 0;
-  console.log(`${frames.length} frames over ${(frames.at(-1).t / 1000).toFixed(1)}s, ${frames.at(-1).events} events`);
+  console.log(`window ${(best.start / FPS).toFixed(1)}s to ${((best.start + W) / FPS).toFixed(1)}s, ${W} frames at ${FPS} fps, ${best.score} events`);
 
-  // busiest window: most sim events inside it, ignoring the first 3 s (boot) unless the run is short
-  const from = frames.findIndex((f) => f.t >= 3000);
-  let best = { score: -1, a: Math.max(0, from), b: Math.max(0, from) };
-  for (let a = Math.max(0, from); a < frames.length; a++) {
-    let b = a;
-    while (b + 1 < frames.length && frames[b + 1].t - frames[a].t <= WINDOW * 1000) b++;
-    if (frames[b].t - frames[a].t < WINDOW * 1000 * 0.9) break;
-    const score = frames[b].events - frames[a].events;
-    if (score > best.score) best = { score, a, b };
+  // pass 2: replay to the window and screenshot every captured frame
+  const b = await session();
+  for (let i = 0; i < best.start; i++) await b.tick();
+  const files = [];
+  for (let k = 0; k < W; k++) {
+    await b.tick();
+    const file = path.join(tmp, `f${String(k).padStart(4, '0')}.jpg`);
+    await b.page.screenshot({ path: file, type: 'jpeg', quality: 90 });
+    files.push(file);
   }
-  const clip = frames.slice(best.a, best.b + 1);
-  console.log(`window ${(clip[0].t / 1000).toFixed(1)}s to ${(clip.at(-1).t / 1000).toFixed(1)}s, ${clip.length} frames, ${best.score} events`);
 
-  // real timing: each frame lasts until the next one
-  const list = clip.map((f, i) => `file '${f.file}'\nduration ${(((clip[i + 1]?.t ?? f.t + 100) - f.t) / 1000).toFixed(3)}`).join('\n');
-  fs.writeFileSync(path.join(tmp, 'list.txt'), list + `\nfile '${clip.at(-1).file}'\n`);
   const outDir = path.join(ROOT, 'src/protos', slug);
   const gif = path.join(outDir, 'preview.gif');
-  execFileSync('ffmpeg', ['-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', path.join(tmp, 'list.txt'),
-    '-vf', `fps=12,scale=${WIDTH}:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96[p];[b][p]paletteuse=dither=bayer:bayer_scale=4`,
+  execFileSync('ffmpeg', ['-y', '-v', 'error', '-framerate', String(FPS), '-i', path.join(tmp, 'f%04d.jpg'),
+    '-vf', `scale=${WIDTH}:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96[p];[b][p]paletteuse=dither=bayer:bayer_scale=4`,
     '-loop', '0', gif]);
-  console.log(`preview.gif: ${(fs.statSync(gif).size / 1024).toFixed(0)} KB`);
+  console.log(`preview.gif: ${(fs.statSync(gif).size / 1024).toFixed(0)} KB, ${W} frames at ${FPS} fps`);
 
   if (!args.includes('--no-thumb')) {
     // the frame with the biggest event jump inside the window makes the thumbnail
-    let pick = clip[Math.floor(clip.length / 2)];
+    let pick = Math.floor(W / 2);
     let jump = -1;
-    for (let i = 1; i < clip.length; i++) if (clip[i].events - clip[i - 1].events > jump) { jump = clip[i].events - clip[i - 1].events; pick = clip[i]; }
-    execFileSync('ffmpeg', ['-y', '-v', 'error', '-i', pick.file, path.join(outDir, 'thumb.png')]);
+    for (let k = 1; k < W; k++) {
+      const d = events[best.start + k + 1] - events[best.start + k];
+      if (d > jump) { jump = d; pick = k; }
+    }
+    execFileSync('ffmpeg', ['-y', '-v', 'error', '-i', files[pick], path.join(outDir, 'thumb.png')]);
     console.log('thumb.png written');
   }
 } finally {
