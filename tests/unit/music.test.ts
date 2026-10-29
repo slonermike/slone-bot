@@ -64,17 +64,26 @@ describe('composer structure', () => {
     expect(composeSong(o)).not.toEqual(composeSong({ ...o, seed: 10 }));
   });
 
-  it('every layout makes a valid song in loop and one-shot form', () => {
+  it('every layout makes a valid loop', () => {
     for (const layout of Object.keys(LAYOUTS)) {
-      const form = layout.startsWith('loop') ? 'loop' : 'oneshot';
-      const s = composeSong({ ...base, seed: 3, form, layout, mode: 'dorian', bpm: 110 });
+      const s = composeSong({ ...base, seed: 3, form: 'loop', layout, mode: 'dorian', bpm: 110 });
       expect(s.sections.reduce((a, x) => a + x.bars, 0)).toBe(s.bars.length);
+    }
+  });
+
+  it('every stinger event makes a short, valid one-shot', () => {
+    for (const event of ['win', 'lose', 'boss', 'powerup', 'secret'] as const) {
+      const s = composeSong({ ...base, seed: 4, form: 'oneshot', event });
+      expect(s.form).toBe('oneshot');
+      expect(s.bars.length).toBeGreaterThanOrEqual(2);
+      expect(s.bars.length).toBeLessThanOrEqual(4);
+      expect(s.tempoMap.length).toBeGreaterThan(1);
     }
   });
 
   for (const s of songs) {
     describe(s.id, () => {
-      it('has consistent bars and sections of whole phrases', () => {
+      it('has consistent bars and sections', () => {
         let at = 0;
         s.bars.forEach((b, i) => {
           expect(b.start).toBeCloseTo(at, 6);
@@ -85,7 +94,7 @@ describe('composer structure', () => {
         let bar = 0;
         for (const sec of s.sections) {
           expect(sec.startBar).toBe(bar);
-          expect([2, 4, 8]).toContain(sec.bars);
+          expect(s.form === 'loop' ? [2, 4, 8] : [2, 3, 4]).toContain(sec.bars);
           bar += sec.bars;
         }
         expect(bar).toBe(s.bars.length);
@@ -110,8 +119,8 @@ describe('composer structure', () => {
       });
 
       it('states a hook, and a hook song repeats it exactly with only the ending changing', () => {
-        expect(s.hookBars.length).toBeGreaterThanOrEqual(2);
-        if (s.character !== 'hook') return;
+        expect(s.hookBars.length).toBeGreaterThanOrEqual(s.form === 'loop' ? 2 : 1);
+        if (s.character !== 'hook' || s.form !== 'loop') return;
         const lead = s.tracks.find((t) => t.inst === 'lead')!;
         const rel = (g: number) => {
           const b = s.bars[g]!;
@@ -132,22 +141,19 @@ describe('composer structure', () => {
         expect(identical).toBeGreaterThanOrEqual(1);
       });
 
-      it('ends sections with a drum fill and a form-appropriate ending', () => {
+      it('loops end sections with a fill and keep tempo; stingers punctuate and move tempo', () => {
         const drums = s.tracks.find((t) => t.inst === 'drums');
         const last = s.bars.at(-1)!;
         if (s.form === 'loop') {
           if (drums) expect(drums.notes.some((n) => n.n === 38 && n.t >= last.start)).toBe(true);
           expect(s.tempoMap).toHaveLength(1);
         } else {
-          const ends = s.tempoMap.at(-1)!;
-          if (s.id.includes('last-light')) {
-            expect(s.tracks.every((t) => t.notes.filter((n) => n.t >= last.start).every((n) => n.v < 40))).toBe(true);
-            expect(drums).toBeUndefined();
-          }
-          else {
-            expect(drums?.notes.some((n) => n.n === 49 && n.t >= last.start)).toBe(true);
-            expect(ends.bpm).toBeLessThan(s.tempo);
-          }
+          const first = s.tempoMap[0]!.bpm;
+          const final = s.tempoMap.at(-1)!.bpm;
+          if (s.id.includes('power-up')) expect(final).toBeGreaterThan(first);
+          else expect(final).toBeLessThan(first);
+          if (s.id.includes('level-clear') || s.id.includes('boss-down')) expect(drums?.notes.some((n) => n.n === 49 && n.t >= last.start)).toBe(true);
+          expect(songSeconds(s)).toBeLessThanOrEqual(14);
         }
       });
     });
@@ -155,19 +161,28 @@ describe('composer structure', () => {
 });
 
 describe('the first batch', () => {
-  it('is 20 songs with tweet-length descriptions and unique ids', () => {
+  const loops = songs.filter((s) => s.form === 'loop');
+  const stingers = songs.filter((s) => s.form === 'oneshot');
+  it('is 20 pieces with tweet-length descriptions and unique ids', () => {
     expect(songs).toHaveLength(20);
     for (const s of songs) expect(s.description.length).toBeGreaterThan(60);
     for (const s of songs) expect(s.description.length).toBeLessThanOrEqual(280);
     expect(new Set(songs.map((s) => s.id)).size).toBe(20);
   });
-  it('mixes loops and one-shots, hook songs and vibe pieces, at every tempo', () => {
-    expect(songs.filter((s) => s.form === 'loop').length).toBeGreaterThanOrEqual(8);
-    expect(songs.filter((s) => s.form === 'oneshot').length).toBeGreaterThanOrEqual(5);
-    expect(songs.filter((s) => s.character === 'hook').length).toBeGreaterThanOrEqual(8);
-    expect(songs.filter((s) => s.character === 'vibe').length).toBeGreaterThanOrEqual(4);
-    expect(songs.some((s) => s.character === 'vibe' && s.tempo >= 150)).toBe(true); // frantic is a vibe
-    expect(songs.some((s) => s.character === 'hook' && s.tempo <= 105)).toBe(true);
+  it('is mostly loops, with a few stingers of a couple of bars for events', () => {
+    expect(loops.length).toBeGreaterThanOrEqual(12);
+    expect(stingers.length).toBeGreaterThanOrEqual(4);
+    for (const s of stingers) {
+      expect(s.bars.length).toBeLessThanOrEqual(4);
+      expect(songSeconds(s)).toBeLessThanOrEqual(14);
+    }
+    for (const s of loops) expect(s.bars.length).toBeGreaterThanOrEqual(8);
+  });
+  it('mixes hook songs and vibe pieces at every tempo', () => {
+    expect(loops.filter((s) => s.character === 'hook').length).toBeGreaterThanOrEqual(6);
+    expect(loops.filter((s) => s.character === 'vibe').length).toBeGreaterThanOrEqual(4);
+    expect(loops.some((s) => s.character === 'vibe' && s.tempo >= 150)).toBe(true); // frantic is a vibe
+    expect(loops.some((s) => s.character === 'hook' && s.tempo <= 105)).toBe(true);
   });
   it('covers many modes and time signatures, including meters that change', () => {
     expect(new Set(songs.map((s) => s.scale)).size).toBeGreaterThanOrEqual(6);
@@ -176,12 +191,6 @@ describe('the first batch', () => {
     expect(songs.filter((s) => s.meter.includes('+')).length).toBeGreaterThanOrEqual(2);
     const cycle = songs.find((s) => s.id.includes('last-throne'))!;
     expect(cycle.bars.slice(0, 4).map((b) => b.beats)).toEqual([4, 4, 4, 3]);
-  });
-  it('one-shots change tempo and key', () => {
-    const shots = songs.filter((s) => s.form === 'oneshot');
-    // the fading ballad deliberately keeps its tempo
-    expect(shots.filter((s) => !s.id.includes('last-light')).every((s) => s.tempoMap.length > 1)).toBe(true);
-    expect(shots.some((s) => s.sections.some((x) => x.transpose > 0))).toBe(true);
   });
 });
 
@@ -210,6 +219,14 @@ describe('midi writer', () => {
     expect(at).toBe(bytes.length);
   });
 
+  it('a stinger writes its tempo ramp as tempo changes', () => {
+    const st = songs.find((x) => x.id.includes('game-over'))!;
+    const b = writeMidi(st);
+    let n = 0;
+    for (let k = 0; k < b.length - 2; k++) if (b[k] === 0xff && b[k + 1] === 0x51) n++;
+    expect(n).toBeGreaterThan(2);
+  });
+
   it('writes a time signature at every meter change and tempo changes for the tempo map', () => {
     const changes = song.bars.filter((b, i) => i === 0 || `${b.num}/${b.den}` !== `${song.bars[i - 1]!.num}/${song.bars[i - 1]!.den}`).length;
     expect(find(0x58).length).toBe(changes);
@@ -226,7 +243,7 @@ describe('generated songs on disk', () => {
       const s = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')) as Song;
       expect(songs.some((x) => x.id === s.id)).toBe(true);
       expect(fs.existsSync(path.join(dir, `${s.id}.mid`))).toBe(true);
-      expect(songSeconds(s)).toBeGreaterThan(8);
+      expect(songSeconds(s)).toBeGreaterThan(1);
     }
   });
 });

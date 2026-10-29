@@ -42,7 +42,17 @@ I could not find solid technical sources on 80s rock hooks; this is from general
 - The pre-chorus climbs (one more note per bar, rising pitch, building snare) and in some songs **drops out** for the last beat before the chorus lands (a 2000s pop move).
 - Loops end on a dominant turnaround with a fill so the last bar leads back to the first. Seams matter most in game loops ([a commercial blog's claim](https://sorceress.games/blog/layer-how-to-make-good-video-game-music-ai-loops-2026), plausible).
 
-**One-shots** ([Winifred Phillips on one-shot cues](https://r-sen-productions.itch.io/modern-video-game-musicvolume-ii): a one-shot needs its own beginning, middle and end, and its ending should dissolve or resolve rather than leave a hole): the last chorus goes up a tone (a key change) and a few percent faster (a gear shift); some songs accelerate throughout; the end is either a **ritardando into a held final chord** or a **fade**.
+## Loops and one-shots
+Slone's rule: **loops cover nearly everything, because ongoing player action cannot be mapped to a length of time.** A loop has no fixed duration and no ending; its last bar is a dominant turnaround with a fill so it leads straight back into the first. So the long songs (anything that plays under action) are loops, however many sections they have.
+
+**A one-shot is a stinger, not a short song:** a couple of measures that punctuate something that just happened (you beat the level, you died, the boss went down, you grabbed a power-up, you found a secret). It states a tiny hook if the moment wants one, then lands. Winifred Phillips's point about [game one-shot cues](https://r-sen-productions.itch.io/modern-video-game-musicvolume-ii) fits: it needs its own beginning, middle and end, and its ending should resolve or dissolve rather than leave a hole. Generated events (`composeStinger`, 2 to 4 bars, about 2 to 12 seconds):
+- **win:** a short hook, the same hook a step higher, a climbing run, then a held final chord with a crash while the tempo slows.
+- **lose:** a falling line over a sinking chord, slowing to about half speed and ending on a very low tonic. No hook.
+- **boss:** a heavy low motif said twice, a leap onto the dominant, a crash on a deep tonic, tempo dragging.
+- **powerup:** a rising arpeggio that speeds up, then a ringing top note with sparkle.
+- **secret:** bells climbing over a swelling pad, a shimmering chord, slowing as it settles.
+
+Tempo moves with the moment: rising pickups accelerate; losses and big resolves slow to a stop. A loop never changes tempo.
 
 ## Time signature: groups, not just counts
 Every meter is stored as groups of eighth notes (7/8 as 2+2+3, 6/8 as 3+3, 5/4 as 3+2+3+2). Drums, bass and melody all hang off the groups, so odd meters get a real backbeat and pulse. Songs can use one meter, change meter by section (verse in 5/4, rest in 4/4), or change measure to measure (4/4, 4/4, 4/4, 3/4 repeating). Rare on purpose.
