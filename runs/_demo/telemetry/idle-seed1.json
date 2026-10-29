@@ -1,0 +1,43 @@
+{
+  "night": "_demo",
+  "seed": 1,
+  "bot": "idle",
+  "mode": "systemic",
+  "simSeconds": 120,
+  "wallMs": 47,
+  "timescale": 20,
+  "outcome": "timeout",
+  "metrics": {
+    "runLength": 120,
+    "deaths": 23,
+    "firstPressureSimSec": 5.42,
+    "restartDelaySimSec": 0,
+    "mainVerbCount": 0,
+    "decisionsPerMinute": 0,
+    "idleSurvivalSec": 12.75,
+    "scoreOrProgress": 1,
+    "variance": 0,
+    "heat": 88.8
+  },
+  "perf": {
+    "avgFrameMs": 0,
+    "p95FrameMs": 0,
+    "fps": 0,
+    "particleMax": 0,
+    "effectsOn": false
+  },
+  "feel": {
+    "inputToVisualMs": 0,
+    "inputToAudioMs": 0,
+    "eventsFired": {
+      "pressure": 71,
+      "heartbeat": 75,
+      "fail": 23,
+      "recover": 23,
+      "pickup": 1
+    },
+    "shakePeak": 0,
+    "hitStopFrames": 0
+  },
+  "errors": []
+}

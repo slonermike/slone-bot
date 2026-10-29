@@ -1,0 +1,3 @@
+#!/bin/sh
+# Fails the commit when staged files contain obvious secrets or personal email addresses.
+node scripts/check-secrets.mjs --staged

@@ -1,0 +1,38 @@
+{
+  "name": "minigame-bot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "An unattended factory for small playable 2D game prototypes.",
+  "license": "MIT",
+  "author": "Mike Slone",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "vite --config vite.config.ts",
+    "dev:proto": "node scripts/dev-proto.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build:site": "node scripts/build-site.mjs",
+    "bots": "node scripts/run-bots.mjs",
+    "smoke": "node scripts/build-site.mjs && node tests/smoke.mjs",
+    "secrets": "node scripts/check-secrets.mjs",
+    "licenses": "node scripts/check-licenses.mjs",
+    "check": "npm run typecheck && npm run secrets && npm test && npm run smoke",
+    "preflight": "node scripts/preflight.mjs",
+    "prepare": "node scripts/install-hooks.mjs"
+  },
+  "dependencies": {
+    "@dimforge/rapier2d-compat": "^0.21.0",
+    "@fontsource/space-grotesk": "^5.3.0",
+    "pixi.js": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "playwright": "^1.64.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}
