@@ -1,6 +1,6 @@
 {
   "name": "minigame-bot-host",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "description": "Thin Electron shell that runs the minigame-bot launcher full screen on a Steam Deck.",
   "license": "MIT",

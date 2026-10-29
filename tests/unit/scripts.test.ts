@@ -109,3 +109,16 @@ describe('build-site index', () => {
     expect(slugs(['--fixtures'])).toEqual(['2030-01-01-real', '_old-fixture']);
   });
 });
+
+describe('host version guard', () => {
+  it('fails a host change that keeps the version, passes a bump or a test/doc-only change', async () => {
+    const { hostVersionProblem, isNewer } = await import('../../scripts/check-host-version.mjs');
+    expect(isNewer('0.2.3', '0.2.2')).toBe(true);
+    expect(isNewer('0.10.0', '0.9.9')).toBe(true);
+    expect(isNewer('0.2.2', '0.2.2')).toBe(false);
+    expect(hostVersionProblem(['host/main.cjs'], '0.2.2', '0.2.2')).toMatch(/bump/);
+    expect(hostVersionProblem(['host/main.cjs', 'host/package.json'], '0.2.2', '0.2.3')).toBeNull();
+    expect(hostVersionProblem(['host/README.md', 'host/test/config.test.cjs'], '0.2.2', '0.2.2')).toBeNull();
+    expect(hostVersionProblem(['src/core/shell.ts'], '0.2.2', '0.2.2')).toBeNull();
+  });
+});
