@@ -9,6 +9,7 @@ import path from 'node:path';
 import { build } from 'vite';
 import { validateManifest } from '../src/core/manifest.ts';
 import { launcherConfig, protoConfig, ROOT } from './vite-configs.mjs';
+import { secondsAt } from '../src/music/timing.ts';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => {
@@ -60,12 +61,17 @@ function buildJukeboxSongs() {
   fs.rmSync(dest, { recursive: true, force: true });
   fs.mkdirSync(dest, { recursive: true });
   const metas = [];
-  for (const f of fs.existsSync(src) ? fs.readdirSync(src).sort() : []) {
+  // only the newest batch (the id prefix, e.g. b02) is listed; older batches stay in the repo for reference
+  const files = fs.existsSync(src) ? fs.readdirSync(src).sort() : [];
+  const newest = files.map((f) => f.split('-')[0]).sort().at(-1);
+  for (const f of files) {
+    if (f.split('-')[0] !== newest) continue;
     fs.copyFileSync(path.join(src, f), path.join(dest, f));
     if (!f.endsWith('.json')) continue;
     const s = JSON.parse(fs.readFileSync(path.join(src, f), 'utf8'));
-    const seconds = Math.round(((s.bars * 4 * 60) / s.tempo) * 10) / 10;
-    metas.push({ id: s.id, name: s.name, description: s.description, intent: s.intent, mood: s.mood, style: s.style, tempo: s.tempo, scale: s.scale, bars: s.bars, seconds });
+    const last = s.bars[s.bars.length - 1];
+    const seconds = Math.round(secondsAt(s.tempoMap, last.start + last.beats) * 10) / 10;
+    metas.push({ id: s.id, name: s.name, description: s.description, intent: s.intent, mood: s.mood, style: s.style, form: s.form, character: s.character, tempo: s.tempo, scale: s.scale, meter: s.meter, barCount: s.bars.length, seconds });
   }
   fs.writeFileSync(path.join(out, 'jukebox', 'songs.json'), JSON.stringify(metas));
   console.log(`jukebox: ${metas.length} songs`);

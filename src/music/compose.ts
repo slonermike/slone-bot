@@ -1,10 +1,23 @@
-// Seeded loop generator. Deterministic: the same seed and mood always give the same song, so a verdict
-// ("keep", "tweak the bass") always refers to exactly the thing that was heard.
+// Seeded song generator. Deterministic: the same options always give the same song, so a rating ("catchy,
+// but the bridge drags") always refers to exactly what was heard.
+//
+// Craft rules it follows (details and sources in docs/design/06-music-craft.md):
+//  - Songs are built from four-bar phrases grouped into sections (intro, verse, pre-chorus, chorus, bridge, outro).
+//    Each phrase ends on a cadence: a dominant chord that pulls into the next section's downbeat, with a drum fill
+//    and a crash on the arrival. Choruses resolve to the tonic.
+//  - Every song has a hook: a one- or two-bar motif with a strong rhythmic identity (syncopation, repeated notes, a
+//    leap then a stepwise fall), stated again and again with small changes, in the chorus, foreshadowed in the intro.
+//  - The chorus sits higher and denser than the verse, and the pre-chorus climbs into it (sometimes dropping out for a
+//    beat first). One-shots build to a key-lifted last chorus and end with a ritardando and a big final chord.
 import { Rng } from '../core/rng.ts';
-import { BEATS_PER_BAR } from './types.ts';
-import type { Inst, Note, Song, SongTrack, Voice } from './types.ts';
+import { beatsOf, eighthsOf, groupStarts, meterSpec } from './meter.ts';
+import type { MeterSpec } from './meter.ts';
+import { secondsAt } from './timing.ts';
+import type { Bar, Character, Form, Inst, Note, Section, SectionKind, Song, SongTrack, TempoPoint, Voice } from './types.ts';
+import { pickForVibe } from './vibe.ts';
+import type { Vibe } from './vibe.ts';
 
-const SCALES: Record<string, number[]> = {
+export const SCALES: Record<string, number[]> = {
   major: [0, 2, 4, 5, 7, 9, 11],
   minor: [0, 2, 3, 5, 7, 8, 10],
   dorian: [0, 2, 3, 5, 7, 9, 10],
@@ -14,247 +27,612 @@ const SCALES: Record<string, number[]> = {
   'harmonic minor': [0, 2, 3, 5, 7, 8, 11],
 };
 
-type DrumStyle = 'driving' | 'backbeat' | 'halftime' | 'soft' | 'sparse' | 'funk' | 'march' | 'none';
-type BassStyle = 'whole' | 'eighths' | 'octaves' | 'walk' | 'sparse' | 'gallop' | 'syncopated';
+export type DrumStyle = 'rock' | 'four' | 'half' | 'march' | 'funk' | 'soft' | 'sparse' | 'none';
+export type BassStyle = 'whole' | 'groups' | 'eighths' | 'octaves' | 'walk' | 'sync' | 'gallop' | 'sparse';
 
-export interface MoodSpec {
-  intent: string;
-  scales: string[];
-  tempo: [number, number];
-  progressions: number[][];
-  drums: DrumStyle[];
-  bass: BassStyle[];
-  bassVoice: Voice[];
-  leadVoice: Voice[];
-  arpVoice: Voice[];
-  /** Chance a melody slot is played (0..1). */
-  melodyDensity: number;
+/** Instrumentation and rhythmic feel. */
+export interface FeelSpec {
+  drums: DrumStyle;
+  bass: BassStyle;
+  bassVoice: Voice;
+  leadVoice: Voice;
+  arpVoice: Voice;
+  /** 0 = no arpeggio, otherwise how present it is. */
   arp: number;
-  bars: number[];
+  /** Arpeggio step in eighth notes (1 = eighths, 0.5 = sixteenths). */
+  arpStep: number;
+  /** Verses are a repeated power-chord riff instead of a sung line (80s rock). */
+  riff: boolean;
+  /** Syncopation: how often notes land just before a beat. */
+  sync: number;
+  /** Melody activity. */
+  density: number;
+  /** Chorus melody doubled a third below. */
+  harmony: boolean;
+  /** Pre-chorus drops out for the last beat before the chorus lands. */
+  drop: boolean;
+  pad: boolean;
 }
 
-export const MOODS: Record<string, MoodSpec> = {
-  tense: {
-    intent: 'a tense loop that could sit under rising pressure',
-    scales: ['minor', 'phrygian', 'harmonic minor'], tempo: [112, 148],
-    progressions: [[0, 5, 3, 4], [0, 0, 5, 4], [0, 1, 0, 6], [0, 3, 5, 4]],
-    drums: ['driving', 'backbeat', 'sparse'], bass: ['eighths', 'octaves', 'walk'], bassVoice: ['saw', 'sub'],
-    leadVoice: ['saw', 'square'], arpVoice: ['pluck', 'square'], melodyDensity: 0.55, arp: 0.6, bars: [8, 8, 16],
-  },
-  cozy: {
-    intent: 'a warm, unhurried loop for a calm early stretch',
-    scales: ['major', 'lydian', 'mixolydian'], tempo: [68, 96],
-    progressions: [[0, 3, 4, 0], [0, 5, 3, 4], [3, 0, 4, 0], [0, 2, 3, 4]],
-    drums: ['soft', 'none', 'halftime'], bass: ['whole', 'sparse', 'walk'], bassVoice: ['sub'],
-    leadVoice: ['pluck', 'bell', 'flute'], arpVoice: ['pluck', 'bell'], melodyDensity: 0.5, arp: 0.35, bars: [8, 8, 16],
-  },
-  triumphant: {
-    intent: 'a bright, rising loop for an earned power moment',
-    scales: ['major', 'mixolydian', 'lydian'], tempo: [118, 150],
-    progressions: [[0, 4, 5, 3], [0, 3, 4, 4], [0, 5, 3, 4], [3, 4, 0, 0]],
-    drums: ['backbeat', 'driving'], bass: ['octaves', 'eighths'], bassVoice: ['saw'],
-    leadVoice: ['square', 'saw', 'bell'], arpVoice: ['square', 'pluck'], melodyDensity: 0.7, arp: 0.7, bars: [8, 16],
-  },
-  eerie: {
-    intent: 'a sparse, unsettled loop for something lurking',
-    scales: ['phrygian', 'dorian', 'harmonic minor'], tempo: [58, 84],
-    progressions: [[0, 1, 0, 1], [0, 0, 6, 5], [0, 5, 6, 0]],
-    drums: ['none', 'sparse'], bass: ['whole', 'sparse'], bassVoice: ['sub'],
-    leadVoice: ['bell', 'flute'], arpVoice: ['bell'], melodyDensity: 0.3, arp: 0.3, bars: [8, 8, 16],
-  },
-  playful: {
-    intent: 'a bouncy, light loop for a toy-like game',
-    scales: ['major', 'mixolydian'], tempo: [124, 162],
-    progressions: [[0, 3, 0, 4], [0, 5, 3, 4], [0, 4, 3, 4]],
-    drums: ['backbeat', 'halftime', 'soft'], bass: ['walk', 'octaves'], bassVoice: ['sub', 'saw'],
-    leadVoice: ['pluck', 'square', 'bell'], arpVoice: ['pluck', 'bell'], melodyDensity: 0.65, arp: 0.5, bars: [8, 8],
-  },
-  urgent: {
-    intent: 'a fast, driving loop for the last stretch of a run',
-    scales: ['minor', 'dorian', 'harmonic minor'], tempo: [140, 176],
-    progressions: [[0, 5, 3, 6], [0, 6, 5, 6], [0, 0, 3, 4]],
-    drums: ['driving'], bass: ['eighths', 'octaves'], bassVoice: ['saw'],
-    leadVoice: ['saw', 'square'], arpVoice: ['pluck', 'square'], melodyDensity: 0.6, arp: 0.85, bars: [8, 16],
-  },
-  melancholy: {
-    intent: 'a slow, wistful loop for a quiet aftermath',
-    scales: ['minor', 'dorian'], tempo: [60, 88],
-    progressions: [[0, 5, 2, 6], [0, 3, 5, 4], [0, 2, 5, 3]],
-    drums: ['none', 'soft', 'halftime'], bass: ['whole', 'sparse'], bassVoice: ['sub'],
-    leadVoice: ['flute', 'bell', 'pluck'], arpVoice: ['pluck', 'bell'], melodyDensity: 0.4, arp: 0.4, bars: [8, 16],
-  },
+export const DEFAULT_FEEL: FeelSpec = {
+  drums: 'rock', bass: 'groups', bassVoice: 'saw', leadVoice: 'square', arpVoice: 'pluck', arp: 0.5, arpStep: 1,
+  riff: false, sync: 0.35, density: 0.6, harmony: true, drop: false, pad: true,
 };
 
-const ADJECTIVES = ['Amber', 'Brass', 'Cinder', 'Dusk', 'Ember', 'Fable', 'Glass', 'Hollow', 'Ivory', 'Jade', 'Kite', 'Lantern', 'Marble', 'Neon', 'Onyx', 'Pebble', 'Quartz', 'Rust', 'Saffron', 'Tin', 'Umber', 'Velvet', 'Willow', 'Zephyr'];
-const NOUNS = ['Orbit', 'Harbor', 'Chase', 'Garden', 'Signal', 'Drift', 'Furnace', 'Lullaby', 'Parade', 'Tide', 'Echo', 'Spark', 'Ridge', 'Carousel', 'Static', 'Bloom', 'Engine', 'Canyon', 'Ferry', 'Lighthouse', 'Market', 'Comet', 'Tunnel', 'Meadow'];
+export type MeterPlan = string | { cycle: string[] } | { bySection: Partial<Record<SectionKind, string>>; fallback: string };
 
-/** MIDI note for a scale degree (can be negative or above one octave). */
-function degreeNote(root: number, scale: number[], degree: number): number {
-  const len = scale.length;
-  const oct = Math.floor(degree / len);
-  return root + scale[((degree % len) + len) % len]! + 12 * oct;
-}
-
-const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-
-const MELODY_RHYTHMS: [number, number][][] = [
-  [[0, 1], [1, 1], [2, 1], [3, 1]],
-  [[0, 1.5], [1.5, 0.5], [2, 1], [3, 1]],
-  [[0, 0.5], [0.5, 0.5], [1, 1], [2, 2]],
-  [[0, 2], [2, 1], [3, 1]],
-  [[0, 0.75], [0.75, 0.75], [1.5, 0.5], [2, 2]],
-  [[0, 0.5], [0.5, 0.5], [1, 0.5], [1.5, 0.5], [2, 1], [3, 1]],
-  [[0.5, 1], [1.5, 1], [2.5, 1.5]],
-];
-
-const DRUMS: Record<DrumStyle, { kick: number[]; snare: number[]; hat: number[]; open?: number[]; rim?: number[] }> = {
-  driving: { kick: [0, 4, 8, 12], snare: [4, 12], hat: [2, 6, 10, 14], open: [14] },
-  backbeat: { kick: [0, 7, 10], snare: [4, 12], hat: [0, 2, 4, 6, 8, 10, 12, 14] },
-  halftime: { kick: [0, 10], snare: [8], hat: [0, 4, 8, 12] },
-  soft: { kick: [0, 10], snare: [], hat: [4, 12], rim: [8] },
-  sparse: { kick: [0], snare: [], hat: [8], rim: [] },
-  funk: { kick: [0, 3, 6, 10], snare: [4, 12], hat: [0, 2, 4, 6, 8, 10, 12, 14], open: [15] },
-  march: { kick: [0, 8], snare: [4, 12, 14, 15], hat: [] },
-  none: { kick: [], snare: [], hat: [] },
+type SectionPlan = [SectionKind, number][];
+export const LAYOUTS: Record<string, SectionPlan> = {
+  'loop-8': [['verse', 4], ['chorus', 4]],
+  'loop-12': [['verse', 4], ['pre', 4], ['chorus', 4]],
+  'loop-16': [['verse', 4], ['pre', 4], ['chorus', 8]],
+  'shot-tiny': [['intro', 2], ['chorus', 4], ['chorus', 4], ['outro', 2]],
+  'shot-short': [['intro', 2], ['verse', 4], ['chorus', 4], ['outro', 2]],
+  'shot-medium': [['intro', 4], ['verse', 4], ['pre', 2], ['chorus', 4], ['bridge', 4], ['chorus', 4], ['outro', 2]],
+  'shot-full': [['intro', 4], ['verse', 8], ['pre', 4], ['chorus', 8], ['bridge', 4], ['chorus', 8], ['outro', 4]],
 };
 
 export interface ComposeOptions {
   seed: number;
-  /** Base mood from MOODS. */
+  name: string;
+  description: string;
+  style: string;
   mood: string;
-  /** Overrides on the mood (scale, tempo, drums, voices...), and the style label shown in the jukebox. */
-  override?: Partial<MoodSpec>;
-  style?: string;
-  /** Fixed name and tweet-length description; without them the name is generated and the description is the mood's intent. */
-  name?: string;
-  description?: string;
-  /** Prefix for the id and name sequence, e.g. "b01". */
+  intent?: string;
+  form: Form;
+  /** hook (default): a catchy repeating motif. vibe: texture and mood first, at any tempo; a sparse, long-note motif and no doubling. */
+  character?: Character;
+  layout: keyof typeof LAYOUTS;
+  /** Pick mode, tempo and meter from a target vibe; anything given explicitly below wins. */
+  vibe?: Partial<Vibe>;
+  mode?: string;
+  meter?: MeterPlan;
+  bpm?: number | [number, number];
+  feel?: Partial<FeelSpec>;
+  /** One-shots: semitones to raise the last chorus (a key change). Default 2. */
+  keyLift?: number;
+  /** One-shots: how it ends. big = ritardando and a held final chord; fade = it dies away. */
+  ending?: 'big' | 'fade';
+  /** One-shots: tempo changes. lift = a gear shift into the last chorus, accel = speeds up throughout. */
+  tempoArc?: 'steady' | 'lift' | 'accel';
   batch?: string;
   index?: number;
 }
 
-export function composeSong(opts: ComposeOptions): Song {
-  const base = MOODS[opts.mood];
-  if (!base) throw new Error(`unknown mood "${opts.mood}"`);
-  const spec: MoodSpec = { ...base, ...opts.override };
-  const rng = new Rng(opts.seed);
-  const scaleName = rng.pick(spec.scales);
-  const scale = SCALES[scaleName]!;
-  const root = 48 + rng.int(0, 11); // C3..B3
-  const tempo = Math.round(rng.range(spec.tempo[0], spec.tempo[1]));
-  const bars = rng.pick(spec.bars);
-  const prog = rng.pick(spec.progressions);
-  const chordAt = (bar: number) => prog[Math.floor(bar % prog.length)]!;
-  const chordTones = (deg: number) => [degreeNote(root, scale, deg), degreeNote(root, scale, deg + 2), degreeNote(root, scale, deg + 4)];
-  const tracks: SongTrack[] = [];
-  const bassStyle = rng.pick(spec.bass);
-  const drumStyle = rng.pick(spec.drums);
-  const bassVoice = rng.pick(spec.bassVoice);
-  const leadVoice = rng.pick(spec.leadVoice);
-  const arpVoice = rng.pick(spec.arpVoice);
-
-  const add = (inst: Inst, voice: Voice, layer: number, notes: Note[]) => {
-    if (notes.length) tracks.push({ inst, voice, layer, notes });
-  };
-
-  // pad: one chord per bar, soft and wide
-  const pad: Note[] = [];
-  for (let b = 0; b < bars; b++) {
-    for (const n of chordTones(chordAt(b))) pad.push({ t: b * BEATS_PER_BAR, d: BEATS_PER_BAR, n: n + 12, v: 52 });
-  }
-  add('pad', 'warm', 0, pad);
-
-  // bass
-  const bass: Note[] = [];
-  for (let b = 0; b < bars; b++) {
-    const r = degreeNote(root, scale, chordAt(b)) - 12;
-    const fifth = degreeNote(root, scale, chordAt(b) + 4) - 12;
-    const t0 = b * BEATS_PER_BAR;
-    if (bassStyle === 'whole') bass.push({ t: t0, d: 3.5, n: r, v: 92 });
-    else if (bassStyle === 'sparse') { bass.push({ t: t0, d: 1.5, n: r, v: 92 }); if (rng.chance(0.6)) bass.push({ t: t0 + 2.5, d: 1, n: fifth, v: 80 }); }
-    else if (bassStyle === 'walk') for (let i = 0; i < 4; i++) bass.push({ t: t0 + i, d: 0.9, n: [r, fifth, r + 12, fifth][i]!, v: 88 - (i % 2) * 8 });
-    else if (bassStyle === 'gallop') for (let i = 0; i < 4; i++) for (const [off, d, up] of [[0, 0.45, 0], [0.5, 0.2, 0], [0.75, 0.2, 12]] as const) bass.push({ t: t0 + i + off, d, n: r + up, v: off === 0 ? 96 : 80 });
-    else if (bassStyle === 'syncopated') for (const [off, d, n] of [[0, 0.7, r], [0.75, 0.2, r], [1.5, 0.45, fifth], [2.5, 0.45, r + 12], [3, 0.7, fifth], [3.5, 0.4, r]] as const) bass.push({ t: t0 + off, d, n, v: off % 1 ? 80 : 94 });
-    else for (let i = 0; i < 8; i++) bass.push({ t: t0 + i * 0.5, d: 0.45, n: bassStyle === 'octaves' && i % 2 ? r + 12 : r, v: i % 2 ? 78 : 94 });
-  }
-  add('bass', bassVoice, 1, bass);
-
-  // drums
-  const pattern = DRUMS[drumStyle];
-  const drums: Note[] = [];
-  for (let b = 0; b < bars; b++) {
-    const t0 = b * BEATS_PER_BAR;
-    const hit = (steps: number[] | undefined, n: number, v: number) => steps?.forEach((s) => drums.push({ t: t0 + s * 0.25, d: 0.2, n, v }));
-    const fill = drumStyle !== 'none' && drumStyle !== 'sparse' && (b + 1) % 4 === 0;
-    hit(pattern.kick, 36, 112);
-    hit(fill ? [4, 10, 12, 13, 14, 15] : pattern.snare, 38, fill ? 100 : 104);
-    hit(pattern.hat, 42, 70);
-    hit(pattern.open, 46, 74);
-    hit(pattern.rim, 37, 70);
-  }
-  add('drums', 'sub', 2, drums);
-
-  // arp: chord tones in 8ths or 16ths, played on a share of the bars
-  const arp: Note[] = [];
-  if (rng.chance(spec.arp)) {
-    const step = rng.chance(0.5) ? 0.25 : 0.5;
-    const shape = rng.pick([[0, 1, 2, 1], [0, 2, 1, 2], [2, 1, 0, 1], [0, 1, 2, 3]]);
-    for (let b = 0; b < bars; b++) {
-      const tones = [...chordTones(chordAt(b)), degreeNote(root, scale, chordAt(b)) + 12].map((n) => n + 12);
-      for (let i = 0; i < BEATS_PER_BAR / step; i++) arp.push({ t: b * BEATS_PER_BAR + i * step, d: step * 0.9, n: tones[shape[i % shape.length]!]!, v: 60 + (i % 4 === 0 ? 14 : 0) });
-    }
-  }
-  add('arp', arpVoice, 3, arp);
-
-  // lead: a four-bar phrase, played again with a changed ending
-  const phraseBars = prog.length;
-  const rhythm = rng.pick(MELODY_RHYTHMS);
-  const motif = rng.pick(MELODY_RHYTHMS);
-  const lead: Note[] = [];
-  let pos = rng.pick([2, 4, 4, 5]); // scale degree above the tonic, to start
-  const phrase = (variation: boolean): Note[] => {
-    const out: Note[] = [];
-    for (let pb = 0; pb < phraseBars; pb++) {
-      const bar = pb;
-      const chord = chordTones(chordAt(bar));
-      const slots = variation && pb >= phraseBars - 2 ? motif : rhythm;
-      slots.forEach(([off, dur], i) => {
-        if (i > 0 && !rng.chance(spec.melodyDensity + 0.25)) return;
-        if (i === 0 && !rng.chance(spec.melodyDensity + 0.35)) return;
-        // strong beats lean toward chord tones, the rest walk stepwise
-        if (off % 2 === 0 && rng.chance(0.6)) {
-          const target = rng.pick(chord) + 12;
-          pos = nearestDegree(root, scale, target);
-        } else pos += rng.pick([-2, -1, -1, 1, 1, 2]);
-        pos = Math.max(0, Math.min(scale.length * 2 + 1, pos));
-        out.push({ t: bar * BEATS_PER_BAR + off, d: dur * 0.92, n: degreeNote(root, scale, pos) + 12, v: 82 + (off === 0 ? 12 : 0) });
-      });
-    }
-    return out;
-  };
-  for (let start = 0; start < bars; start += phraseBars) {
-    const p = phrase(start > 0);
-    for (const n of p) lead.push({ ...n, t: n.t + start * BEATS_PER_BAR });
-  }
-  add('lead', leadVoice, 1, lead);
-
-  const generated = `${rng.pick(ADJECTIVES)} ${rng.pick(NOUNS)}`;
-  const name = opts.name ?? generated;
-  const id = `${opts.batch ?? 'b00'}-${String(opts.index ?? 0).padStart(2, '0')}-${slug(name)}`;
-  return { id, name, description: opts.description ?? spec.intent, intent: spec.intent, mood: opts.mood, style: opts.style ?? opts.mood, seed: opts.seed >>> 0, tempo, root, scale: scaleName, bars, tracks };
+interface Cell {
+  e: number;
+  d: number;
 }
 
-function nearestDegree(root: number, scale: number[], note: number): number {
-  let best = 0;
-  let bestDist = Infinity;
-  for (let d = 0; d <= scale.length * 2 + 1; d++) {
-    const dist = Math.abs(degreeNote(root, scale, d) + 12 - note);
-    if (dist < bestDist) { best = d; bestDist = dist; }
+const PROGS = {
+  bright: [[0, 4, 5, 3], [0, 5, 3, 4], [0, 3, 4, 3], [0, 2, 3, 4], [5, 3, 0, 4]],
+  dark: [[0, 5, 2, 6], [0, 3, 6, 2], [0, 6, 5, 6], [0, 5, 6, 0], [0, 2, 6, 3]],
+  phrygian: [[0, 1, 0, 1], [0, 1, 2, 1], [0, 6, 1, 0]],
+  lydian: [[0, 1, 0, 1], [0, 1, 4, 0], [0, 4, 1, 0]],
+};
+const PRE = { bright: [[3, 4, 3, 4], [5, 3, 4, 4], [1, 4, 1, 4]], dark: [[5, 6, 5, 6], [3, 4, 5, 6], [5, 3, 6, 4]] };
+const BRIDGE = { bright: [[5, 3, 5, 4], [3, 5, 3, 4], [1, 3, 4, 4]], dark: [[3, 6, 2, 5], [5, 3, 6, 4], [2, 3, 5, 6]] };
+
+const VELOCITY: Record<SectionKind, number> = { intro: 0.6, verse: 0.8, pre: 0.9, chorus: 1, bridge: 0.75, outro: 0.65, groove: 0.9 };
+
+function family(mode: string): 'bright' | 'dark' {
+  return mode === 'major' || mode === 'lydian' || mode === 'mixolydian' ? 'bright' : 'dark';
+}
+
+/** MIDI note for a scale degree (negative or past one octave allowed). */
+export function degreeNote(root: number, scale: number[], degree: number): number {
+  const len = scale.length;
+  return root + scale[((degree % len) + len) % len]! + 12 * Math.floor(degree / len);
+}
+
+interface Chord {
+  deg: number;
+  /** Dominant function: raise the third so it pulls to the tonic. */
+  dom: boolean;
+}
+
+function chordTones(root: number, scale: number[], c: Chord): number[] {
+  const r = degreeNote(root, scale, c.deg);
+  let third = degreeNote(root, scale, c.deg + 2);
+  if (c.dom && third - r === 3) third += 1;
+  return [r, third, degreeNote(root, scale, c.deg + 4)];
+}
+
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+/** Random onsets on a bar's eighth grid, weighted toward group starts and syncopated anticipations. */
+function genRhythm(rng: Rng, m: MeterSpec, o: { sync: number; density: number; min: number; max: number; sixteenths?: boolean }): Cell[] {
+  const E = eighthsOf(m);
+  const starts = groupStarts(m);
+  const cand: { e: number; w: number }[] = [];
+  for (let e = 0; e < E; e++) {
+    const w = starts.includes(e) ? (e === 0 ? 1.4 : 0.9) : starts.includes(e + 1) ? o.sync : o.density * 0.55;
+    cand.push({ e, w });
+    if (o.sixteenths) cand.push({ e: e + 0.5, w: o.density * 0.12 });
+  }
+  const chosen = new Set<number>();
+  if (rng.chance(0.85)) chosen.add(0);
+  const target = Math.min(rng.int(o.min, o.max), cand.length);
+  while (chosen.size < target) {
+    const pool = cand.filter((c) => !chosen.has(c.e));
+    const total = pool.reduce((a, c) => a + c.w, 0);
+    let r = rng.next() * total;
+    for (const c of pool) {
+      r -= c.w;
+      if (r <= 0) { chosen.add(c.e); break; }
+    }
+    if (pool.length === 0) break;
+  }
+  const on = [...chosen].sort((a, b) => a - b);
+  return on.map((e, i) => ({ e, d: Math.min((on[i + 1] ?? E) - e, 4) }));
+}
+
+/** Pitch offsets (in scale steps) for n notes: shapes that earworm research favors, a familiar contour with a leap. */
+function genContour(rng: Rng, n: number): number[] {
+  if (n <= 1) return [0];
+  const kind = rng.pick(['leapFall', 'leapFall', 'arch', 'arch', 'hammer', 'hammer', 'stairs']);
+  const L = rng.pick([2, 3, 4, 4, 5]);
+  const out: number[] = [];
+  if (kind === 'leapFall') {
+    for (let i = 0; i < n; i++) out.push(i === 0 ? 0 : Math.max(0, L - (i - 1)));
+  } else if (kind === 'arch') {
+    const peak = Math.max(1, Math.round((n - 1) * 0.6));
+    for (let i = 0; i < n; i++) out.push(i <= peak ? i : Math.max(-1, 2 * peak - i));
+  } else if (kind === 'hammer') {
+    const k = Math.min(n - 1, rng.pick([2, 3]));
+    for (let i = 0; i < n; i++) out.push(i < k ? 0 : Math.max(0, L - (i - k)));
+  } else {
+    for (let i = 0; i < n; i++) out.push(Math.floor(i / 2));
+  }
+  return out;
+}
+
+const mod7 = (d: number) => ((d % 7) + 7) % 7;
+/** Nearest degree to d whose scale position is one of `positions`. */
+function nearestPos(d: number, positions: number[]): number {
+  let best = d;
+  let dist = Infinity;
+  for (let k = d - 4; k <= d + 4; k++) {
+    if (positions.includes(mod7(k)) && Math.abs(k - d) < dist) { best = k; dist = Math.abs(k - d); }
   }
   return best;
 }
 
-/** Song length in seconds for one pass of the loop. */
-export function songSeconds(song: Pick<Song, 'bars' | 'tempo'>): number {
-  return Math.round(((song.bars * BEATS_PER_BAR * 60) / song.tempo) * 10) / 10;
+interface HookNote {
+  bar: number;
+  e: number;
+  d: number;
+  deg: number;
+}
+interface Hook {
+  len: 1 | 2;
+  notes: HookNote[];
+  /** Degree of a one-eighth pickup note before the first bar, if any. */
+  pickup: number | null;
+}
+
+type Ending = 'open' | 'vary' | 'closed';
+
+export function composeSong(opts: ComposeOptions): Song {
+  const rng = new Rng(opts.seed);
+  const character: Character = opts.character ?? 'hook';
+  const vibeOnly = character === 'vibe';
+  const feel: FeelSpec = { ...DEFAULT_FEEL, ...opts.feel, ...(vibeOnly ? { harmony: false, drop: false, riff: false } : {}) };
+
+  // ---- 1. mode, tempo and meter: explicit values win, a target vibe fills in the rest
+  const plan: MeterPlan = opts.meter ?? '4/4';
+  const planNames = typeof plan === 'string' ? [plan] : 'cycle' in plan ? plan.cycle : [...new Set([...Object.values(plan.bySection), plan.fallback])];
+  const bpmRange: [number, number] = Array.isArray(opts.bpm) ? opts.bpm : opts.bpm ? [opts.bpm, opts.bpm] : [60, 176];
+  let scaleName = opts.mode;
+  let tempo = typeof opts.bpm === 'number' ? opts.bpm : undefined;
+  if (opts.vibe && (!scaleName || tempo === undefined)) {
+    const pick = pickForVibe(opts.vibe, rng, { meters: planNames.length === 1 ? planNames : undefined, modes: scaleName ? [scaleName] : undefined, bpm: bpmRange });
+    scaleName ??= pick.mode;
+    tempo ??= pick.bpm;
+  }
+  scaleName ??= 'major';
+  tempo = Math.round(tempo ?? rng.range(bpmRange[0], bpmRange[1]));
+  const scale = SCALES[scaleName];
+  if (!scale) throw new Error(`unknown mode "${scaleName}"`);
+  const root = 48 + rng.int(0, 11);
+  const fam = family(scaleName);
+  const pickProg = (set: number[][]) => rng.pick(set);
+  const mainProg = pickProg(scaleName === 'phrygian' ? PROGS.phrygian : scaleName === 'lydian' && rng.chance(0.6) ? PROGS.lydian : PROGS[fam]);
+  const chorusProg = rng.chance(0.5) ? mainProg : pickProg(PROGS[fam]);
+  const preProg = pickProg(PRE[fam]);
+  const bridgeProg = pickProg(BRIDGE[fam]);
+  const progFor: Record<SectionKind, number[]> = { intro: mainProg, verse: mainProg, pre: preProg, chorus: chorusProg, bridge: bridgeProg, outro: mainProg, groove: chorusProg };
+
+  // ---- 2. sections, then bars (each with its own time signature)
+  const layout = LAYOUTS[opts.layout];
+  if (!layout) throw new Error(`unknown layout "${opts.layout}"`);
+  const groupingPick: Record<string, number> = {};
+  const specFor = (name: string): MeterSpec => meterSpec(name, (groupingPick[name] ??= rng.int(0, 2)));
+  const sections: Section[] = [];
+  const counts: Partial<Record<SectionKind, number>> = {};
+  const totalChoruses = layout.filter(([k]) => k === 'chorus').length;
+  let bar0 = 0;
+  const lift = opts.form === 'oneshot' ? opts.keyLift ?? 2 : 0;
+  for (const [kind, n] of layout) {
+    counts[kind] = (counts[kind] ?? 0) + 1;
+    const multi = layout.filter(([k]) => k === kind).length > 1;
+    const label = kind === 'pre' ? 'Pre-chorus' : kind[0]!.toUpperCase() + kind.slice(1);
+    const lastChorus = kind === 'chorus' && counts[kind] === totalChoruses && totalChoruses > 1;
+    sections.push({ kind, name: multi ? `${label} ${counts[kind]}` : label, startBar: bar0, bars: n, transpose: lastChorus ? lift : 0 });
+    bar0 += n;
+  }
+  const barCount = bar0;
+  const specs: MeterSpec[] = [];
+  const bars: Bar[] = [];
+  let at = 0;
+  for (const sec of sections) {
+    for (let j = 0; j < sec.bars; j++) {
+      const g = sec.startBar + j;
+      const name = typeof plan === 'string' ? plan : 'cycle' in plan ? plan.cycle[g % plan.cycle.length]! : plan.bySection[sec.kind] ?? plan.fallback;
+      const spec = specFor(name);
+      specs.push(spec);
+      bars.push({ start: at, beats: beatsOf(spec), num: spec.num, den: spec.den });
+      at += beatsOf(spec);
+    }
+  }
+  const meterNames = [...new Set(bars.map((b) => `${b.num}/${b.den}`))];
+  const meterLabel = meterNames.length === 1 ? meterNames[0]! : meterNames.join(' + ');
+  const mainSpec = specs[sections.find((s) => s.kind === 'chorus' || s.kind === 'groove')?.startBar ?? 0]!;
+  const T = (g: number, e: number) => bars[g]!.start + e * 0.5;
+
+  // ---- 3. the hook (and the smaller motifs it grows from)
+  const hookLen: 1 | 2 = rng.chance(0.5) ? 1 : 2;
+  const hookEs = eighthsOf(mainSpec);
+  // a hook is busy and syncopated; a vibe piece's motif is one or two long notes over a texture (which can be frantic)
+  const hookRhythm = (): Cell[] => vibeOnly
+    ? genRhythm(rng, mainSpec, { sync: 0.05, density: 0.15, min: 1, max: 2 }).map((c) => ({ e: c.e, d: Math.min(8, Math.max(c.d, 3)) }))
+    : genRhythm(rng, mainSpec, { sync: Math.max(feel.sync, 0.4), density: 0.7, min: Math.ceil(hookEs / 3) + 1, max: Math.ceil(hookEs / 2) + 1 });
+  const flat: HookNote[] = [];
+  const r1 = hookRhythm();
+  const r2 = hookLen === 2 ? hookRhythm() : [];
+  for (const c of r1) flat.push({ bar: 0, e: c.e, d: c.d, deg: 0 });
+  for (const c of r2) flat.push({ bar: 1, e: c.e, d: c.d, deg: 0 });
+  const base = rng.pick([2, 4, 4, 5]);
+  genContour(rng, flat.length).forEach((off, i) => { flat[i]!.deg = Math.min(9, Math.max(0, base + off)); });
+  const hook: Hook = { len: hookLen, notes: flat, pickup: !vibeOnly && rng.chance(0.5) ? nearestPos(base - 1, [0, 1, 2, 4, 5, 6]) : null };
+
+  const hookNotesFor = (cell: number, ending: Ending): HookNote[] => {
+    const out = hook.notes.filter((n) => n.bar === cell).map((n) => ({ ...n }));
+    if (cell !== hook.len - 1 || !out.length) return out;
+    const last = out[out.length - 1]!;
+    if (ending === 'open') last.deg = nearestPos(last.deg, [1, 4]);
+    else if (ending === 'closed') {
+      last.deg = nearestPos(last.deg, [0]);
+      if (out.length > 1) out[out.length - 2]!.deg = Math.max(0, last.deg + (rng.chance(0.5) ? 1 : -1));
+    } else last.deg = Math.max(0, last.deg + rng.pick([-1, 1]));
+    return out;
+  };
+
+  const verseRhythm = (): Cell[] => genRhythm(rng, mainSpec, { sync: 0.3, density: 0.3, min: 2, max: Math.max(3, Math.ceil(hookEs / 3)) });
+  const verseCells = [verseRhythm(), verseRhythm()].map((rh) => {
+    const c = genContour(rng, rh.length).map((o) => Math.max(0, o > 2 ? o - 2 : o));
+    const b = rng.pick([0, 1, 2, 3]);
+    return rh.map((r, i) => ({ ...r, deg: b + c[i]! }));
+  });
+  const riffCell = genRhythm(rng, mainSpec, { sync: 0.55, density: 0.6, min: Math.ceil(hookEs / 2), max: hookEs - 1 });
+
+  // ---- 4. play it out, bar by bar
+  const parts: Record<Inst, Note[]> = { bass: [], pad: [], lead: [], harmony: [], riff: [], arp: [], drums: [] };
+  const hookBars: number[] = [];
+  const lastSection = sections.length - 1;
+  const shape = rng.pick([[0, 1, 2, 1], [0, 2, 1, 2], [2, 1, 0, 1], [0, 1, 2, 3]]);
+
+  const chordsFor = (si: number): Chord[] => {
+    const sec = sections[si]!;
+    const prog = progFor[sec.kind];
+    const out: Chord[] = [];
+    const isLast = si === lastSection;
+    const resolves = sec.kind === 'chorus' || sec.kind === 'groove';
+    for (let j = 0; j < sec.bars; j++) {
+      let c: Chord = { deg: prog[j % 4]!, dom: false };
+      const phraseEnd = j % 4 === 3 || (sec.bars < 4 && j === sec.bars - 1);
+      const lastPhrase = j >= sec.bars - Math.min(4, sec.bars);
+      if (phraseEnd) {
+        if (resolves && !(lastPhrase && isLast && opts.form === 'loop')) c = { deg: 0, dom: false };
+        else if (lastPhrase || rng.chance(0.5)) c = { deg: 4, dom: true };
+      }
+      if (sec.bars === 2 && j === 0) c = { deg: prog[0]!, dom: false };
+      out.push(c);
+    }
+    if (isLast && opts.form === 'oneshot') {
+      out[sec.bars - 1] = { deg: 0, dom: false };
+      if (sec.bars >= 2) out[sec.bars - 2] = rng.chance(0.5) ? { deg: 4, dom: true } : { deg: 3, dom: false };
+    }
+    return out;
+  };
+
+  sections.forEach((sec, si) => {
+    const rootS = root + sec.transpose;
+    const chords = chordsFor(si);
+    const vel = VELOCITY[sec.kind];
+    const chorusLike = sec.kind === 'chorus' || sec.kind === 'groove';
+    const drumLevel: 'none' | 'light' | 'full' | 'half' | 'build' =
+      sec.kind === 'intro' || (sec.kind === 'outro' && opts.form === 'oneshot') ? 'none'
+        : sec.kind === 'verse' ? (feel.drums === 'four' || feel.drums === 'march' ? 'full' : 'light')
+          : sec.kind === 'pre' ? 'build' : sec.kind === 'bridge' ? 'half' : 'full';
+
+    for (let j = 0; j < sec.bars; j++) {
+      const g = sec.startBar + j;
+      const bar = bars[g]!;
+      const m = specs[g]!;
+      const E = eighthsOf(m);
+      const starts = groupStarts(m);
+      const chord = chords[j]!;
+      const tones = chordTones(rootS, scale, chord);
+      const lastBarOfSection = j === sec.bars - 1;
+      const bassRoot = tones[0]! - 12;
+      const bassFifth = degreeNote(rootS, scale, chord.deg + 4) - 12;
+
+      if (feel.pad && sec.kind !== 'groove') for (const n of tones) parts.pad.push({ t: bar.start, d: bar.beats, n: n + 12, v: Math.round(48 * vel) });
+      else if (feel.pad) for (const n of tones) parts.pad.push({ t: bar.start, d: bar.beats, n: n + 12, v: 42 });
+
+      // bass
+      if (sec.kind !== 'intro' && !(sec.kind === 'outro' && opts.form === 'oneshot' && j >= 2)) bassBar(parts.bass, feel.bass, m, bar.start, bassRoot, bassFifth, Math.round(96 * vel));
+
+      // drums
+      const nextHasDrums = si < lastSection ? sections[si + 1]!.kind !== 'intro' : opts.form === 'loop';
+      const kit = feel.drums !== 'none';
+      if (kit && drumLevel !== 'none') drumBar(parts.drums, feel.drums, m, bar.start, drumLevel, j, sec.bars, vel);
+      if (kit && lastBarOfSection && (drumLevel !== 'none' || sec.kind === 'intro') && nextHasDrums && !(si === lastSection && opts.form === 'oneshot')) fillBar(parts.drums, m, bar.start, vel);
+      if (kit && j === 0 && si > 0 && (chorusLike || sec.kind === 'verse') && sections[si - 1]!.kind !== 'intro') parts.drums.push({ t: bar.start, d: 1, n: 49, v: 108 });
+
+      // arp
+      if (feel.arp * (sec.kind === 'intro' ? 1 : sec.kind === 'verse' ? 0.4 : sec.kind === 'bridge' ? 0.5 : 1) >= 0.25) {
+        const hi = [...tones.map((n) => n + 12), tones[0]! + 24];
+        let k = 0;
+        for (let e = 0; e + feel.arpStep <= E; e += feel.arpStep) {
+          parts.arp.push({ t: bar.start + e * 0.5, d: feel.arpStep * 0.45, n: hi[shape[k++ % shape.length]!]!, v: Math.round((starts.includes(e) ? 70 : 54) * vel) });
+        }
+      }
+
+      // lead, riff, harmony
+      const lead = (e: number, d: number, deg: number, v: number, voiceNote = 12) => {
+        parts.lead.push({ t: bar.start + e * 0.5, d: Math.max(0.2, d * 0.5 * 0.92), n: degreeNote(rootS, scale, deg) + voiceNote, v: Math.round(v * vel) });
+      };
+      if (chorusLike || sec.kind === 'outro' || (sec.kind === 'intro' && j >= sec.bars - hook.len)) {
+        const statementOf = (): { cell: number; ending: Ending } => {
+          if (sec.kind === 'intro') return { cell: j - (sec.bars - hook.len), ending: 'open' };
+          const k = j % 4;
+          const closedOK = chord.deg === 0 && !chord.dom;
+          if (hook.len === 1) return { cell: 0, ending: k === 3 ? (closedOK ? 'closed' : 'open') : k === 1 ? 'vary' : 'open' };
+          return { cell: k % 2, ending: k >= 2 ? (closedOK ? 'closed' : 'open') : 'open' };
+        };
+        if (sec.kind !== 'outro') {
+          const { cell, ending } = statementOf();
+          // a vibe piece states its motif every other bar and leaves the rest to the texture
+          if (vibeOnly && sec.kind !== 'intro' && j % 2 === 1) { /* rest */ } else {
+          if (cell === 0) hookBars.push(g);
+          const intro = sec.kind === 'intro';
+          for (const hn of hookNotesFor(cell, ending)) {
+            lead(hn.e, hn.d, hn.deg, intro ? 62 : 96);
+            if (feel.harmony && !intro && sec.kind === 'chorus') parts.harmony.push({ t: bar.start + hn.e * 0.5, d: Math.max(0.2, hn.d * 0.46), n: degreeNote(rootS, scale, hn.deg - 2) + 12, v: Math.round(74 * vel) });
+          }
+          if (cell === 0 && hook.pickup !== null && g > 0 && !intro) {
+            const pe = bars[g - 1]!.beats * 2 - 1;
+            parts.lead.push({ t: bars[g - 1]!.start + pe * 0.5, d: 0.4, n: degreeNote(rootS, scale, hook.pickup) + 12, v: Math.round(80 * vel) });
+          }
+          }
+        } else if (opts.form === 'oneshot') {
+          // the tag: the hook again at half speed, then the last bars belong to the final chord
+          if (j < hook.len * 2) {
+            const cell = Math.floor(j / 2) % hook.len;
+            const half = j % 2;
+            for (const hn of hookNotesFor(cell, j >= hook.len * 2 - 2 ? 'closed' : 'open')) {
+              const pos = hn.e * 2;
+              if (Math.floor(pos / E) !== half) continue;
+              lead(pos - half * E, Math.min(hn.d * 2, E - (pos - half * E)), hn.deg, 84);
+            }
+          }
+        }
+      } else if (sec.kind === 'verse') {
+        if (feel.riff) {
+          for (const c of riffCell) {
+            for (const n of [tones[0]!, tones[0]! + 7, tones[0]! + 12]) parts.riff.push({ t: bar.start + c.e * 0.5, d: Math.max(0.2, c.d * 0.5 * 0.7), n, v: Math.round(86 * vel) });
+          }
+        } else {
+          const k = j % 4;
+          const cell = verseCells[k % 2]!;
+          cell.forEach((c, i) => {
+            let deg = c.deg;
+            if (k === 3 && i === cell.length - 1) deg = nearestPos(deg, [1, 4]);
+            lead(c.e, c.d, deg, 80, 12);
+          });
+        }
+      } else if (sec.kind === 'pre') {
+        const total = sec.bars;
+        const notesThisBar = Math.min(starts.length, 1 + Math.floor((j / Math.max(1, total - 1)) * (starts.length - 1)));
+        const idx0 = j * 2;
+        for (let i = 0; i < notesThisBar; i++) {
+          const heldLast = lastBarOfSection;
+          const e = starts[i]!;
+          const nextE = starts[i + 1] ?? E;
+          lead(e, heldLast ? E - e : nextE - e, 1 + idx0 + i, 84 + j * 4);
+        }
+      } else if (sec.kind === 'bridge') {
+        const d = [chord.deg + 2, chord.deg + 4, chord.deg + 2, chord.deg + 1][j % 4]!;
+        lead(0, E - 1, Math.max(0, Math.min(8, d)), 72);
+      }
+
+      // the pre-chorus drops out for the last group before the chorus lands
+      if (feel.drop && sec.kind === 'pre' && lastBarOfSection && starts.length > 1) {
+        const cut = bar.start + starts[starts.length - 1]! * 0.5;
+        for (const inst of ['bass', 'pad', 'lead', 'arp', 'harmony', 'riff'] as Inst[]) parts[inst] = parts[inst].filter((n) => !(n.t >= cut && n.t < bar.start + bar.beats));
+        parts.drums = parts.drums.filter((n) => !(n.t >= cut && n.t < bar.start + bar.beats && n.n !== 38));
+      }
+    }
+  });
+
+  // ---- 5. endings: a loop leads back to its first bar; a one-shot lands and rings out (or fades)
+  const lastBar = bars[barCount - 1]!;
+  const ending = opts.ending ?? 'big';
+  if (opts.form === 'oneshot') {
+    if (ending === 'big') {
+      for (const inst of Object.keys(parts) as Inst[]) parts[inst] = parts[inst].filter((n) => n.t < lastBar.start);
+      const ts = chordTones(root, scale, { deg: 0, dom: false });
+      const hold = lastBar.beats * 2;
+      for (const n of ts) parts.pad.push({ t: lastBar.start, d: hold, n: n + 12, v: 76 });
+      parts.bass.push({ t: lastBar.start, d: hold, n: ts[0]! - 12, v: 110 });
+      parts.bass.push({ t: lastBar.start, d: hold, n: ts[0]! - 24, v: 100 });
+      parts.lead.push({ t: lastBar.start, d: hold, n: ts[0]! + 24, v: 104 });
+      parts.harmony.push({ t: lastBar.start, d: hold, n: ts[2]! + 12, v: 90 });
+      if (feel.drums !== 'none') parts.drums.push({ t: lastBar.start, d: 1, n: 36, v: 124 }, { t: lastBar.start, d: 2, n: 49, v: 120 });
+    } else {
+      const fadeFrom = bars[Math.max(0, barCount - 4)]!.start;
+      const end = lastBar.start + lastBar.beats;
+      for (const inst of Object.keys(parts) as Inst[]) parts[inst] = parts[inst].map((n) => (n.t < fadeFrom ? n : { ...n, v: Math.max(8, Math.round(n.v * (1 - ((n.t - fadeFrom) / (end - fadeFrom)) * 0.85))) }));
+    }
+  }
+
+  // ---- 6. tempo changes
+  const tempoMap: TempoPoint[] = [{ beat: 0, bpm: tempo }];
+  const arc = opts.tempoArc ?? (opts.form === 'oneshot' ? 'lift' : 'steady');
+  if (opts.form === 'oneshot') {
+    let cur = tempo;
+    if (arc === 'accel') {
+      const total = at;
+      tempoMap.length = 0;
+      for (const s of sections) {
+        const start = bars[s.startBar]!.start;
+        tempoMap.push({ beat: start, bpm: Math.round(tempo * (1 + 0.2 * (start / total))), ramp: true });
+      }
+      cur = tempoMap[tempoMap.length - 1]!.bpm;
+    } else if (arc === 'lift') {
+      const finalChorus = sections.find((s) => s.transpose > 0) ?? sections.filter((s) => s.kind === 'chorus').at(-1);
+      if (finalChorus && totalChoruses > 1) {
+        cur = Math.round(tempo * 1.06);
+        tempoMap.push({ beat: bars[finalChorus.startBar]!.start, bpm: cur });
+      }
+    }
+    if (ending === 'big' && barCount >= 2) {
+      const from = bars[barCount - 2]!.start;
+      if (from > tempoMap[tempoMap.length - 1]!.beat) {
+        tempoMap.push({ beat: from, bpm: cur, ramp: true }, { beat: lastBar.start, bpm: Math.round(cur * 0.62) });
+      } else tempoMap.push({ beat: lastBar.start, bpm: Math.round(cur * 0.62) });
+    }
+  }
+
+  // ---- 7. assemble
+  const tracks: SongTrack[] = [];
+  const addTrack = (inst: Inst, voice: Voice, layer: number) => {
+    const notes = parts[inst];
+    if (notes.length) tracks.push({ inst, voice, layer, notes: notes.sort((a, b) => a.t - b.t) });
+  };
+  addTrack('pad', 'warm', 0);
+  addTrack('bass', feel.bassVoice, 1);
+  addTrack('drums', 'sub', 2);
+  addTrack('arp', feel.arpVoice, 3);
+  addTrack('riff', 'saw', 1);
+  addTrack('lead', feel.leadVoice, 1);
+  addTrack('harmony', feel.leadVoice === 'square' ? 'square' : feel.leadVoice, 3);
+
+  const id = `${opts.batch ?? 'b00'}-${String(opts.index ?? 0).padStart(2, '0')}-${slug(opts.name)}`;
+  return {
+    id, name: opts.name, description: opts.description, intent: opts.intent ?? opts.description, mood: opts.mood, style: opts.style,
+    seed: opts.seed >>> 0, form: opts.form, character, tempo, tempoMap, root, scale: scaleName, meter: meterLabel, bars, sections, hookBars, tracks,
+  };
+}
+
+// ---- rhythm sections ------------------------------------------------------------------------------------------------
+
+function bassBar(out: Note[], style: BassStyle, m: MeterSpec, start: number, root: number, fifth: number, v: number): void {
+  const E = eighthsOf(m);
+  const starts = groupStarts(m);
+  const put = (e: number, d: number, n: number, vel = v) => out.push({ t: start + e * 0.5, d: Math.max(0.15, d * 0.5 * 0.92), n, v: vel });
+  switch (style) {
+    case 'whole': put(0, E - 1, root); break;
+    case 'sparse': put(0, 3, root); if (starts.length > 2) put(starts[starts.length - 1]!, starts.length ? m.groups[m.groups.length - 1]! : 2, fifth, v - 12); break;
+    case 'groups': starts.forEach((e, i) => put(e, m.groups[i]!, i === starts.length - 1 && starts.length >= 4 ? fifth : root, i === 0 ? v : v - 8)); break;
+    case 'eighths': for (let e = 0; e < E; e++) put(e, 1, root, starts.includes(e) ? v : v - 14); break;
+    case 'octaves': for (let e = 0; e < E; e++) put(e, 1, e % 2 ? root + 12 : root, e % 2 ? v - 14 : v); break;
+    case 'walk': { const seq = [root, fifth, root + 12, fifth]; starts.forEach((e, i) => put(e, m.groups[i]!, seq[i % 4]!, v - (i % 2) * 8)); break; }
+    case 'sync': {
+      const on = new Set<number>(starts);
+      starts.forEach((s, i) => { if (i % 2 === 1 && s > 0) on.add(s - 1); });
+      [...on].sort((a, b) => a - b).forEach((e, i) => put(e, 1.5, i % 3 === 2 ? fifth : root, starts.includes(e) ? v : v - 10));
+      break;
+    }
+    case 'gallop': starts.forEach((s, i) => { const g = m.groups[i]!; put(s, 1, root, v); if (g >= 2) { put(s + 1, 0.5, root, v - 14); put(s + 1.5, 0.5, root + 12, v - 14); } }); break;
+  }
+}
+
+interface Hit { e: number; n: number; v: number }
+
+function drumHits(style: DrumStyle, m: MeterSpec, levelIn: 'light' | 'full' | 'half' | 'build', idx: number, total: number): Hit[] {
+  if (style === 'none') return [];
+  // gentle kits do not do snare-roll builds
+  const level = levelIn === 'build' && (style === 'sparse' || style === 'soft') ? 'light' : levelIn;
+  const starts = groupStarts(m);
+  const ng = starts.length;
+  const E = eighthsOf(m);
+  const hits: Hit[] = [];
+  const kick = (e: number, v = 112) => hits.push({ e, n: 36, v });
+  const snare = (e: number, v = 104) => hits.push({ e, n: 38, v });
+  const rim = (e: number, v = 66) => hits.push({ e, n: 37, v });
+  const hat = (e: number, v: number) => hits.push({ e, n: 42, v });
+  const mid = Math.floor(ng / 2);
+  const backbeats = ng === 2 ? [1] : ng === 3 ? [1, 2] : starts.map((_, i) => i).filter((i) => i % 2 === 1 && !(ng % 2 === 1 && i === ng - 1));
+  if (level === 'build') {
+    kick(0, 100);
+    const density = 0.4 + (idx / Math.max(1, total - 1)) * 0.6;
+    for (let e = 0; e < E; e += density > 0.8 ? 1 : 2) snare(e, Math.round(50 + 50 * (e / E) * density));
+    return hits;
+  }
+  if (style === 'sparse') { kick(0); hat(starts[mid]!, 60); return hits; }
+  if (style === 'soft') {
+    kick(0, 96);
+    if (ng >= 4) kick(starts[mid]!, 84);
+    if (level === 'full') for (const i of backbeats) rim(starts[i]!);
+    for (const s of starts) hat(s, 52);
+    return hits;
+  }
+  if (level === 'half') {
+    kick(0);
+    snare(starts[Math.min(ng - 1, Math.max(1, mid))]!);
+    for (const s of starts) hat(s, 58);
+    return hits;
+  }
+  if (style === 'four' || style === 'march') for (const s of starts) kick(s, style === 'four' ? 108 : 96);
+  else {
+    kick(0);
+    if (ng >= 4) kick(starts[mid]!, 104);
+    else if (ng === 3) kick(starts[2]! - 1, 90);
+    if (style === 'funk') { kick(starts[1]! + m.groups[1]! - 1, 96); if (ng >= 3) kick(starts[2]! + m.groups[2]! - 1, 88); }
+  }
+  if (level === 'full') {
+    if (style === 'march') for (const s of starts) { snare(s, 80); if (m.groups[starts.indexOf(s)]! >= 2) snare(s + 1, 56); }
+    else for (const i of backbeats) snare(starts[i]!, ng === 3 ? 78 : 104);
+  }
+  if (style === 'four') for (const s of starts) hat(s + Math.min(1, m.groups[starts.indexOf(s)]! - 1), 72);
+  else if (style === 'march') { /* snare carries it */ }
+  else if (style === 'rock' || style === 'funk') for (let e = 0; e < E; e++) hat(e, starts.includes(e) ? 76 : 58);
+  else for (const s of starts) hat(s, 60);
+  if (style === 'four') hits.push({ e: E - 1, n: 46, v: 70 });
+  return hits;
+}
+
+function drumBar(out: Note[], style: DrumStyle, m: MeterSpec, start: number, level: 'light' | 'full' | 'half' | 'build', idx: number, total: number, vel: number): void {
+  for (const h of drumHits(style, m, level === 'light' ? 'light' : level, idx, total)) {
+    if (level === 'light' && h.n === 38) continue;
+    out.push({ t: start + h.e * 0.5, d: 0.2, n: h.n, v: Math.max(1, Math.round(h.v * (0.7 + 0.3 * vel))) });
+  }
+}
+
+/** Snare run over the last beat group into the next section's downbeat. */
+function fillBar(out: Note[], m: MeterSpec, start: number, vel: number): void {
+  const E = eighthsOf(m);
+  const last = m.groups[m.groups.length - 1]!;
+  const from = E - last;
+  const steps = last * 2;
+  for (let i = 0; i < steps; i++) out.push({ t: start + (from + i * 0.5) * 0.5, d: 0.15, n: 38, v: Math.round((60 + (i / steps) * 50) * (0.7 + 0.3 * vel)) });
+}
+
+/** Song length in seconds for one pass (a loop's period, a one-shot's playing time before its tail). */
+export function songSeconds(song: Pick<Song, 'bars' | 'tempoMap'>): number {
+  const last = song.bars[song.bars.length - 1]!;
+  return Math.round(secondsAt(song.tempoMap, last.start + last.beats) * 10) / 10;
 }
