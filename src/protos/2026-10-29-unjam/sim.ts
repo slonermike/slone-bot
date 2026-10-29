@@ -16,11 +16,11 @@ export const LOCK_R = 230;
 export const KIND_NEED = [0.35, 0.5, 0.8];
 export const FLUSH_SECONDS = 5;
 export const waveGoal = (base: number, wave: number): number => Math.round(base + 6 * wave);
-const DEFAULT_GAP = 100;
+const DEFAULT_GAP = 110;
 const MAX_BLOBS = 150;
 const FLOW = 150;
-const GAP_CHOICES = [70, 82, 94, 108];
-const GAP_MULT = [1.7, 1.4, 1.15, 1.0];
+const GAP_CHOICES = [84, 96, 108, 120];
+const GAP_MULT = [1.6, 1.3, 1.1, 1.0];
 
 /** The knobs Slone can tune in the pause menu's Balance screen. Read live through ctx.balance. */
 export const BALANCE: BalanceSpec[] = [
@@ -646,7 +646,7 @@ export class UnjamSim {
     for (const b of this.blobs) if (Math.hypot(b.vx, b.vy) < 90 && b.x < BASKET_X - 20) stalled++;
     this.stalled = stalled;
     if (this.active || this.choosing) this.burst = Math.max(0, this.burst - 6 * dt);
-    else if (stalled > 12) this.burst += (stalled - 12) * 1.3 * this.bal('burstRate') * dt;
+    else if (stalled > 14) this.burst += (stalled - 14) * 0.9 * this.bal('burstRate') * dt;
     else this.burst = Math.max(0, this.burst - 7 * dt);
     this.burst = Math.min(100, this.burst);
     let lvl = 0;

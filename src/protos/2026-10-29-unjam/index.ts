@@ -207,7 +207,7 @@ function createPrototype(): Prototype {
         blobTex[k] = [false, true].map((stuck) => {
           const col = stuck ? PAL.magenta : KIND_COLOR[k]!;
           const g = new Graphics();
-          const rot = k === 2 ? 0 : Math.PI / 4;
+          const rot = k === 1 ? Math.PI / 6 : 0;
           const pts = ngon(0, 0, r, sides[k]!, rot);
           g.poly(pts).fill(col);
           // flat shading: the lower facets are a darker tone of the same fill, the core is a lighter shard
@@ -297,8 +297,8 @@ function createPrototype(): Prototype {
       multText = txt(26, PAL.sil);
       multText.anchor.set(1, 0);
       multText.position.set(1250, 82);
-      waveText = txt(34, PAL.gold);
-      waveText.position.set(640, 10);
+      waveText = txt(28, PAL.gold);
+      waveText.position.set(640, 4);
       quotaText = txt(40, PAL.gold, { stroke: { color: PAL.sil, width: 9 } });
       quotaText.anchor.set(0.5);
       quotaText.position.set(1205, 206);
@@ -599,7 +599,7 @@ function createPrototype(): Prototype {
       const nSeg = Math.min(sim.goal, 24);
       const litSeg = Math.floor(frac * nSeg);
       const segW = 340 / nSeg;
-      for (let i = 0; i < nSeg; i++) hud.poly(slab(640 + i * segW, 44, Math.max(4, segW - 3), 20, 6)).fill(i < litSeg ? PAL.gold : mix(PAL.sil, PAL.violet, 0.5));
+      for (let i = 0; i < nSeg; i++) hud.poly(slab(640 + i * segW, 42, Math.max(4, segW - 3), 20, 6)).fill(i < litSeg ? PAL.gold : mix(PAL.sil, PAL.violet, 0.5));
       waveText.text = `WAVE ${sim.waves + 1}`;
       hud.poly(slab(PAD - 8, 736, 560, 48, 18)).fill({ color: PAL.sil, alpha: 0.92 });
       const FSEG = 16;
@@ -642,7 +642,7 @@ function createPrototype(): Prototype {
           choiceG.poly([cx - 14, 230, cx + 14, 230, cx + 14, py - o.gap * 0.4, cx, py - o.gap * 0.4 + 12, cx - 14, py - o.gap * 0.4]).fill(PAL.magenta);
           choiceG.poly([cx - 14, py + o.gap * 0.4, cx, py + o.gap * 0.4 - 12, cx + 14, py + o.gap * 0.4, cx + 14, 470, cx - 14, 470]).fill(PAL.magenta);
           for (let j = 0; j < 5; j++) choiceG.poly(ngon(cx - 120 + j * 22 - ((clock * 40 + i * 9) % 22), 350 + Math.sin(j * 2 + i) * 40, 10, 4, Math.PI / 4)).fill(PAL.gold);
-          const word = o.gap < 76 ? 'TIGHT' : o.gap < 88 ? 'SNUG' : o.gap < 102 ? 'ROOMY' : 'WIDE';
+          const word = o.gap < 90 ? 'TIGHT' : o.gap < 102 ? 'SNUG' : o.gap < 114 ? 'ROOMY' : 'WIDE';
           cardText[i]!.text = `${word}\nscore x${o.mult.toFixed(2)}`;
           cardText[i]!.tint = on ? PAL.gold : mix(PAL.gold, PAL.violet, 0.5);
         });

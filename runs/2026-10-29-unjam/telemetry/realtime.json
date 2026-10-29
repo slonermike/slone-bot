@@ -3,41 +3,44 @@
   "seed": 1,
   "bot": "realtime-greedy",
   "mode": "systemic",
-  "simSeconds": 12.88,
+  "simSeconds": 11.48,
   "wallMs": 0,
   "timescale": 1,
   "outcome": "timeout",
   "metrics": {
-    "runLength": 12.88,
+    "runLength": 11.48,
     "deaths": 0,
     "firstPressureSimSec": 0,
     "restartDelaySimSec": 0,
     "mainVerbCount": 0,
     "decisionsPerMinute": 0,
-    "idleSurvivalSec": 12.88,
+    "idleSurvivalSec": 11.48,
     "scoreOrProgress": 4,
     "variance": 0,
     "delivered": 4,
-    "jams": 1,
+    "jams": 0,
     "frees": 0,
+    "whiffs": 0,
+    "waveDelivered": 4,
+    "goal": 14,
     "floods": 0,
     "maxCombo": 3,
     "burst": 0,
-    "stalled": 11,
+    "stalled": 6,
     "lives": 3,
     "maxLives": 3,
     "layer": 1,
     "waves": 0,
     "runs": 1,
     "surges": 0,
-    "blobs": 20,
-    "survivalSec": 12.88
+    "blobs": 17,
+    "survivalSec": 11.48
   },
   "perf": {
-    "avgFrameMs": 181.53,
-    "p95FrameMs": 300.1,
-    "fps": 5.51,
-    "particleMax": 16,
+    "avgFrameMs": 192.65,
+    "p95FrameMs": 383.3,
+    "fps": 5.19,
+    "particleMax": 7,
     "effectsOn": true
   },
   "feel": {
@@ -45,10 +48,9 @@
     "inputToAudioMs": 0,
     "eventsFired": {
       "run-start": 1,
-      "deliver": 4,
-      "wedge": 1
+      "deliver": 4
     },
-    "shakePeak": 0.22,
+    "shakePeak": 0,
     "hitStopFrames": 0
   },
   "errors": [],
@@ -59,7 +61,7 @@
     "burstRate": 1,
     "popPower": 1,
     "flushFill": 1,
-    "flushSeconds": 5,
+    "quota": 14,
     "lives": 3
   }
 }

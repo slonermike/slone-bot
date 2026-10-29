@@ -40,26 +40,39 @@ describe('unjam sim', () => {
     expect(score(greedy)).toBeGreaterThan(score(holder));
   });
 
-  it('a held pop frees a wedge that a tap cannot', () => {
-    const make = () => {
+  it('hold A on a wedged blob in reach frees it; a tap, or being out of reach, does not', () => {
+    const make = (botX: number) => {
       const sim = new UnjamSim();
       sim.init({ seed: 1, dt: 1 / 60, rng: { next: () => 0.5, range: (a: number, b: number) => (a + b) / 2, int: (a: number) => a, chance: () => true, pick: <T>(x: T[]) => x[0]!, gauss: () => 0, shuffle: <T>(x: T[]) => x, fork() { return this; } }, vfxRng: undefined, time: { steps: 0, seconds: 0 }, params: {}, balance: {} } as never);
-      sim.blobs.push({ id: 1, x: 520, y: 400, vx: 0, vy: 0, r: 15, kind: 0, stuck: true, strain: 0, grip: 1, age: 0, free: 0 });
-      sim.x = 400;
+      sim.blobs.push({ id: 999, x: 440, y: 400, vx: 0, vy: 0, r: 15, kind: 0, stuck: true, strain: 0, grip: 1, age: 0, free: 0 });
+      sim.x = botX;
       sim.y = 400;
       return sim;
     };
-    const press = (sim: UnjamSim, steps: number) => {
+    const hold = (sim: UnjamSim, steps: number) => {
       const down = blankInput();
       down.buttons.a.down = true;
       for (let i = 0; i < steps; i++) sim.step(1 / 60, down);
       sim.step(1 / 60, blankInput());
     };
-    const tap = make();
-    press(tap, 1);
-    expect(tap.blobs[0]?.stuck).toBe(true);
-    const held = make();
-    press(held, 30);
-    expect(held.blobs[0]?.stuck).toBe(false);
+    const tap = make(340);
+    hold(tap, 3);
+    expect(tap.blobs.find((b) => b.id === 999)?.stuck).toBe(true);
+    const far = make(100);
+    hold(far, 60);
+    expect(far.blobs.find((b) => b.id === 999)?.stuck).toBe(true);
+    const near = make(340);
+    hold(near, 30);
+    expect(near.blobs.find((b) => b.id === 999)?.stuck).toBe(false);
+    expect(near.lockId).toBe(0);
+  });
+
+  it('delivering a wave quota clears the wave and opens the layout choice', () => {
+    const sim = new UnjamSim();
+    sim.init({ seed: 1, dt: 1 / 60, rng: { next: () => 0.5, range: (a: number, b: number) => (a + b) / 2, int: (a: number) => a, chance: () => false, pick: <T>(x: T[]) => x[0]!, gauss: () => 0, shuffle: <T>(x: T[]) => x, fork() { return this; } }, vfxRng: undefined, time: { steps: 0, seconds: 0 }, params: {}, balance: {} } as never);
+    sim.waveDelivered = sim.goal;
+    sim.step(1 / 60, blankInput());
+    expect(sim.choosing).toBe(true);
+    expect(sim.drain().some((e) => e.type === 'wave-clear')).toBe(true);
   });
 });
