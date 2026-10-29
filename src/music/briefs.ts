@@ -7,7 +7,8 @@
 // Style sketches, not copies: every melody is generated from a seed.
 import type { ComposeOptions, StingerOptions } from './compose.ts';
 
-type Brief = Omit<ComposeOptions, 'seed' | 'batch' | 'index'> | Omit<StingerOptions, 'seed' | 'batch' | 'index'>;
+/** A song's recipe. `seed` is normally left out (it comes from the batch name and position); set it to carry a keeper into a new batch unchanged. */
+export type Brief = (Omit<ComposeOptions, 'seed' | 'batch' | 'index'> | Omit<StingerOptions, 'seed' | 'batch' | 'index'>) & { seed?: number };
 
 export const BATCH_2: Brief[] = [
   {

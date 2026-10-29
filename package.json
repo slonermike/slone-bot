@@ -22,7 +22,8 @@
     "licenses": "node scripts/check-licenses.mjs",
     "check": "npm run typecheck && npm run secrets && npm test && npm run smoke",
     "preflight": "node scripts/preflight.mjs",
-    "prepare": "node scripts/install-hooks.mjs"
+    "prepare": "node scripts/install-hooks.mjs",
+    "songs": "node scripts/make-songs.mjs"
   },
   "dependencies": {
     "@dimforge/rapier2d-compat": "^0.21.0",
