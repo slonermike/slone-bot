@@ -22,7 +22,7 @@ Slone dislikes: mastery-by-humiliation ("git gud"), online multiplayer, gritty t
 
 ## 5. Two compounding tracks
 - **Tech track (automatic):** reusable code from a night's branch merges back to main with a short note in `docs/tech/SCAFFOLD_API.md`, only if the smoke test passes. Prototype-specific code stays on its branch.
-- **Design track (gated):** the Bible is read-only until Slone's assessment. Nights write proposed lessons to `docs/design/pending-lessons.md`, labeled **"one data point"** until a pattern repeats across nights. Slone's assessment promotes lessons into the Bible.
+- **Design track (gated for nightly runs):** nightly runs never edit the Bible. They write proposed lessons to `docs/design/pending-lessons.md`, labeled **"one data point"** until a pattern repeats across nights. The Bible changes when Slone gives feedback in chat (section 15) or runs an assessment.
 
 ## 6. Knowledge policy (what a nightly agent may know)
 | Layer | Visible to the ideating/building agent? |
@@ -80,7 +80,13 @@ After feel is right, apply design skills (typography, palette, layout, accessibi
 The agent receives n=3 theme options, picks one, and logs a one-line reason for each rejected option, via the script only. Rules and strike mechanics are in `docs/tech/07-themes-script.md`. At pencils-down, add 1 to 3 new themes sourced from the night's own surprises (not from the agent's generic priors). Themes are design prompts (constraint, feeling, system, world), not skins.
 
 ## 15. Feedback
-Chat-only for now. Each prototype ships a feedback sheet (template in `docs/design/04-feedback-and-postmortem.md`): one prototype question, 3 to 5 targeted questions, the nightly constants, and a freeform box. Slone's replies are processed in his chat session into the branch log and `pending-lessons.md`.
+Chat-only for now. Each prototype ships a feedback sheet (template in `docs/design/04-feedback-and-postmortem.md`): one prototype question, 3 to 5 targeted questions, the nightly constants, and a freeform box. Slone's replies are processed in his chat session by the default procedure below.
+
+**Default procedure when Slone gives feedback in chat** (applies unless he says otherwise):
+1. **Capture** what the feedback teaches about his design philosophy and preferences.
+2. **Update the Bible** (and the feel checklist or taste cards where the lesson belongs) directly, bump its version and revision log, and record the evidence in `pending-lessons.md`. Lessons stay labeled "one data point" until repeated on another night.
+3. **Then ask** whether to update the game that prompted the feedback, or to use it only as information for future games. Do not change the game before he answers.
+Feedback quotes keep only gameplay-relevant words (see `docs/tech/08`).
 
 ## 16. Open source
 - The scaffold and every prototype are open source and meant to be shared as an experiment. Slone may turn a prototype into a full game later, in a separate repo, so everything here must be reusable commercially.

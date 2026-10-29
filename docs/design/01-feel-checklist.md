@@ -32,6 +32,7 @@ Run this on every build before wrap-up. For each item, mark: yes, no, n/a, or un
 - [ ] Pitch variation per play (a few percent) and round-robin variants for frequent sounds.
 - [ ] Layered impacts: transient plus body.
 - [ ] Parameters tied to gameplay (combo pitch, filter with pressure, volume with impact).
+- [ ] Rising pitch for progress uses equal semitone steps up to a cap (about an octave), then adds a different layer; each step is audibly distinct. [Slone]
 - [ ] No clipping; loudness balanced across sounds. [bot]
 - [ ] Silence is intentional, not accidental. [bot]
 - [ ] Music only if the brief calls for it.
@@ -40,6 +41,7 @@ Run this on every build before wrap-up. For each item, mark: yes, no, n/a, or un
 - [ ] The main actor has character: eyes, expressions, idle animation, reactions to success and near-miss.
 - [ ] The world reacts to the player (things wobble, sway, notice).
 - [ ] Failure is funny, dramatic, or readable, never just a freeze.
+- [ ] Failure gets the same effect stack as the main verb (layered sound, freeze, shake, flash, particles, text, a reaction from the actor). [Slone]
 
 ## F. Readability and Deck fit
 - [ ] Good and bad things distinguishable by color and shape at a glance.
@@ -52,6 +54,8 @@ Run this on every build before wrap-up. For each item, mark: yes, no, n/a, or un
 - [ ] Idle bot proves back pressure acts without player input. [bot]
 - [ ] Pressure rises over time or with exploration, with a visible curve.
 - [ ] A soft failure leads to a recoverable state, with a story-worthy moment. [Slone]
+- [ ] After a failure the pressure eases or its ramp restarts (a reprieve), not the pre-death rate. [bot: rate after death < rate before]
+- [ ] Collecting or progressing opens new functionality or content, not only score. [Slone]
 - [ ] Discovery of a new verb, item, or pattern happens within the first few minutes. [Slone]
 - [ ] No mastery wall: a first-time player can progress. [bot: greedy vs. random]
 
