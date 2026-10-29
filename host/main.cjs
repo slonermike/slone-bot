@@ -1,6 +1,7 @@
-const { app, BrowserWindow, globalShortcut, session, ipcMain, shell, net } = require('electron');
+const { app, BrowserWindow, session, ipcMain, shell, net } = require('electron');
+const fs = require('node:fs');
 const path = require('node:path');
-const { resolveConfig, isAllowedNavigation, needsRevalidation } = require('./config.cjs');
+const { resolveConfig, isAllowedNavigation, needsRevalidation, isSteamDeck, NO_MOUSE_CSS } = require('./config.cjs');
 const { createUpdater } = require('./updater.cjs');
 
 const cfg = resolveConfig({
@@ -21,6 +22,9 @@ if (process.argv.includes('--no-sandbox-if-needed') && process.platform === 'lin
 
 if (!app.requestSingleInstanceLock()) app.quit();
 
+let osRelease = '';
+try { osRelease = fs.readFileSync('/etc/os-release', 'utf8'); } catch { /* not Linux */ }
+const deck = isSteamDeck(process.env, osRelease);
 let win;
 let retry;
 let updater;
@@ -42,6 +46,25 @@ function createWindow() {
   });
   win.removeMenu();
   win.once('ready-to-show', () => win.show());
+
+  // Window-local shortcuts (global ones need OS permission on some systems and fight other apps).
+  win.webContents.on('before-input-event', (e, input) => {
+    if (input.type !== 'keyDown') return;
+    if ((input.control || input.meta) && input.key.toLowerCase() === 'q') { e.preventDefault(); app.quit(); }
+    else if (input.key === 'F11') { e.preventDefault(); win.setFullScreen(!win.isFullScreen()); }
+  });
+
+  // The gamepad is the only input. Steam Input can turn triggers and trackpads into mouse clicks; ignore the mouse
+  // completely on the Deck (or with --no-mouse) so a stray click can never act on, or take focus from, the page.
+  const mouseOff = !cfg.allowMouse && (cfg.noMouse || deck);
+  if (mouseOff) {
+    const hideMouse = () => win.webContents.insertCSS(NO_MOUSE_CSS).catch(() => {});
+    win.webContents.on('did-finish-load', hideMouse);
+    win.webContents.on('did-navigate-in-page', hideMouse);
+  }
+  // The Gamepad API only reports to a focused page, so hand focus back whenever the window gets it.
+  win.on('focus', () => win.webContents.focus());
+  win.webContents.on('did-finish-load', () => win.webContents.focus());
 
   // Stay inside the launcher; never open new windows.
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -77,7 +100,7 @@ function setupUpdates() {
     app, shell, autoUpdater, fetchJson, origin: cfg.origin, platform: process.platform, arch: process.arch,
     send: (s) => win && !win.isDestroyed() && win.webContents.send('mgb:update', s),
   });
-  ipcMain.on('mgb:info', (e) => { e.returnValue = { version: app.getVersion(), platform: process.platform }; });
+  ipcMain.on('mgb:info', (e) => { e.returnValue = { version: app.getVersion(), platform: process.platform, mouseOff: !cfg.allowMouse && (cfg.noMouse || deck) }; });
   ipcMain.handle('mgb:update-state', (e) => (fromLauncher(e) ? updater.state : null));
   ipcMain.handle('mgb:update-check', (e) => (fromLauncher(e) ? updater.check() : null));
   ipcMain.handle('mgb:update-install', (e) => (fromLauncher(e) ? updater.install() : null));
@@ -99,10 +122,7 @@ app.whenReady().then(() => {
   });
   createWindow();
   // Escape hatches for desktop testing; on the Deck, quit from Steam's own menu.
-  globalShortcut.register('CommandOrControl+Q', () => app.quit());
-  globalShortcut.register('F11', () => win.setFullScreen(!win.isFullScreen()));
   app.on('second-instance', () => win && (win.isMinimized() && win.restore(), win.focus()));
 });
 
-app.on('will-quit', () => globalShortcut.unregisterAll());
 app.on('window-all-closed', () => app.quit());
