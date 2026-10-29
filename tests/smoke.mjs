@@ -55,6 +55,8 @@ try {
   await tap(L.page, [BTN.a], 300).catch(() => {});
   await L.page.waitForURL(/\/p\/[^/]+\/$/, { timeout: 8000 });
   check('press A launches the card', true);
+  // other games may be listed on a branch build; the rest of the run exercises the fixture specifically
+  if (!new URL(L.page.url()).pathname.includes(`/p/${SLUG}/`)) await L.page.goto(`${srv.url}/p/${SLUG}/`);
 
   // 1. headless boot, no console errors
   await L.page.waitForFunction(() => window.__scaffold, null, { timeout: 15000 });
