@@ -7,9 +7,10 @@ Music is generated as data, auditioned by Slone in the jukebox, and later used b
 ## Pieces
 - `src/music/compose.ts`: seeded generator, two paths. **Loops** (`form: 'loop'`) are sections (verse, pre-chorus, chorus and so on) of four-bar phrases with cadences, a hook, and per-bar time signatures; options `character` (`hook` or `vibe`), `layout`, `meter` (one signature, a section map, or a bar cycle). **Stingers** (`form: 'oneshot'`) are 2 to 4 bars for an event (`event`: win, lose, boss, powerup, secret) with their own tempo moves and a big landing. Same seed, same song.
 - `src/music/meter.ts`: time signatures as eighth-note groups. `src/music/timing.ts`: tempo map with ramps (beat to seconds and back). `src/music/vibe.ts`: the mode, meter and tempo vibe formula and its inverse.
-- `src/music/briefs.ts`: the curated briefs (`BATCH_2`, 20 pieces: 15 loops and 5 stingers; loops are hook songs or vibe pieces; eight time signatures). Each has a name and a description of at most 280 characters. Style sketches, not copies of any tune.
+- `src/music/batches.ts`: the batch registry and `composeBatch`. `src/music/coverage.ts`: the quality gate and variety report. Producing a new batch: `docs/tech/11-music-batch-runbook.md`.
+- `src/music/briefs.ts`: the first batch's briefs (`BATCH_2`, 20 pieces: 15 loops and 5 stingers; loops are hook songs or vibe pieces; eight time signatures). Each has a name and a description of at most 280 characters. Style sketches, not copies of any tune.
 - `src/music/midi.ts`: standard MIDI file (format 1, 480 PPQ, time signature and tempo changes, drums on channel 10). `src/music/synth.ts`: WebAudio player with tempo maps; a stinger stops by itself after its last note rings out.
-- `scripts/make-songs.mjs`: `node scripts/make-songs.mjs --batch b02` writes `music/songs/<id>.json` and `<id>.mid`; `--facts` prints what each brief turned into without writing.
+- `scripts/make-songs.mjs` (`npm run songs -- --batch b02`): writes `music/songs/<id>.json` and `<id>.mid`; `--facts` prints what each brief turned into; `--check` runs the quality gate and variety report.
 - `src/launcher/jukebox/`: the page, at `/jukebox/`, linked only from the launcher's Start menu. The build lists only the newest batch (by id prefix); older batches stay in the repo.
 
 ## The jukebox
