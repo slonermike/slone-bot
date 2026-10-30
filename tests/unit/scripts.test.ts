@@ -122,3 +122,20 @@ describe('host version guard', () => {
     expect(hostVersionProblem(['src/core/shell.ts'], '0.2.2', '0.2.2')).toBeNull();
   });
 });
+
+describe('run key', () => {
+  it('keys a run by its start stamp, so two runs on one day differ; falls back to the date', async () => {
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const { runKey } = await import('../../scripts/run-key.mjs');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'runkey-'));
+    const a = path.join(dir, 'a.md');
+    const b = path.join(dir, 'b.md');
+    fs.writeFileSync(a, '```\nnight: x\nstarted: 2030-01-01T03:00:00.000Z\n```\n');
+    fs.writeFileSync(b, '```\nnight: y\nstarted: 2030-01-01T09:30:12.000Z\n```\n');
+    expect(runKey(a)).toBe('2030-01-01T03:00:00');
+    expect(runKey(b)).toBe('2030-01-01T09:30:12');
+    expect(runKey(path.join(dir, 'missing.md'), new Date('2030-01-02T05:00:00Z'))).toBe('2030-01-02');
+  });
+});

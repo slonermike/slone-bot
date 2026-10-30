@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runKey } from './run-key.mjs';
 import { formatLook, parseLedgerLooks, pickLook } from './looks.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -90,7 +91,7 @@ export function pickAtoms(atoms, ledgerPairs, seed) {
   }
   throw new Error('no unused atom pairing found');
 }
-function dateSeed(d = new Date().toISOString().slice(0, 10)) {
+function dateSeed(d = runKey()) {
   let h = 0x811c9dc5;
   for (const c of d) { h ^= c.charCodeAt(0); h = Math.imul(h, 0x01000193); }
   return h >>> 0;

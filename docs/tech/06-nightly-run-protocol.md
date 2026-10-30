@@ -32,7 +32,7 @@ Check elapsed time at every phase boundary and before any long command.
 6. Do not open earlier prototypes. Do not read rejection reasons.
 
 ## Step 2 to 4: build, feel, test
-- Branch `proto/YYYY-MM-DD-name`. Code in `src/protos/<slug>/`.
+- Runs are not limited to one a day: the theme roll, atoms, look and genre are all keyed to the run's own start stamp (`night-state.mjs start`), so start it first and never fake a date. Two runs on one day just need different names. Branch `proto/YYYY-MM-DD-name`. Code in `src/protos/<slug>/`.
 - Bare core first. Confirm with the idle, random, and greedy bots that the core does something. Then the feel pass. Then the full bot suite and the feel checklist.
 - Follow the Follow-the-Fun rule: log surprises (accidents, emergent behavior, the most interesting part) in `runs/<slug>/surprises.md` before fixing them. If a discovery is better than the brief, pivot only if it reinforces the target feeling; log the pivot.
 - General-use code does not go to main during the build. When the prototype is complete (after the post mortem), put it in a pull request from a separate branch off main that contains only that code, a unit test and a `SCAFFOLD_API.md` entry, and open it only if `npm run check` passes. List what you proposed in the post mortem's "Reusable tech" line. Never put game code in main. Prefer extending an existing scaffold helper with an option over copying it into the prototype.

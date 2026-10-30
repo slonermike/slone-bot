@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Theme pool access. The ONLY sanctioned way for a nightly run to touch themes/*.json.
 // Spec: docs/tech/07-themes-script.md.  Commands: roll | resolve | add | report
+import { runKey } from './run-key.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,8 +36,9 @@ function load(dir) {
   return { f, pool: read(f.pool, []), graveyard: read(f.graveyard, []), state };
 }
 
+/** The run's key (its start stamp), not the calendar date: several runs a day each get their own roll. THEMES_TODAY overrides (tests). */
 export function todayUTC() {
-  return process.env.THEMES_TODAY || new Date().toISOString().slice(0, 10);
+  return process.env.THEMES_TODAY || runKey();
 }
 
 // ---------- seeded shuffle ----------
@@ -72,7 +74,7 @@ export function citesTheme(r) {
 // ---------- commands ----------
 export function roll({ dir = path.join(ROOT, 'themes'), today = todayUTC(), n = 3 } = {}) {
   const { f, pool, state } = load(dir);
-  if (state.lastRollDate === today) throw new ThemeError(`already rolled tonight (${today}). One roll per night.`);
+  if (state.lastRollDate === today) throw new ThemeError(`already rolled for this run (${today}). One roll per run.`);
   let source = pool;
   const notes = [];
   if (pool.length < n) {
@@ -111,7 +113,7 @@ export function roll({ dir = path.join(ROOT, 'themes'), today = todayUTC(), n = 
 
 export function resolve({ dir = path.join(ROOT, 'themes'), today = todayUTC(), pick, rejects = [] } = {}) {
   const { f, pool, graveyard, state } = load(dir);
-  if (state.lastResolveDate === today) throw new ThemeError(`already resolved tonight (${today}). One resolve per night.`);
+  if (state.lastResolveDate === today) throw new ThemeError(`already resolved for this run (${today}). One resolve per run.`);
   const last = state.rollHistory[state.rollHistory.length - 1];
   if (!last || last.date !== today || state.lastRollDate !== today) throw new ThemeError('roll first: no roll recorded for tonight.');
   if (!last.ids.includes(pick)) throw new ThemeError(`pick "${pick}" is not one of tonight's rolled ids.`);

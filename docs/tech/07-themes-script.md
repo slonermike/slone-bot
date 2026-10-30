@@ -19,9 +19,9 @@ Themes are design prompts, not skins. "Limited space" is a mechanical spark; "pi
 
 ## Commands
 - `node scripts/themes.mjs roll [--n 3]`
-  Prints only `id`, `text`, and `type` for n options drawn without replacement. No strike counts, no reasons. Rolls are seeded by date. A theme is not re-offered in a trio identical to a previous roll. One roll per night; a second roll the same night fails.
+  Prints only `id`, `text`, and `type` for n options drawn without replacement. No strike counts, no reasons. Rolls are seeded by the run's start stamp (from `night-state.mjs start`), so several runs on one day each get their own roll. A theme is not re-offered in a trio identical to a previous roll. One roll per run; a second roll in the same run fails.
 - `node scripts/themes.mjs resolve --pick <id> --reject <id>:"reason" --reject <id>:"reason"`
-  Consumes the picked theme (sets `used` to tonight's date and removes it from the pool). For each rejected theme: `strikes += 1` and the reason is appended. At 3 strikes a theme moves to the graveyard, but only if at least one of its reasons cites the theme itself rather than the alternatives. One resolve per night.
+  Consumes the picked theme (sets `used` to tonight's date and removes it from the pool). For each rejected theme: `strikes += 1` and the reason is appended. At 3 strikes a theme moves to the graveyard, but only if at least one of its reasons cites the theme itself rather than the alternatives. One resolve per run.
   Validation: every rejected option needs a non-empty reason; a reason that is only "too hard to build" (or equivalent) is refused with the message "reinterpret it smaller instead"; the picked id must be one of tonight's rolled ids.
 - `node scripts/themes.mjs add "<text>" --type <type> --source postmortem`
   Adds a new theme (1 to 3 per night). Detects near-duplicates (normalized text overlap) and refuses them. Sources must be `postmortem` for nightly runs.
