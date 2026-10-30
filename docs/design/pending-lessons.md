@@ -2,7 +2,7 @@
 
 The ONLY design file nightly runs may append to (besides the ledger). Lessons wait here until Slone's assessment promotes them into the Bible. Every lesson starts as **one data point** and becomes "repeated (n nights)" only when a later night's evidence matches. Do not edit or delete other nights' entries.
 
-Entry template is in `docs/design/04-feedback-and-postmortem.md` section 5. Evidence may be specific to the prototype; the proposed Bible wording must be genre-neutral (it has to make sense for any kind of game).
+Entry template is in `docs/design/04-feedback-and-postmortem.md` section 5.
 
 ## Proposed atoms
 (none yet)
@@ -62,9 +62,12 @@ Entry template is in `docs/design/04-feedback-and-postmortem.md` section 5. Evid
 - Evidence: Slone: "We need loops for most scenarios because ongoing player action is not mappable to a length of time. One shots would typically just be a couple measures meant to accent a big thing having happened. You beat the level. You died. Etc."
 - Applied to the music generator (loops for songs; `composeStinger` for events) in `docs/design/06-music-craft.md`. Earlier in the same session: not every song should be an earworm, and a vibe can be any tempo (frantic included). Both one data point.
 
-## 2026-10-29 first nightly prototype (first play)
-- Lesson: A build with lots of activity and juice can still be "not fun" when control is indirect, activity has no clear meaning, good play is not obviously rewarded, and progress is hidden.   Status: one data point (promoted to Bible v4, section 12)
-- Evidence: Slone: "The game isn't fun. The user doesn't have enough agency. they affect things too indirectly. There's a lot of motion, but not a lot of clarity around what it means or what the user can do with it. It feels a bit like trying to do fine tuned things with mittens on.. Doing the right thing should have clear, positive feedback and it should be obvious to the user without any written explanation. I'm getting [things] through [the objective], i think, but it's not clear to me that it's a good thing. The sense of progression is hidden behind layers of just stuff happening. There needs to be a clear sense of purpose and causality."
-- Telemetry context: bots found the build "worked" (the idle bot lost, the competent bot did well), which is exactly the gap the Bible's honesty section warns about: bots cannot see clarity.
-- Bible change (applied in v4, section 12); feel checklist section J added. Related to existing entries: "every reward cue must mean something" (v2) is the audio-and-UI cousin of this; no contradiction found.
-- Proposed atoms (Slone decides): f-legible-progress: the goal's progress is the clearest thing on screen; f-explicit-cause: every outcome visibly points back to the action that caused it.
+## 2026-10-30 2026-10-30-stillwinter
+- Lesson: When time is frozen between decisions, execution difficulty disappears (a bot with no hands wins), so all pressure has to come from scarcity and from threats that advance on a clock the player controls.   Status: one data point
+- Evidence: greedy bot won with 0 hearts lost at first tuning; difficulty only appeared after ice scarcity and telegraphed warm fronts were added (runs/2026-10-30-stillwinter/surprises.md).
+- Proposed Bible change: section 6, add "no clock means no skill wall: tune by scarcity and layered threats, not by speed" (Slone decides)
+- Lesson: A spend-to-act economy snowballs into a win-or-collapse cliff unless failure refunds materials (a lost heart melts into ice).   Status: one data point
+- Evidence: bimodal bot outcomes (win with 0 lost or lose with 5) vanished after a lost heart gave +4 ice.
+- Lesson: One object with several reasons to break it (turret, mine, clock-winder) gave the most meaningful decisions in the build.   Status: one data point
+- Proposed atoms: v-sacrifice-for-time: break your own defenses to release time; p-time-as-currency: simulation time itself is the spendable resource; l-failure-refunds: a failure melts into the materials to rebuild.
+- Process note (night had an extra instruction from Slone): a seeded "genre roll" over five candidate genres chose tower defense for the theme; it took a few minutes and decided a question the agent would otherwise have defaulted. Worth considering as a standing step.   Status: one data point

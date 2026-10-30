@@ -8,3 +8,4 @@ The `look:` tag lets the look roll (`node scripts/night-state.mjs look`) avoid r
 
 ## Nights
 2026-10-29 | 2026-10-29-demo-ball | systemic | atoms: f-juice-forward, p-rising-tide | theme: scaffold smoke test (the original demo, now its own branch) | wildcard: none | look: ember/circles and blobs/glow on dark | verdict: assessed (Slone: it was fun)
+2026-10-30 | 2026-10-30-stillwinter | content | atoms: v-place-build, l-recoverable-setback | theme: Time only moves when something breaks | wildcard: none | look: arctic/stars and spikes/dithered | verdict: pending

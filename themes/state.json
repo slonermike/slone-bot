@@ -1,5 +1,26 @@
 {
-  "lastRollDate": null,
-  "lastResolveDate": null,
-  "rollHistory": []
+  "lastRollDate": "2026-10-30",
+  "lastResolveDate": "2026-10-30",
+  "rollHistory": [
+    {
+      "date": "2026-10-30",
+      "ids": [
+        "t018",
+        "t020",
+        "t003"
+      ]
+    }
+  ],
+  "used": [
+    {
+      "id": "t018",
+      "text": "Time only moves when something breaks",
+      "type": "constraint",
+      "date": "2026-10-30"
+    }
+  ],
+  "adds": {
+    "2026-10-30": 3
+  },
+  "events": []
 }
