@@ -298,15 +298,6 @@
     "used": null
   },
   {
-    "id": "t034",
-    "text": "The level never changes, but you do",
-    "type": "constraint",
-    "source": "human",
-    "strikes": 0,
-    "reasons": [],
-    "used": null
-  },
-  {
     "id": "t035",
     "text": "You may only ever go forward, and the way back closes behind you",
     "type": "constraint",
@@ -361,26 +352,8 @@
     "used": null
   },
   {
-    "id": "t041",
-    "text": "Everyone is counting on you and no one is watching",
-    "type": "feeling",
-    "source": "human",
-    "strikes": 0,
-    "reasons": [],
-    "used": null
-  },
-  {
     "id": "t042",
     "text": "Tending something that could break",
-    "type": "feeling",
-    "source": "human",
-    "strikes": 0,
-    "reasons": [],
-    "used": null
-  },
-  {
-    "id": "t043",
-    "text": "Almost remembering something important",
     "type": "feeling",
     "source": "human",
     "strikes": 0,
@@ -460,44 +433,8 @@
     "used": null
   },
   {
-    "id": "t052",
-    "text": "A debt that grows when ignored and shrinks when you fix what it broke",
-    "type": "system",
-    "source": "human",
-    "strikes": 0,
-    "reasons": [],
-    "used": null
-  },
-  {
     "id": "t053",
     "text": "Echoes of your last attempt help or hinder this one",
-    "type": "system",
-    "source": "human",
-    "strikes": 0,
-    "reasons": [],
-    "used": null
-  },
-  {
-    "id": "t054",
-    "text": "Information is the only currency",
-    "type": "system",
-    "source": "human",
-    "strikes": 0,
-    "reasons": [],
-    "used": null
-  },
-  {
-    "id": "t055",
-    "text": "Heat spreads, and so does cold",
-    "type": "system",
-    "source": "human",
-    "strikes": 0,
-    "reasons": [],
-    "used": null
-  },
-  {
-    "id": "t056",
-    "text": "Stack things until they fall, then use the pieces",
     "type": "system",
     "source": "human",
     "strikes": 0,
@@ -516,24 +453,6 @@
   {
     "id": "t058",
     "text": "A town where the weather is a job",
-    "type": "world",
-    "source": "human",
-    "strikes": 0,
-    "reasons": [],
-    "used": null
-  },
-  {
-    "id": "t059",
-    "text": "A lighthouse that guides something that is not a ship",
-    "type": "world",
-    "source": "human",
-    "strikes": 0,
-    "reasons": [],
-    "used": null
-  },
-  {
-    "id": "t060",
-    "text": "The last shop at the end of a very long road",
     "type": "world",
     "source": "human",
     "strikes": 0,
@@ -613,9 +532,90 @@
     "used": null
   },
   {
-    "id": "t069",
-    "text": "A rooftop city that is slowly sinking into its own clouds",
+    "id": "t070",
+    "text": "Your best move is always one you can only make once",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t071",
+    "text": "Pulling off something that should be impossible",
+    "type": "feeling",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t072",
+    "text": "Whatever helps you also costs you a little every turn",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t073",
+    "text": "Clever one moment, in over your head the next",
+    "type": "feeling",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t074",
+    "text": "Things you ignore get louder",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t075",
+    "text": "A place that changes with the time of day",
     "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t076",
+    "text": "A busy place seen from far above",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t077",
+    "text": "A small community that depends on you",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t078",
+    "text": "Things you build can be turned against you",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t079",
+    "text": "Borrowing now makes later harder",
+    "type": "system",
     "source": "human",
     "strikes": 0,
     "reasons": [],

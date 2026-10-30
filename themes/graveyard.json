@@ -1,1 +1,152 @@
-[]
+[
+  {
+    "id": "t034",
+    "text": "The level never changes, but you do",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-30",
+        "text": "removed by human: confusing: hard to turn into a mechanic or a feeling"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-30"
+  },
+  {
+    "id": "t043",
+    "text": "Almost remembering something important",
+    "type": "feeling",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-30",
+        "text": "removed by human: confusing: hard to turn into a mechanic or a feeling"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-30"
+  },
+  {
+    "id": "t055",
+    "text": "Heat spreads, and so does cold",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-30",
+        "text": "removed by human: confusing: hard to turn into a mechanic or a feeling"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-30"
+  },
+  {
+    "id": "t041",
+    "text": "Everyone is counting on you and no one is watching",
+    "type": "feeling",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-30",
+        "text": "removed by human: confusing: hard to turn into a mechanic or a feeling"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-30"
+  },
+  {
+    "id": "t054",
+    "text": "Information is the only currency",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-30",
+        "text": "removed by human: confusing: hard to turn into a mechanic or a feeling"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-30"
+  },
+  {
+    "id": "t069",
+    "text": "A rooftop city that is slowly sinking into its own clouds",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-30",
+        "text": "removed by human: over-specific: prescribes the game instead of sparking one"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-30"
+  },
+  {
+    "id": "t059",
+    "text": "A lighthouse that guides something that is not a ship",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-30",
+        "text": "removed by human: over-specific: prescribes the game instead of sparking one"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-30"
+  },
+  {
+    "id": "t052",
+    "text": "A debt that grows when ignored and shrinks when you fix what it broke",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-30",
+        "text": "removed by human: over-specific: prescribes the game instead of sparking one"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-30"
+  },
+  {
+    "id": "t056",
+    "text": "Stack things until they fall, then use the pieces",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-30",
+        "text": "removed by human: over-specific: prescribes the game instead of sparking one"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-30"
+  },
+  {
+    "id": "t060",
+    "text": "The last shop at the end of a very long road",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-30",
+        "text": "removed by human: over-specific: prescribes the game instead of sparking one"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-30"
+  }
+]
