@@ -298,9 +298,9 @@ Each prototype writes its own music to match its game. A song is plain data (`sr
 import { composeSong, composeStinger } from '../../music/compose.ts';
 import { music } from '../../audio/music.ts';
 
-// in src/protos/<slug>/music.ts: one tonic for everything in the game. Do not copy values from here: roll them
-// with `node scripts/night-state.mjs sound`, which prints a ready-made composeSong starting point (tempo, meter,
-// mode, layout, feel). Write the Music plan in your brief first (docs/design/06-music-craft.md, "Music is a design tool").
+// in src/protos/<slug>/music.ts: one tonic for everything in the game. Do not copy values from here: choose them
+// for your game. Write the Music plan in your brief first (docs/design/06-music-craft.md, "Music is a design tool");
+// `node scripts/night-state.mjs sound` prints the menu of options and the generator settings behind each.
 const ROOT = 50; // the tonic; pick one, keep it for every song in the game
 calm    = composeSong({ root: ROOT, seed: 11, name, description, style, mood, form: 'loop', layout, mode, meter, bpm, character, feel });
 tense   = composeSong({ root: ROOT, seed: 12, /* a contrasting second loop: other tempo, meter or brightness */ ... });

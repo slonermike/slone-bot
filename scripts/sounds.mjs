@@ -1,7 +1,7 @@
-// The nightly sound identity roll. Left to themselves, every game's music landed in the same place: 92 to 120 bpm,
-// 4/4, dorian or mixolydian, a rock or funk groove with a sync bass and a bell arp, "playful". This roll gives each game a
-// different sonic starting point (tempo, meter, mode, texture, structure, and the way the music shapes pacing). The agent
-// follows it, may override ONE dimension with a reason in the brief, and records `music: band/meter/mode/texture` in the ledger.
+// A menu of musical choices, not a roll. Music has to fit the game, so the agent reasons from the game's target feeling,
+// pressure and pacing to a choice. Left to habit, every game's music landed in the same place (92 to 120 bpm, 4/4, dorian
+// or mixolydian, a rock or funk groove with a sync bass and a bell arp, "playful"), so this lists the whole spectrum with
+// what each option does, and which generator settings produce it. `node scripts/night-state.mjs sound` prints it.
 export const ROLES = {
   'build by layers': 'a quiet bed (pad, bass) from the start; each pressure layer brings in one more part (drums, arp, lead), so the music itself is the pressure gauge',
   'two moods': 'a calm loop and a tense loop in the same key; the game crossfades between them with its state, so safe and unsafe sound different',
@@ -15,7 +15,7 @@ export const ROLES = {
 export const BANDS = {
   slow: { bpm: [54, 78], note: 'unhurried; room to breathe; tension through space and long notes' },
   swaying: { bpm: [80, 100], note: 'walking pace; relaxed, or heavy if the drums are half-time' },
-  brisk: { bpm: [104, 124], note: 'the default zone almost every game lands in; only on purpose, never 4/4 here' },
+  brisk: { bpm: [104, 124], note: 'the zone almost every game landed in by habit; fine when it truly fits, and most interesting away from 4/4' },
   fast: { bpm: [128, 158], note: 'driving; urgency and momentum' },
   frantic: { bpm: [162, 192], note: 'panic and chase; frantic is a vibe, not noise' },
 };
@@ -48,7 +48,7 @@ export const TEXTURES = {
   'gallop and chase': { feel: { drums: 'rock', bass: 'gallop', bassVoice: 'saw', leadVoice: 'saw', arpVoice: 'pluck', arp: 0.7, arpStep: 0.5, pad: false, density: 0.8, riff: true, harmony: true }, character: 'hook', note: 'galloping bass, riffs, urgency; a chase' },
   'walking bass noir': { feel: { drums: 'soft', bass: 'walk', bassVoice: 'warm', leadVoice: 'flute', arpVoice: 'pluck', arp: 0.2, arpStep: 1, pad: true, density: 0.35, riff: false, harmony: false }, character: 'vibe', note: 'brushed drums, a walking bass, a lonely flute; late-night and unhurried' },
   'pulse and shimmer': { feel: { drums: 'none', bass: 'groups', bassVoice: 'sub', leadVoice: 'bell', arpVoice: 'bell', arp: 0.9, arpStep: 0.5, pad: true, density: 0.3, riff: false, harmony: false }, character: 'vibe', note: 'no drums; a steady bass pulse under a shimmering arpeggio; hypnotic' },
-  'funk-pop groove': { feel: { drums: 'funk', bass: 'sync', bassVoice: 'saw', leadVoice: 'square', arpVoice: 'pluck', arp: 0.5, arpStep: 1, pad: false, density: 0.6, riff: false, harmony: true }, character: 'hook', note: 'the one every game picked by default; allowed only if nothing else fits, and never with a brisk 4/4' },
+  'funk-pop groove': { feel: { drums: 'funk', bass: 'sync', bassVoice: 'saw', leadVoice: 'square', arpVoice: 'pluck', arp: 0.5, arpStep: 1, pad: false, density: 0.6, riff: false, harmony: true }, character: 'hook', note: 'the one every game picked by default; use it only if it is truly right for the game, not because it is familiar' },
 };
 export const LAYOUTS = {
   'loop-8': 'two short sections; compact',
@@ -56,7 +56,7 @@ export const LAYOUTS = {
   'loop-16': 'long payoff; for a game with room to breathe',
   'groove-8': 'one steady groove with the hook every four bars; for games that gate the hook behind an earned moment',
 };
-// Tempo bands and meters each texture pairs well with; keeps the roll coherent while still surprising.
+// Tempo bands and meters each texture tends to suit (a guide, not a limit).
 const FITS = {
   'beatless drift': { bands: ['slow', 'swaying'], meters: ['4/4', '3/4', '6/8', '12/8', '5/4', '9/8'] },
   'music box': { bands: ['slow', 'swaying', 'brisk'], meters: ['3/4', '6/8', '9/8', '4/4'] },
@@ -68,72 +68,31 @@ const FITS = {
   'pulse and shimmer': { bands: ['swaying', 'fast', 'frantic'], meters: ['4/4', '3/4', '7/8', '5/4', '9/8'] },
   'funk-pop groove': { bands: ['swaying', 'fast'], meters: ['4/4', '7/8'] },
 };
-const LAYOUT_FOR = { 'beatless drift': ['loop-8', 'loop-12'], 'pulse and shimmer': ['loop-8', 'groove-8'] };
 
-function mulberry32(seed) {
-  let s = seed >>> 0;
-  return () => {
-    s = (s + 0x6d2b79f5) >>> 0;
-    let t = s;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-const pick = (rng, arr) => arr[Math.floor(rng() * arr.length)];
-
-/** `music: band/meter/mode/texture` tags from the ledger, oldest first. */
-export function parseLedgerSounds(md) {
+const row = (k, v) => `  ${k.padEnd(20)} ${v}`;
+/** The full menu, as text. Nothing here is recommended or random: choose from the game's feeling, pressure and pacing. */
+export function formatMenu() {
   const out = [];
-  for (const line of md.split(/\r?\n/)) {
-    const m = /music:\s*([a-z]+)\s*\/\s*([0-9]+\/[0-9]+)\s*\/\s*([a-z ]+?)\s*\/\s*([a-z -]+?)\s*(?:\||$)/.exec(line);
-    if (m) out.push({ band: m[1], meter: m[2], mode: m[3], texture: m[4] });
+  out.push('MUSIC MENU. Nothing here is rolled or recommended: reason from the game (target feeling, pressure, pacing) to a choice, and write it in the brief\'s Music plan.');
+  out.push('Weigh at least three options from different parts of the spectrum, say what each would do to the game, then choose. The default every earlier game fell into: 4/4 at 100 to 125 bpm in dorian or mixolydian with a groove.', '');
+  out.push('HOW MUSIC CAN SHAPE THE GAME (pick one or combine):');
+  for (const [k, v] of Object.entries(ROLES)) out.push(row(k, v));
+  out.push('', 'TEMPO BANDS:');
+  for (const [k, v] of Object.entries(BANDS)) out.push(row(`${k} ${v.bpm[0]}-${v.bpm[1]}`, v.note));
+  out.push('', 'METERS:');
+  for (const [k, v] of Object.entries(METERS)) out.push(row(k, v));
+  out.push('', 'MODES:');
+  for (const [k, v] of Object.entries(MODES)) out.push(row(k, v));
+  out.push('', 'TEXTURES (generator `feel` and `character`; bands and meters they tend to suit):');
+  for (const [k, v] of Object.entries(TEXTURES)) {
+    out.push(row(k, v.note));
+    out.push(row('', `suits: ${FITS[k].bands.join(', ')}; ${FITS[k].meters.join(' ')}; character: ${v.character}; feel: ${JSON.stringify(v.feel)}`));
   }
-  return out;
+  out.push('', 'LAYOUTS:');
+  for (const [k, v] of Object.entries(LAYOUTS)) out.push(row(k, v));
+  out.push('', 'A game is a set, not one song: a calm and a tense loop (or a real layer plan), and three to five stingers. Keep one tonic (`root`) across the set; modes may differ on purpose.',
+    'Techniques and the feeling-to-sound table: docs/design/06-music-craft.md, "Music is a design tool". Check the result with reviewGameMusic (src/music/review.ts).',
+    'Ledger tag (a record, not a constraint): music: <band>/<meter>/<mode>/<texture>');
+  return out.join('\n');
 }
-
-/**
- * Seeded roll. Band, meter, mode and texture must each differ from the last `recent` games in the ledger (meter 4/4 is
- * allowed to repeat only if no other meter fits). The brisk band never goes with 4/4, and the funk-pop groove default
- * is excluded unless it comes up as the only choice. The role (the music's job in pacing) is free.
- */
-export function pickSound(history, seed, recent = 3) {
-  const rng = mulberry32(seed);
-  const last = history.slice(-recent);
-  const bad = (dim, v) => last.some((l) => l[dim] === v);
-  for (let tries = 0; tries < 2000; tries++) {
-    const texture = pick(rng, Object.keys(TEXTURES).filter((t) => t !== 'funk-pop groove'));
-    const fit = FITS[texture];
-    const band = pick(rng, fit.bands);
-    const meter = pick(rng, fit.meters);
-    const mode = pick(rng, Object.keys(MODES));
-    if (band === 'brisk' && meter === '4/4') continue;
-    if (bad('band', band) || bad('texture', texture) || bad('mode', mode)) continue;
-    if (meter !== '4/4' && bad('meter', meter)) continue;
-    const [lo, hi] = BANDS[band].bpm;
-    const bpm = Math.round(lo + rng() * (hi - lo));
-    return {
-      role: pick(rng, Object.keys(ROLES)),
-      band, bpm, meter, mode, texture,
-      layout: pick(rng, LAYOUT_FOR[texture] ?? Object.keys(LAYOUTS)),
-    };
-  }
-  throw new Error('no sound identity satisfies the recent-history rules');
-}
-
-export function formatSound(s) {
-  const t = TEXTURES[s.texture];
-  return [
-    `role:    ${s.role}: ${ROLES[s.role]}`,
-    `tempo:   ${s.band} (${s.bpm} bpm): ${BANDS[s.band].note}`,
-    `meter:   ${s.meter}: ${METERS[s.meter]}`,
-    `mode:    ${s.mode}: ${MODES[s.mode]}`,
-    `texture: ${s.texture}: ${t.note}`,
-    `layout:  ${s.layout}: ${LAYOUTS[s.layout]}`,
-    '',
-    'Start composeSong from: ' + JSON.stringify({ mode: s.mode, meter: s.meter, bpm: s.bpm, layout: s.layout, character: t.character, feel: t.feel }),
-    `ledger tag: music: ${s.band}/${s.meter}/${s.mode}/${s.texture}`,
-    'Follow this sound. You may override ONE dimension if the game needs it; say which and why in the brief\'s Music plan.',
-    'A game is not one song: write the other loops, the stingers and the layer plan too (docs/design/06-music-craft.md, "Music as a design tool").',
-  ].join('\n');
-}
+export { FITS };

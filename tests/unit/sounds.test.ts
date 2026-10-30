@@ -3,47 +3,29 @@ import { composeSong, composeStinger } from '../../src/music/compose.ts';
 import { reviewGameMusic, reviewSong } from '../../src/music/review.ts';
 import * as sounds from '../../scripts/sounds.mjs';
 
-const { pickSound, parseLedgerSounds, TEXTURES } = sounds as any;
+const { formatMenu: menu, TEXTURES, FITS, BANDS } = sounds as any;
 
-describe('sound roll', () => {
-  it('is deterministic, keeps 4/4 under a third of rolls, never rolls the default zone or the default groove', () => {
-    expect(pickSound([], 5)).toEqual(pickSound([], 5));
-    let fourFour = 0;
-    const bands = new Set<string>();
-    for (let seed = 1; seed <= 300; seed++) {
-      const s = pickSound([], seed);
-      if (s.meter === '4/4') fourFour++;
-      bands.add(s.band);
-      expect(s.band === 'brisk' && s.meter === '4/4').toBe(false);
-      expect(s.texture).not.toBe('funk-pop groove');
-    }
-    expect(fourFour / 300).toBeLessThan(0.33);
-    expect(bands.size).toBeGreaterThanOrEqual(4);
+describe('music menu', () => {
+  it('lists the whole spectrum and is not random', () => {
+    const text = menu();
+    for (const k of Object.keys(TEXTURES)) expect(text).toContain(k);
+    for (const m of ['4/4', '3/4', '6/8', '7/8', '5/4']) expect(text).toContain(m);
+    for (const mode of ['lydian', 'dorian', 'phrygian', 'harmonic minor']) expect(text).toContain(mode);
+    expect(text).toMatch(/Nothing here is rolled/);
+    expect(menu()).toBe(text);
   });
-  it('avoids the band, mode and texture of the last three games', () => {
-    const ledger = [
-      '2030-01-01 | a | systemic | atoms: x | music: slow/6/8/dorian/music box | verdict: pending',
-      '2030-01-02 | b | systemic | atoms: x | music: fast/4/4/minor/driving four-floor | verdict: pending',
-    ].join('\n');
-    const history = parseLedgerSounds(ledger);
-    expect(history).toEqual([
-      { band: 'slow', meter: '6/8', mode: 'dorian', texture: 'music box' },
-      { band: 'fast', meter: '4/4', mode: 'minor', texture: 'driving four-floor' },
-    ]);
-    for (let seed = 1; seed <= 100; seed++) {
-      const s = pickSound(history, seed);
-      expect(['slow', 'fast']).not.toContain(s.band);
-      expect(['dorian', 'minor']).not.toContain(s.mode);
-      expect(['music box', 'driving four-floor']).not.toContain(s.texture);
-    }
-  });
-  it('every rolled identity composes a loop and a stinger', () => {
-    for (let seed = 1; seed <= 60; seed++) {
-      const s = pickSound([], seed);
-      const loop = composeSong({ seed, name: `n${seed}`, description: 'x'.repeat(70), style: 's', mood: 'm', form: 'loop', layout: s.layout, mode: s.mode, meter: s.meter, bpm: s.bpm, character: TEXTURES[s.texture].character, feel: TEXTURES[s.texture].feel });
-      expect(loop.bars.length).toBeGreaterThanOrEqual(8);
-      expect(loop.tracks.length).toBeGreaterThan(0);
-      composeStinger({ seed, name: `st${seed}`, description: 'x'.repeat(70), style: 's', mood: 'm', form: 'oneshot', event: 'win', mode: s.mode, bpm: s.bpm });
+  it('every texture composes a loop at every band and meter it suits, and a stinger', () => {
+    let seed = 1;
+    for (const [name, tex] of Object.entries<any>(TEXTURES)) {
+      for (const band of FITS[name].bands) {
+        for (const meter of FITS[name].meters) {
+          const bpm = Math.round((BANDS[band].bpm[0] + BANDS[band].bpm[1]) / 2);
+          const loop = composeSong({ seed: seed++, name: `${name}-${band}-${meter}`, description: 'x'.repeat(70), style: 's', mood: 'm', form: 'loop', layout: 'loop-8', mode: 'dorian', meter, bpm, character: tex.character, feel: tex.feel });
+          expect(loop.bars.length).toBeGreaterThanOrEqual(8);
+          expect(loop.tracks.length).toBeGreaterThan(0);
+        }
+      }
+      composeStinger({ seed: seed++, name: `st-${name}`, description: 'x'.repeat(70), style: 's', mood: 'm', form: 'oneshot', event: 'win', mode: 'minor', bpm: 120 });
     }
   });
 });

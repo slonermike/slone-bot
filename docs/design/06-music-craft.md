@@ -19,7 +19,7 @@ Music does four jobs in a game: it **sets the mood** (the target feeling), it **
 - **Classic uses of music as a gauge** (working knowledge): Space Invaders' four-note march speeds up as the aliens thin out; Super Mario Bros. quickens its music when the clock runs low; Tetris speeds its music when the stack gets dangerously high. In each, the music *is* the pressure meter, and the player feels it before reading it.
 
 ### The mid-tempo trap
-Left to themselves, the first four nightly games chose almost the same music: 92 to 120 bpm, 4/4, D or F dorian or mixolydian, a rock or funk groove, a syncopated sub bass, a bell arpeggio, labelled "playful", all copied from the example in the docs. It sounds fine and says nothing: no rest, no rise, no relief, no personality. That is what this section and the sound roll exist to prevent. The default zone (4/4 at 100 to 125 bpm) is allowed only when the game truly wants it, and the music plan says why.
+Left to themselves, the first four nightly games chose almost the same music: 92 to 120 bpm, 4/4, D or F dorian or mixolydian, a rock or funk groove, a syncopated sub bass, a bell arpeggio, labelled "playful", all copied from the example in the docs. It sounds fine and says nothing: no rest, no rise, no relief, no personality. That is what this section exists to prevent. The fix is not randomness; the music has to be considered and fit the game. The default zone (4/4 at 100 to 125 bpm) is allowed only when the game truly wants it, and the music plan says why.
 
 ### Write a music plan before composing
 Answer these in the brief's Music plan (a few lines):
@@ -28,7 +28,7 @@ Answer these in the brief's Music plan (a few lines):
 3. **The quiet.** Where does the music thin out or stop? (If the answer is "nowhere", the answer is wrong.)
 4. **The punctuation.** What are the three to five moments that deserve a stinger, and what does each one say?
 5. **The contrast.** What is the second sound the game goes to (a calm and a tense loop, an early and a late phase)? A game's music is a *set* of a few loops and several stingers, not one song.
-6. **The difference.** How does this differ from the last games' music (the ledger's `music:` tags)? Start from the sound roll (`node scripts/night-state.mjs sound`).
+6. **The options.** Weigh at least three choices from different parts of the spectrum (tempo band, meter, mode, texture; `node scripts/night-state.mjs sound` prints the menu with the generator settings), say what each would do to this game, then choose. Say how the choice differs from the last games' music (the ledger's `music:` tags), and why that difference serves this game and is not variety for its own sake.
 
 ### Tension and release: what to reach for, and how
 | Technique | What it does | How here |
