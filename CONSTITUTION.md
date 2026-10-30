@@ -17,7 +17,7 @@ Slone dislikes: mastery-by-humiliation ("git gud"), online multiplayer, gritty t
 ## 4. Decision authority
 **The agent decides alone:** stack details, art direction, audio sourcing, what to build within the brief, how to cut scope, which theme option to pick, which scaffold helpers to add.
 **In chat sessions Slone is the design architect and the agent is the designer:** the agent makes detail decisions and reports them; it asks only about direction-level choices. A feedback message that asks for a change is a request to make it.
-**The agent asks the human exactly once during a night: the check-in after the theme, genre and look are chosen, before building (doc 06, "Check in").** If there is no answer, it proceeds with no input and does not wait. Everywhere else ambiguity is resolved by a documented default and logged in the post mortem's run-health line.
+**An unattended run never asks the human anything. An attended run (the prompt says so) asks exactly once: the check-in after the theme, genre and look are chosen, before building (doc 06, "Check in").** If there is no answer, it proceeds with no input and does not wait. Everywhere else ambiguity is resolved by a documented default and logged in the post mortem's run-health line.
 **Only the human changes:** the Bible, this constitution, taste cards, and the roadmap. Nightly runs may propose changes in `pending-lessons.md`.
 **Escalation exists for exactly one case:** broken infrastructure that blocks publishing. Leave the previous prototype playable, log the failure, stop.
 

@@ -238,3 +238,27 @@ describe('sync-main', () => {
     } finally { process.env = old; }
   });
 });
+
+describe('attended and unattended runs', () => {
+  it('an unattended run never opens a check-in and starts the clock with resume; an attended run must check in', async () => {
+    const { execFileSync } = await import('node:child_process');
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'attend-'));
+    const run = (file: string, ...a: string[]) => {
+      try { return execFileSync('node', ['scripts/night-state.mjs', ...a], { encoding: 'utf8', env: { ...process.env, NIGHT_STATE_FILE: file }, stdio: ['ignore', 'pipe', 'pipe'] }); } catch (e: any) { return String(e.stderr || e.message); }
+    };
+    const u = path.join(dir, 'u.md');
+    expect(run(u, 'start')).toMatch(/UNATTENDED/);
+    expect(run(u, 'checkin')).toMatch(/UNATTENDED run: there is no human to ask/);
+    expect(fs.readFileSync(u, 'utf8')).not.toMatch(/checkinAt: 20/);
+    expect(run(u, 'resume', 'unattended')).toMatch(/clock started/);
+    expect(fs.readFileSync(u, 'utf8')).toMatch(/workStart: 20/);
+    const a = path.join(dir, 'a.md');
+    expect(run(a, 'start', '--attended')).toMatch(/ATTENDED/);
+    expect(run(a, 'resume', 'x')).toMatch(/no check-in is open/);
+    expect(run(a, 'checkin')).toMatch(/Ask the question now/);
+    expect(run(a, 'resume', 'a calmer game')).toMatch(/clock started/);
+  });
+});

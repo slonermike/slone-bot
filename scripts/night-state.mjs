@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Run-protocol helper: NIGHT_STATE.md checkpoints, elapsed-time gates, seeded atom picks.
-// Commands: start [--night <slug>] [--force] | checkin | resume "<input>" | checkpoint <phase> [note...] [--early --reason "why"] | round "<played> | <noticed> | <changed>" [--stepback] | set key=value ... | show | elapsed | check | atoms [--seed N] | look [--seed N] | genre <g1> <g2> <g3> [<g4> <g5>] [--reroll --reason "why"]
+// Commands: start [--night <slug>] [--attended] [--force] | checkin | resume "<input>" | checkpoint <phase> [note...] [--early --reason "why"] | round "<played> | <noticed> | <changed>" [--stepback] | set key=value ... | show | elapsed | check | atoms [--seed N] | look [--seed N] | genre <g1> <g2> <g3> [<g4> <g5>] [--reroll --reason "why"]
 // Spec: docs/tech/06-nightly-run-protocol.md
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,7 +16,7 @@ export const MIN_DONE_MIN = 60;
 export const MIN_ROUNDS = 3;
 const STATE_FILE = () => process.env.NIGHT_STATE_FILE || path.join(ROOT, 'NIGHT_STATE.md');
 const PHASES = ['start', 'brief', 'core', 'feel', 'test', 'done'];
-const KEYS = ['night', 'started', 'phase', 'branch', 'brief', 'lastGoodBuild', 'genre', 'genreOptions', 'workStart', 'checkinAt'];
+const KEYS = ['night', 'started', 'phase', 'branch', 'brief', 'lastGoodBuild', 'genre', 'genreOptions', 'workStart', 'checkinAt', 'attended'];
 
 export function parseState(text) {
   const s = { notes: [] };
@@ -160,9 +160,9 @@ function main(argv) {
       console.log(`RESUMING night ${prev.night || '(unnamed)'} phase=${prev.phase} elapsed ${fmt(m)} [${gate(m)}]. Use --force to start over.`);
       return;
     }
-    const s = { night: opt('night') ?? 'tbd', started: now.toISOString(), phase: 'start', branch: 'none', brief: 'none', lastGoodBuild: 'none', notes: [`${now.toISOString()} started`] };
+    const s = { night: opt('night') ?? 'tbd', started: now.toISOString(), phase: 'start', branch: 'none', brief: 'none', lastGoodBuild: 'none', attended: flag('attended') ? 'yes' : 'no', notes: [`${now.toISOString()} started${flag('attended') ? ' (attended: a human is present, check in)' : ' (unattended: no check-in)'}`] };
     writeState(s);
-    console.log(`started ${s.started}. Soft wrap-up at 1:15, pencils-down at 1:30 (target about 90 minutes).`);
+    console.log(`started ${s.started} (${flag('attended') ? 'ATTENDED: check in after theme, genre and look' : 'UNATTENDED: no check-in, never ask'}). Wrap-up at 1:15 and pencils-down at 1:30 are counted from \`resume\`.`);
   } else if (cmd === 'checkpoint') {
     const s = readState();
     if (!s) throw new Error('no NIGHT_STATE.md; run `start` first');
@@ -203,6 +203,7 @@ function main(argv) {
   } else if (cmd === 'checkin') {
     const s = readState();
     if (!s) throw new Error('no NIGHT_STATE.md; run `start` first');
+    if (s.attended !== 'yes') { console.log('UNATTENDED run: there is no human to ask. Do not ask and do not wait. Run `resume "unattended"` now to start the clock, then carry on.'); return; }
     if (s.checkinAt) { console.log(`already asked at ${s.checkinAt}; run \`resume\` when they answer or you give up.`); return; }
     s.checkinAt = now.toISOString();
     s.notes.push(`${fmt(elapsedMinutes(s, now.getTime()))} check-in: asked the human for input`);
@@ -211,14 +212,14 @@ function main(argv) {
   } else if (cmd === 'resume') {
     const s = readState();
     if (!s) throw new Error('no NIGHT_STATE.md; run `start` first');
-    if (!s.checkinAt) throw new Error('no check-in is open; run `checkin` first');
-    const waited = Math.max(0, now.getTime() - Date.parse(s.checkinAt)) / 60000;
+    if (!s.checkinAt && s.attended === 'yes') throw new Error('no check-in is open; run `checkin` first');
+    const waited = s.checkinAt ? Math.max(0, now.getTime() - Date.parse(s.checkinAt)) / 60000 : 0;
     s.workStart = now.toISOString();
     s.checkinAt = '';
     const text = rest.join(' ').trim() || 'no input';
-    s.notes.push(`0:00 clock started (check-in answered after ${waited.toFixed(1)} min): ${text}`);
+    s.notes.push(s.attended === 'yes' ? `0:00 clock started (check-in answered after ${waited.toFixed(1)} min): ${text}` : `0:00 clock started (unattended, no check-in): ${text}`);
     writeState(s);
-    console.log(`clock started now: wrap-up at ${fmt(WRAP_MIN)}, pencils-down at ${fmt(PENCILS_MIN)}. Put the human's input in the brief ("Human input:") and follow it.`);
+    console.log(`clock started now: wrap-up at ${fmt(WRAP_MIN)}, pencils-down at ${fmt(PENCILS_MIN)}. ${s.attended === 'yes' ? 'Put the human\'s input in the brief ("Human input:") and follow it.' : 'Write "Human input: none (unattended)" in the brief.'}`);
   } else if (cmd === 'set') {
     const s = readState();
     if (!s) throw new Error('no NIGHT_STATE.md; run `start` first');
