@@ -16,10 +16,10 @@ export const BALANCE: BalanceSpec[] = [
 ];
 
 export const SETS = [
-  { name: 'Doodle', bpm: 100, bars: 18, level: 0, holds: 0, doubles: 0 },
-  { name: 'Sketch', bpm: 108, bars: 20, level: 1, holds: 0.55, doubles: 0 },
-  { name: 'Scrawl', bpm: 116, bars: 22, level: 2, holds: 0.5, doubles: 0.5 },
-  { name: 'Finale', bpm: 126, bars: 24, level: 3, holds: 0.5, doubles: 0.7 },
+  { name: 'Doodle', bpm: 100, bars: 22, level: 0, holds: 0, doubles: 0 },
+  { name: 'Sketch', bpm: 108, bars: 24, level: 1, holds: 0.55, doubles: 0 },
+  { name: 'Scrawl', bpm: 116, bars: 26, level: 2, holds: 0.5, doubles: 0.5 },
+  { name: 'Finale', bpm: 126, bars: 30, level: 3, holds: 0.5, doubles: 0.7 },
 ] as const;
 export type SetCfg = (typeof SETS)[number] | { name: string; bpm: number; bars: number; level: number; holds: number; doubles: number };
 
@@ -361,7 +361,7 @@ export function createSim() {
         s.strays++;
         s.strayAt = s.setT;
         breakCombo();
-        s.strayInk += 0.5;
+        s.strayInk += 1;
         emit({ type: 'stray', magnitude: 0.4, x: p.x, y: p.y, data: { lane } });
         if (s.strayInk >= 1) { s.strayInk -= 1; addInk(1, lane); }
       }

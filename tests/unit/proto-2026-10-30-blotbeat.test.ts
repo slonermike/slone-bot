@@ -169,7 +169,9 @@ describe('bots', () => {
     expect(g.metrics.setReached).toBe(4);
     expect(g.metrics.score).toBeGreaterThan(30000);
   });
-  it('mashing every lane and stamp-farming both score well below the greedy bot', () => {
+  it('mashing every lane and stamp-farming both lose the run and score far below the greedy bot', () => {
+    expect(run('degenerate-mash').outcome).toBe('failed');
+    expect(run('degenerate-stamper').outcome).toBe('failed');
     const g = run('greedy').metrics.score!;
     expect(run('degenerate-mash').metrics.score!).toBeLessThan(g * 0.6);
     expect(run('degenerate-stamper').metrics.score!).toBeLessThan(g * 0.3);

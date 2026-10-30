@@ -821,7 +821,10 @@ export function createPrototype(): Prototype {
       case 'set-start': break; // the intro runs from render() so it also covers the very first set
       case 'beat': {
         pulse = Math.max(pulse, Number(e.magnitude ?? 0.4));
-        if (dd.countIn) play(Number(dd.beat) % 4 === 0 ? 'tickHi' : 'tickLo');
+        if (dd.countIn) {
+          play(Number(dd.beat) % 4 === 0 ? 'tickHi' : 'tickLo');
+          numberPop(world, String(Number(dd.beat) + 5), CX, CY - 150, { size: 72, color: C.white, stroke: C.ink, ms: Math.max(300, s.beatDur * 900), rise: 10, font: FONT });
+        }
         else if (s.inkBand >= 3) play('warn', { volume: 0.6 });
         wellSS.pop(0.08, 'y');
         if (!dd.countIn || Number(dd.beat) >= -3) {
