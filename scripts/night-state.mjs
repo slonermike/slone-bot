@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Run-protocol helper: NIGHT_STATE.md checkpoints, elapsed-time gates, seeded atom picks.
-// Commands: start [--night <slug>] [--force] | checkpoint <phase> [note...] | set key=value ... | show | elapsed | check | atoms [--seed N] | look [--seed N] | genre <g1> <g2> <g3> [<g4> <g5>] [--reroll --reason "why"]
+// Commands: start [--night <slug>] [--force] | checkpoint <phase> [note...] [--early --reason "why"] | round "<played> | <noticed> | <changed>" [--stepback] | set key=value ... | show | elapsed | check | atoms [--seed N] | look [--seed N] | genre <g1> <g2> <g3> [<g4> <g5>] [--reroll --reason "why"]
 // Spec: docs/tech/06-nightly-run-protocol.md
 import fs from 'node:fs';
 import path from 'node:path';
@@ -10,6 +10,9 @@ import { formatLook, parseLedgerLooks, pickLook } from './looks.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const WRAP_MIN = 180;
 export const PENCILS_MIN = 210;
+// Finishing early is a failure signal: `checkpoint done` needs this much time and this much iteration, or an explicit --early --reason.
+export const MIN_DONE_MIN = 150;
+export const MIN_ROUNDS = 3;
 const STATE_FILE = () => process.env.NIGHT_STATE_FILE || path.join(ROOT, 'NIGHT_STATE.md');
 const PHASES = ['start', 'brief', 'core', 'feel', 'test', 'done'];
 const KEYS = ['night', 'started', 'phase', 'branch', 'brief', 'lastGoodBuild', 'genre', 'genreOptions'];
@@ -51,6 +54,21 @@ export function elapsedMinutes(s, now = Date.now()) {
 }
 export function gate(min) {
   return min >= PENCILS_MIN ? 'PENCILS-DOWN' : min >= WRAP_MIN ? 'WRAP-UP' : 'OK';
+}
+export function countRounds(notes = []) {
+  return {
+    rounds: notes.filter((n) => /^\S+ round \d+:/.test(n)).length,
+    stepbacks: notes.filter((n) => /^\S+ stepback \d+:/.test(n)).length,
+  };
+}
+/** Why `checkpoint done` is refused right now ([] means it may proceed). */
+export function doneBlockers(min, notes) {
+  const { rounds, stepbacks } = countRounds(notes);
+  const out = [];
+  if (min < MIN_DONE_MIN) out.push(`only ${fmt(min)} elapsed (need ${fmt(MIN_DONE_MIN)})`);
+  if (rounds < MIN_ROUNDS) out.push(`${rounds} of ${MIN_ROUNDS} rounds logged`);
+  if (stepbacks < 1) out.push('no step-back logged');
+  return out;
 }
 const fmt = (min) => `${Math.floor(min / 60)}:${String(Math.floor(min % 60)).padStart(2, '0')}`;
 
@@ -148,11 +166,38 @@ function main(argv) {
     if (!s) throw new Error('no NIGHT_STATE.md; run `start` first');
     const phase = rest[0];
     if (!PHASES.includes(phase)) throw new Error(`phase must be one of ${PHASES.join('|')}`);
-    s.phase = phase;
     const m = elapsedMinutes(s, now.getTime());
-    s.notes.push(`${fmt(m)} phase=${phase}${rest[1] ? ' ' + rest.slice(1).join(' ') : ''}`);
+    const words = rest.slice(1).filter((a, i, arr) => !['--early', '--reason'].includes(a) && arr[i - 1] !== '--reason');
+    let note = words.join(' ');
+    if (phase === 'done') {
+      const blockers = doneBlockers(m, s.notes);
+      if (blockers.length && m < PENCILS_MIN) {
+        if (!flag('early')) {
+          console.error(`NOT DONE: ${blockers.join('; ')}.\nBuilds are made by looping: play it, note what works and what does not, change it, repeat (docs/tech/06, "Iterate"). Log a round with \`round "<played> | <noticed> | <changed>"\`, and a step-back with \`round --stepback "..."\`. If the game truly is finished, \`checkpoint done --early --reason "why"\`.`);
+          process.exitCode = 2;
+          return;
+        }
+        if (!opt('reason')) throw new Error('--early needs --reason "why stopping now is right"');
+        note = `finished early (${blockers.join('; ')}) because ${opt('reason')} ${note}`.trim();
+      }
+    }
+    s.phase = phase;
+    s.notes.push(`${fmt(m)} phase=${phase}${note ? ' ' + note : ''}`);
     writeState(s);
     console.log(`checkpoint ${phase} at ${fmt(m)} [${gate(m)}]`);
+  } else if (cmd === 'round') {
+    const s = readState();
+    if (!s) throw new Error('no NIGHT_STATE.md; run `start` first');
+    const text = rest.filter((a) => !a.startsWith('--')).join(' ').trim();
+    if (!text) throw new Error('usage: round "<what I played> | <what I noticed> | <what I changed>" [--stepback]');
+    const m = elapsedMinutes(s, now.getTime());
+    const c = countRounds(s.notes);
+    const kind = flag('stepback') ? 'stepback' : 'round';
+    const n = (kind === 'round' ? c.rounds : c.stepbacks) + 1;
+    s.notes.push(`${fmt(m)} ${kind} ${n}: ${text}`);
+    writeState(s);
+    const left = WRAP_MIN - m;
+    console.log(`logged ${kind} ${n} at ${fmt(m)}. ${left > 0 ? `${fmt(left)} until wrap-up: ` : 'Past wrap-up: '}${kind === 'stepback' ? 'now act on the biggest weakness you named, then loop again.' : 'now play it again.'}`);
   } else if (cmd === 'set') {
     const s = readState();
     if (!s) throw new Error('no NIGHT_STATE.md; run `start` first');
@@ -171,7 +216,9 @@ function main(argv) {
     if (!s) throw new Error('no NIGHT_STATE.md; run `start` first');
     const m = elapsedMinutes(s, now.getTime());
     const g = gate(m);
+    const c = countRounds(s.notes);
     console.log(`elapsed ${fmt(m)}  ${g}${g === 'WRAP-UP' ? ': freeze scope' : g === 'PENCILS-DOWN' ? ': stop editing, ship the last passing build' : ''}`);
+    if (g === 'OK') console.log(`rounds ${c.rounds}, step-backs ${c.stepbacks}. ${fmt(WRAP_MIN - m)} until wrap-up. Time left means another loop: play it, note what is weak, change it. Do not wrap up early.`);
     if (cmd === 'check' && g === 'PENCILS-DOWN') process.exitCode = 2;
   } else if (cmd === 'atoms') {
     const lib = fs.readFileSync(path.join(ROOT, 'docs/design/03-concept-library.md'), 'utf8');
@@ -202,7 +249,7 @@ function main(argv) {
     const seed = opt('seed') ? Number(opt('seed')) : dateSeed();
     console.log(formatLook(pickLook(parseLedgerLooks(ledger), seed)));
   } else {
-    console.error('usage: night-state.mjs start|checkpoint <phase> [note]|set k=v|show|elapsed|check|atoms [--seed N]|look [--seed N]|genre <3-5 genres>');
+    console.error('usage: night-state.mjs start|checkpoint <phase> [note]|set k=v|round \"<played | noticed | changed>\" [--stepback]|show|elapsed|check|atoms [--seed N]|look [--seed N]|genre <3-5 genres>');
     process.exitCode = 1;
   }
 }

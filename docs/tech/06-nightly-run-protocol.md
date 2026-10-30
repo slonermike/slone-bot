@@ -5,16 +5,16 @@ How a scheduled nightly agent runs, start to finish. The scheduled task prompt i
 ## Scheduled task prompt (to be set after the scaffold exists)
 "Run tonight's prototype. Read CLAUDE.md, then follow docs/tech/06-nightly-run-protocol.md. Do not ask questions."
 
-## Phases and soft budgets (3:30 hard stop)
-| # | Phase | Soft budget | Checkpoint written |
+## Phases and time (3:30 hard stop)
+Games are made by looping, not by passing through stages once: build, play, note what works and what does not, change it, repeat. The phases below are the arc of the night; the middle of it is a loop.
+| # | Phase | Time | Checkpoint written |
 |---|---|---|---|
 | 0 | Start: `PAUSE` check, preflight, stamp start, read docs, check pending feedback | 10 min | `phase: start` |
-| 1 | Ideation: roll themes, resolve, pick atoms and wildcard, write the brief | 20 min | `phase: brief` |
-| 2 | Core verb: bare, ugly, playable build proving the core is interesting | 60 min | `phase: core` |
-| 3 | Feel pass: juice and audio on main verb, feedback events, pressure state, and the game's music (loop, stingers, parts tied to pressure) | 45 min | `phase: feel` |
-| 4 | Testing: bots, telemetry, screenshots, checklist, one fix pass | 30 min | `phase: test` |
-| 5 | Wrap: manifest, feedback sheet, post mortem, publish, add themes, ledger line | 25 min | `phase: done` |
-Check elapsed time at every phase boundary and before any long command.
+| 1 | Ideation: roll themes, genre and look, pick atoms and wildcard, write the brief | 20 min | `phase: brief` |
+| 2 | Core verb: a bare, ugly, playable build, as fast as you can. First playable by about 0:45 | up to 60 min | `phase: core` |
+| 3 | **Iterate:** rounds of play, note, change (see "Iterate"). Feel, audio, music, pressure, bots and the checklist all happen inside the rounds | until 3:00 | `phase: feel`, then `phase: test` |
+| 4 | Wrap: freeze scope, final bots and checklist, manifest, feedback sheet, post mortem, publish, themes, ledger line | 30 min | `phase: done` |
+These times are not targets to finish under. **The night is about three hours of work. Finishing in twenty minutes is not efficiency, it is a failure signal:** it means the loop never ran. `checkpoint done` is refused before 2:30 elapsed, or without 3 logged rounds and 1 step-back, unless you pass `--early --reason "why"` (the reason goes in the post mortem). Check elapsed time at every phase boundary and before any long command; `node scripts/night-state.mjs check` also shows your round count and how long until wrap-up.
 
 ## Step 0: start
 1. If `PAUSE` exists on main: write a one-line log and exit.
@@ -32,12 +32,24 @@ Check elapsed time at every phase boundary and before any long command.
 6. Write the **brief** to `briefs/<slug>.md` using the template in `docs/design/04-feedback-and-postmortem.md`: one question, one target feeling, mode, theme, atoms, wildcard, core verb, pressure source, failure and recovery loop, what is different from the last five nights (from the ledger only), and the 3 to 5 feedback questions.
 7. Do not open earlier prototypes. Do not read rejection reasons.
 
-## Step 2 to 4: build, feel, test
+## Step 2 to 4: build, then iterate
 - Branch `proto/YYYY-MM-DD-name`. Code in `src/protos/<slug>/`.
-- Bare core first. Confirm with the idle, random, and greedy bots that the core does something. Then the feel pass. Then the full bot suite and the feel checklist.
+- Bare core first, quickly. Confirm with the idle, random, and greedy bots that the core does something. Then start the rounds. Do not hold the core until it is "done"; an okay game you can play beats a perfect plan, because an okay game is what gives you ideas (see Iterate).
 - Follow the Follow-the-Fun rule: log surprises (accidents, emergent behavior, the most interesting part) in `runs/<slug>/surprises.md` before fixing them. If a discovery is better than the brief, pivot toward it and log the pivot.
 - Drastic changes are welcome when the build is not working: see "When it is not working" below.
 - Reusable tech goes to main only when the smoke test passes, with a `SCAFFOLD_API.md` entry.
+
+## Iterate (the loop that fills the night)
+Blank pages are hard and okay games are easy to improve: once something is playable, ideas for it come fast. So get to playable quickly, then loop until wrap-up. One round is about 20 to 30 minutes:
+1. **Play.** You cannot feel it, so look and measure like a player would: run the bots (idle, random, greedy) and read the telemetry timeline; save screenshots at the start, mid, a high-pressure moment and an end screen and **open the images**; for a moving game, take a short sequence (the `capture-media` harness steps frames deterministically) and read several frames in order. Watch for: where nothing is happening, where the screen is unreadable, where the bots all behave the same, where the player has no decision to make.
+2. **Note.** Write down what is working, what is not, and the single weakest thing, in plain words. Ask: what is the dullest ten seconds? what would I want to do here that I cannot? what would make a player try one more run? what is the one thing to cut?
+3. **Change.** Fix the weakest thing, plus one idea that adds something (a new decision, a juicier consequence, a surprise, a layer of pressure). Small, testable changes; one commit each.
+4. **Log it.** `node scripts/night-state.mjs round "<what I played> | <what I noticed> | <what I changed>"`. Rounds are how the next agent (and Slone) can read how the game evolved.
+5. **Repeat.** Early rounds are about the core (is the verb fun, is there pressure), middle rounds about feel (juice, sound, music, readability), late rounds about the whole (arc, pacing, onboarding, balance knobs, polish).
+
+**Step back.** After every two or three rounds, and again before wrap-up, stop tinkering and look at the whole from a distance. Reread the brief's question and target feeling. Play (or watch) a full run start to finish. Ask: does the arc build and pay off? Is it recognizably the rolled genre and look? Does it deliver the target feeling, and where does it lose it? What are the top three weaknesses, big ones first? Is something drastic called for (see below)? Log it with `node scripts/night-state.mjs round --stepback "<arc> | <top weaknesses> | <what I will do>"`, then act on the biggest weakness before looping again.
+
+**When the obvious problems are fixed**, you are not done; the rough edges that remain are smaller and there are more of them. Go look for the next layer: a second kind of moment, a better ending, something to discover, a stinger on the big event, a knob that changes the feel. Time left over means another loop, not an early finish. If you are really out of ideas with an hour or more left, do a step-back and consider a bolder change.
 
 ## When it is not working
 A flat game that shipped on plan is worse than a different game that works. When things are not panning out, **drastic changes are reasonable and encouraged**, not a failure of the plan.
@@ -46,9 +58,10 @@ A flat game that shipped on plan is worse than a different game that works. When
 - **How:** decide quickly (an hour of doubt is worse than a restart). Write what is not working in `runs/<slug>/surprises.md`, then add a `PIVOT:` line to the brief (what changed and why; the old text stays below it). Checkpoint with a note (`node scripts/night-state.mjs checkpoint core "pivot: ..."`).
 - **Limits:** the night is still time-boxed. A pivot must start before 2:00 elapsed so there is time for the feel pass and bots; after that, cut scope instead. Two pivots is plenty. A broken build at pencils-down is still published as broken, and the post mortem says what you tried.
 - Say in the post mortem what you changed, what was not working, and whether the pivot helped.
+- A pivot is a round like any other: log it and keep looping.
 
 ## Wrap-up (3:00) and pencils-down (3:30)
-- At 3:00: freeze scope. Remaining work: bots, one fix pass, manifest, feedback sheet, post mortem.
+- At 3:00: freeze scope (the last step-back should already be behind you). Remaining work: final bots and checklist, a fix pass, manifest, feedback sheet, post mortem. Do not stop before wrap-up because things look finished.
 - At 3:30: stop editing. If the build passes the smoke test and self-review, publish. If not, set `buildStatus: broken`, leave the previous prototype as latest, and log why.
 
 ## Post mortem (about 10 lines; template in doc 04)

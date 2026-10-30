@@ -60,6 +60,7 @@ Questions are tied to the night's target feeling and risk. Phrase them as feelin
 # Post mortem: <title>
 Question and target feeling: (copied from the brief)
 What shipped: one sentence (main verb, pressure source)
+Rounds: how many rounds and step-backs, and the biggest thing each changed (one line each)
 Core before polish: was the bare core interesting with juice off? how I judged it
 Did it work (honest read): checklist counts (pass / fail / untested); the shaky items
 Measured (telemetry): runLength, deaths, firstPressureSimSec, idleSurvivalSec, variance, fps, inputToAudioMs (a few numbers)

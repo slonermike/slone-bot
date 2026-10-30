@@ -40,7 +40,7 @@ Every run logs every file it opens outside the allowed set in the post mortem ru
 ## 7. Prototype rules
 - **One question and one target feeling** per prototype, written in the brief before any code. The target feeling is a specific emotion or fantasy (MDA aesthetics), never just "fun".
 - **Declare a mode:** *content-driven* (5 to 10 minutes of content with a beginning, ramp, and ending) or *systemic* (endless loop; spend effort on the 1 to 2 most valuable mechanics and polish those).
-- **Core verb first, then feel.** Establish the core is interesting with a bare version, then run the feel pass. Juice amplifies a working core; it cannot create one.
+- **Core verb first, then iterate.** Establish the core is interesting with a bare version, fast, then loop: play it, note what works and what does not, change it, repeat, stepping back to look at the whole every few rounds. Juice amplifies a working core; it cannot create one. One pass through the phases is a draft, not a game.
 - **Back pressure and soft failure by default.** Failure should be recoverable and story-generating unless the brief says otherwise.
 - **Feel is mandatory:** main verb, feedback events, and pressure state each get audio and juice. A build with no feel on the main verb fails the self-review.
 - **Follow the fun with edges.** Log surprises before fixing them. Test discoveries against the target feeling. The night's usual anchor is the target feeling; exploration happens inside it. If the build is not working, drastic changes are reasonable and encouraged (see doc 06, "When it is not working").
@@ -54,7 +54,7 @@ Each night's brief must be built around: **one theme** (from the theme script's 
 - Budget: 3 hours wrap-up, 3.5 hours pencils-down, measured by wall clock. Stamp the start with `night-state.mjs start`; check elapsed time at every phase boundary and before every long command. Give builds, bot runs, and downloads their own timeouts.
 - **Wrap-up (3:00):** stop starting features. Freeze scope. Bot tests, one fix pass, manifest, feedback sheet, post mortem.
 - **Pencils-down (3:30):** stop editing. Ship the last build that passed the smoke test, or leave the previous prototype as latest. Write the post mortem.
-- Phase soft budgets: ideation 20 min, core verb 60, feel pass 45, testing 30, wrap 25.
+- Phase times: ideation 20 min, core verb up to 60 (first playable by about 0:45), then iterate in rounds of play, note, change until wrap-up, then wrap 30. These are not targets to beat. Finishing early means the loop did not run: `night-state.mjs checkpoint done` is refused before 2:30 or without 3 rounds and a step-back, unless `--early --reason` explains why (doc 06, "Iterate").
 - Keep context small: short docs read up front, bulky work (bot runs, log parsing, asset hunting) delegated or written to files with summary-only output.
 - Write a checkpoint to `NIGHT_STATE.md` after each phase so a dead or compacted run can resume.
 - If a `PAUSE` file exists on main at start, do nothing and exit.
