@@ -98,3 +98,48 @@ export function sheet(g: Graphics, w: number, h: number, fill: number, lined = t
   if (lined) for (let i = 0; i < 3; i++) g.moveTo(-w / 2 + 8, -h / 2 + f + 8 + i * 9).lineTo(w / 2 - 8, -h / 2 + f + 8 + i * 9).stroke({ width: 1.5, color: C.line });
   return g;
 }
+
+/** A small pictogram for each sticker (drawn about 76 px across, centered), in ink on the white badge. */
+export function stickerIcon(id: string): Container {
+  const c = new Container();
+  const g = new Graphics();
+  c.addChild(g);
+  const outline = { width: 5, color: C.ink, join: 'round' as const };
+  switch (id) {
+    case 'nib':
+      g.poly([0, -34, 20, -2, 12, 26, 0, 34, -12, 26, -20, -2]).fill(C.line).stroke(outline);
+      g.moveTo(0, -4).lineTo(0, 30).stroke({ width: 3, color: C.ink });
+      g.circle(0, -6, 5).fill(C.ink);
+      break;
+    case 'sponge':
+      g.roundRect(-32, -22, 64, 46, 12).fill(C.tint).stroke(outline);
+      for (const [x, y, r] of [[-16, -6, 5], [8, -10, 4], [16, 8, 6], [-6, 10, 4], [-20, 12, 3]] as const) g.ellipse(x, y, r, r * 0.8).fill(C.ink);
+      break;
+    case 'bounty':
+      g.circle(0, 0, 30).fill(C.tint).stroke(outline);
+      g.circle(0, 0, 22).stroke({ width: 2, color: C.ink });
+      drop(g, 34).fill(C.lime).stroke({ width: 4, color: C.ink, join: 'round' });
+      break;
+    case 'thrift':
+      g.roundRect(-30, -24, 60, 48, 10).fill(C.lime).stroke(outline);
+      c.addChild(Object.assign(label('-1', 34, C.ink, { weight: '900' }), { y: 1 }));
+      break;
+    case 'long':
+      g.poly([-22, -32, 22, -32, 0, 0]).fill(C.tint).stroke(outline);
+      g.poly([0, 0, 22, 32, -22, 32]).fill(C.lime).stroke(outline);
+      g.rect(-26, -36, 52, 6).fill(C.ink);
+      g.rect(-26, 31, 52, 6).fill(C.ink);
+      break;
+    case 'blotter':
+      sheet(g, 50, 60, C.white, false);
+      drop(g, 30).fill(C.lime).stroke({ width: 4, color: C.ink, join: 'round' });
+      break;
+    case 'spare':
+      sheet(g, 50, 62, C.white, true);
+      c.addChild(Object.assign(label('+1', 30, C.ink, { weight: '900' }), { y: 14 }));
+      break;
+    default:
+      g.circle(0, 0, 24).fill(C.tint).stroke(outline);
+  }
+  return c;
+}

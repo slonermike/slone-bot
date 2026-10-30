@@ -1,5 +1,5 @@
 // Blot Beat: render + juice + audio around the pure sim in sim.ts.
-import { Container, Graphics } from 'pixi.js';
+import { Container, Graphics, Rectangle, Sprite } from 'pixi.js';
 import type { Application } from 'pixi.js';
 import { glyph, onDeviceChange } from '../../core/index.ts';
 import type { Ctx, InputState, Prototype, SimEvent, View } from '../../core/types.ts';
@@ -9,7 +9,7 @@ import { Eyes, Particles, SquashStretch, chase, ease, flash, numberPop, punch, s
 import { BALANCE, SETS, STICKERS, createSim } from './sim.ts';
 import type { Note } from './sim.ts';
 import { CX, CY, HH, HW, LANE_BUTTON, LANE_DIR, RING_RX, RING_RY, lanePoint, laneRing, laneStart } from './geometry.ts';
-import { C, FONT, chip, drop, hintPlate, label, sheet, sticker } from './ui.ts';
+import { C, FONT, chip, drop, hintPlate, label, sheet, sticker, stickerIcon } from './ui.ts';
 import { defineBlotSounds, LANE_MIDI } from './sounds.ts';
 import { gameStingers, partsFor, setLoops } from './music.ts';
 export { bots } from './bots.ts';
@@ -82,10 +82,19 @@ export function createPrototype(): Prototype {
   let seenStampReady = false;
   let lastPages = -1;
   let introFor = -1;
+  let pagesKey = '';
+  let railKey = -1;
+  let scoreShown = -1;
+  let frameNo = 0;
+  let geyserT = 0;
+  let seenDrip = false;
+  const streaks: Graphics[] = [];
   let lastStickers = 0;
   let sigPoints: number[] = [];
   const lastLabels = { s: '' };
 
+  /** Run `fn` after `ms` on the juice clock (a tween on a dummy target, so it never collides with tweens on real objects). */
+  const later = (ms: number, fn: () => void) => tween({ v: 0 }, { v: 1 }, ms, ease.linear, { onComplete: fn });
   const D = () => LANE_DIR;
   const FRAME_DT = 1 / 60;
 
@@ -105,8 +114,9 @@ export function createPrototype(): Prototype {
 
   function banner(text: string, fill: number, ink: number, ms = 1300, y = 196, sub?: string): void {
     bannerC?.destroy();
+    if (text.startsWith('FEVER') || text.startsWith('PAGE')) { hintC?.destroy(); hintC = null; }
     const c = new Container();
-    const w = Math.max(280, text.length * 30 + 70);
+    const w = Math.max(280, text.length * 30 + 70, sub ? sub.length * 12.5 + 70 : 0);
     const bg = sticker(w, sub ? 100 : 76, fill, 18);
     c.addChild(bg);
     const t = label(text, 40, ink, { weight: '900' });
@@ -119,7 +129,7 @@ export function createPrototype(): Prototype {
     ui.addChild(c);
     bannerC = c;
     tween(c, { scale: 1 }, 260, ease.outBack);
-    tween(c, { alpha: 0, 'scale.y': 0.8 }, 260, ease.inQuad, { delay: ms, onComplete: () => { c.destroy(); if (bannerC === c) bannerC = null; } });
+    later(ms, () => { tween(c, { alpha: 0 }, 260, ease.inQuad, { onComplete: () => { c.destroy(); if (bannerC === c) bannerC = null; } }); });
   }
 
   function showHint(parts: Parameters<typeof hintPlate>[0], ms = 4200): void {
@@ -130,7 +140,7 @@ export function createPrototype(): Prototype {
     ui.addChild(h);
     hintC = h;
     tween(h, { alpha: 1 }, 250, ease.outCubic);
-    tween(h, { alpha: 0 }, 400, ease.inQuad, { delay: ms, onComplete: () => { h.destroy(); if (hintC === h) hintC = null; } });
+    later(ms, () => { tween(h, { alpha: 0 }, 400, ease.inQuad, { onComplete: () => { h.destroy(); if (hintC === h) hintC = null; } }); });
   }
 
   function syncMusic(): void {
@@ -198,6 +208,7 @@ export function createPrototype(): Prototype {
     bannerC?.destroy(); bannerC = null;
     wellLevel = 0;
     introFor = -1;
+    geyserT = 0;
     lastPages = -1;
     lastStickers = 0;
   }
@@ -205,7 +216,7 @@ export function createPrototype(): Prototype {
   // ---------------------------------------------------------------- scene
   function buildScene(): void {
     const bg = new Graphics();
-    bg.rect(-300, -300, 1880, 1400).fill(C.bg);
+    (view.app as Application).renderer.background.color = C.bg; // the desk colour is the clear colour: one fewer full-screen layer
     for (const [rx, ry] of [[640, 320], [860, 430], [1120, 560]] as const) bg.ellipse(CX, CY + 30, rx, ry).stroke({ width: 1.5, color: C.line, alpha: 0.28 });
     world.addChild(bg);
 
@@ -260,7 +271,24 @@ export function createPrototype(): Prototype {
     }
     lanes.stroke({ width: 2, color: C.tint, alpha: 0.9 });
     const ring = new Graphics().ellipse(CX, CY, RING_RX, RING_RY).stroke({ width: 8, color: C.ink }).ellipse(CX, CY, RING_RX, RING_RY).stroke({ width: 2, color: C.tint, alpha: 0.8 });
-    boardC.addChild(slab, board, lattice, latticeFever, inner, lanes, ring);
+    // the static board is baked into one sprite: a few dozen draw calls become one (the slow part of a software GL frame)
+    const statics = new Container();
+    statics.addChild(slab, board, lattice, inner, lanes, ring);
+    const crop = new Rectangle(100, 150, 1080, 600);
+    const tex = (view.app as Application).renderer.generateTexture({ target: statics, frame: crop, resolution: 2, antialias: true });
+    const baked = new Sprite(tex);
+    baked.position.set(crop.x, crop.y);
+    statics.destroy({ children: true });
+    boardC.addChild(baked, latticeFever);
+    for (let l = 0; l < 4; l++) {
+      const a = laneStart(l); const b = laneRing(l);
+      const st = new Graphics();
+      st.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width: 12, color: C.ink, cap: 'round' });
+      st.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width: 5, color: C.white, cap: 'round' });
+      st.alpha = 0;
+      boardC.addChild(st);
+      streaks.push(st);
+    }
 
     for (let l = 0; l < 4; l++) {
       const c = new Container();
@@ -291,6 +319,8 @@ export function createPrototype(): Prototype {
     body.roundRect(-20, -98, 40, 18, 6).fill(C.white).stroke({ width: 7, color: C.ink, join: 'round' });
     body.moveTo(-28, -50).lineTo(-28, -22).stroke({ width: 3, color: C.white, alpha: 0.7, cap: 'round' });
     wellFill = new Graphics();
+    wellFill.roundRect(-33, -56, 66, 56, 10).fill(C.lime).moveTo(-33, -56).lineTo(33, -56).stroke({ width: 4, color: C.ink });
+    wellFill.position.set(0, 0);
     const quill = new Graphics();
     quill.moveTo(10, -98).quadraticCurveTo(46, -150, 62, -176).stroke({ width: 10, color: C.ink, cap: 'round' });
     quill.moveTo(10, -98).quadraticCurveTo(46, -150, 62, -176).stroke({ width: 4, color: C.white, cap: 'round' });
@@ -384,18 +414,22 @@ export function createPrototype(): Prototype {
     }
   }
 
+  let dropsKey = '';
   function updateDrops(): void {
-    if (dropsMax !== sim.stats().inkMax) rebuildDrops();
+    if (dropsMax !== sim.stats().inkMax) { rebuildDrops(); dropsKey = ''; }
     const full = Math.floor(s.ink);
     const cost = sim.stats().cost;
     const ready = s.ink >= cost;
+    const part = Math.round((s.ink - full) * 4);
+    const key = `${full}|${part}|${cost}|${ready}`;
+    if (key === dropsKey) return; // Graphics rebuilds are costly: only redraw when something changed
+    dropsKey = key;
     dropGs.forEach((g, i) => {
       g.clear();
       const filled = i < full;
-      const part = i === full ? s.ink - full : 0;
       drop(g, 36).fill(filled ? C.lime : C.board).stroke({ width: 7, color: C.ink, join: 'round' });
       drop(g, 36).stroke({ width: 2, color: filled ? C.white : i < cost ? C.white : C.line, alpha: filled || i < cost ? 1 : 0.8, join: 'round' });
-      if (part > 0.05) { g.scale.set(1); drop(g, 36).fill({ color: C.lime, alpha: part * 0.7 }); }
+      if (i === full && part > 0) drop(g, 36).fill({ color: C.lime, alpha: part * 0.18 });
     });
   }
 
@@ -429,13 +463,17 @@ export function createPrototype(): Prototype {
   function updateHud(): void {
     // pages
     const maxP = Math.min(6, s.pagesMax);
-    pageIcons.forEach((g, i) => {
-      g.visible = i < maxP;
-      if (!g.visible) return;
-      g.clear();
-      sheet(g, 30, 40, i < s.pages ? C.white : C.bg, i < s.pages);
-      if (i >= s.pages) g.alpha = 0.55; else g.alpha = 1;
-    });
+    const pk = `${maxP}|${s.pages}`;
+    if (pk !== pagesKey) {
+      pagesKey = pk;
+      pageIcons.forEach((g, i) => {
+        g.visible = i < maxP;
+        if (!g.visible) return;
+        g.clear();
+        sheet(g, 30, 40, i < s.pages ? C.white : C.bg, i < s.pages);
+        g.alpha = i >= s.pages ? 0.55 : 1;
+      });
+    }
     if (lastPages >= 0 && s.pages < lastPages) {
       const g = pageIcons[s.pages];
       if (g) { g.rotation = 0.5; g.y = 78; tween(g, { rotation: 0, y: 78 }, 500, ease.outBounce); }
@@ -445,14 +483,24 @@ export function createPrototype(): Prototype {
     const t = `SET ${s.set + 1}/${SETS.length}  ${cfg.name.toUpperCase()}`;
     if (t !== lastLabels.s) { lastLabels.s = t; setText.text = t; }
     // rail
-    railG.clear();
     const total = s.endT + 4 * s.beatDur;
     const prog = Math.max(0, Math.min(1, (s.setT + 4 * s.beatDur) / total));
+    const rk = Math.round(prog * 300);
+    if (rk !== railKey) { railKey = rk; drawRail(prog); }
+  }
+
+  function drawRail(prog: number): void {
+    railG.clear();
     railG.moveTo(CX - 150, 84).lineTo(CX + 150, 84).stroke({ width: 8, color: C.ink, cap: 'round' });
     railG.moveTo(CX - 150, 84).lineTo(CX + 150, 84).stroke({ width: 2, color: C.line });
     railG.moveTo(CX - 150, 84).lineTo(CX - 150 + 300 * prog, 84).stroke({ width: 4, color: C.white, cap: 'round' });
     railG.circle(CX - 150 + 300 * prog, 84, 7).fill(C.white).stroke({ width: 4, color: C.ink });
-    scoreText.text = Math.round(s.displayScore).toLocaleString('en-US');
+  }
+
+  function updateScore(): void {
+    // text is rasterised on every change, so the count-up refreshes every third frame (and exactly on arrival)
+    const shown = Math.round(s.displayScore);
+    if (shown !== scoreShown && (frameNo % 3 === 0 || s.displayScore === s.score)) { scoreShown = shown; scoreText.text = shown.toLocaleString('en-US'); }
     comboText.text = s.combo > 1 ? `COMBO ${s.combo}` : '';
     multText.text = `x${s.mult}`;
     multBadge.alpha = 1;
@@ -463,10 +511,11 @@ export function createPrototype(): Prototype {
     lastStickers = s.stickers.length;
     stickerRow.removeChildren().forEach((c) => c.destroy());
     s.stickers.forEach((id, i) => {
-      const def = STICKERS.find((x) => x.id === id)!;
       const c = new Container();
-      c.addChild(sticker(56, 44, C.tint, 12));
-      c.addChild(label(def.name.split(' ').map((w) => w[0]).join(''), 22, C.ink, { weight: '900' }));
+      c.addChild(sticker(60, 52, C.white, 12));
+      const ic = stickerIcon(id);
+      ic.scale.set(0.5);
+      c.addChild(ic);
       c.position.set(i * 66, 0);
       c.rotation = (i % 2 ? 1 : -1) * 0.07;
       stickerRow.addChild(c);
@@ -545,16 +594,14 @@ export function createPrototype(): Prototype {
     // well fill follows the ink; the level only moves toward it, so a blot arriving makes it rise
     const target = Math.min(1, s.ink / Math.max(1, sim.stats().inkMax));
     wellLevel = chase(wellLevel, target, target < wellLevel ? 0.12 : 0.2);
-    wellFill.clear();
-    if (wellLevel > 0.01) {
-      const h = 52 * wellLevel + 4;
-      const wob = Math.sin(time * 6) * 2 * (1 + s.inkBand);
-      wellFill.roundRect(-33, 0 - h + 0, 66, h, 10).fill(C.lime);
-      wellFill.moveTo(-33, -h + wob).quadraticCurveTo(0, -h - wob * 2, 33, -h + wob).stroke({ width: 3, color: C.ink });
-    }
+    wellFill.visible = wellLevel > 0.01;
+    wellFill.scale.set(1 + 0.02 * Math.sin(time * 6) * s.inkBand, Math.max(0.05, wellLevel));
     const danger = s.phase === 'play' && s.ink >= sim.stats().inkMax - 1.01 && s.ink > 0;
     dangerG.alpha = danger ? 0.25 + 0.25 * Math.sin(time * 10) : chase(dangerG.alpha, 0, 0.2);
+    dangerG.visible = dangerG.alpha > 0.02;
     feverG.alpha = chase(feverG.alpha, s.feverT > 0 ? 0.5 + 0.5 * Math.sin(time * 12) * 0.4 : 0, 0.2);
+    feverG.visible = feverG.alpha > 0.02;
+    latticeFever.visible = latticeFever.alpha > 0.02;
     latticeFever.alpha = chase(latticeFever.alpha, s.feverT > 0 ? 0.7 + 0.3 * Math.sin(time * 10) : 0, 0.25);
     wellC.rotation = danger ? Math.sin(time * 30) * 0.03 : 0;
     if (s.inkBand >= 2) eyes.setMood('worried', 0.2); else if (s.feverT > 0) eyes.setMood('happy', 0.2);
@@ -563,10 +610,14 @@ export function createPrototype(): Prototype {
       const g = glyph(LANE_BUTTON[l]!);
       if (t.text !== g) t.text = g;
       const down = s.laneDown[l];
-      targets[l]!.scale.set(chase(targets[l]!.scale.x, down ? 1.15 : 1, 0.35));
+      const base = laneRing(l).y;
+      targets[l]!.y = chase(targets[l]!.y, base + (down ? 5 : 0), 0.4);
     }
-    const fx = wellC;
-    void fx;
+    for (const st of streaks) st.alpha = chase(st.alpha, 0, 0.2);
+    if (geyserT > 0) {
+      geyserT -= dt;
+      particles.emit('sparks', CX, CY - 40, { count: 5, color: ctx.vfxRng.next() < 0.5 ? C.lime : C.white, angle: -Math.PI / 2, spread: 0.7, speed: 2.4, size: 1.4 });
+    }
     // holds shower sparks
     for (let l = 0; l < 4; l++) {
       if (s.laneHold[l]! >= 0 && ctx.vfxRng.next() < 0.5) {
@@ -583,6 +634,16 @@ export function createPrototype(): Prototype {
   }
 
   // ---------------------------------------------------------------- overlays
+  /** Best score on this device (a per-viewer convenience: wrapped so private windows and blocked storage still work). */
+  function bestScore(update?: number): number {
+    try {
+      const key = 'mgb.blotbeat.best';
+      const prev = Number(localStorage.getItem(key) ?? 0) || 0;
+      if (update !== undefined && update > prev) { localStorage.setItem(key, String(Math.round(update))); return Math.round(update); }
+      return prev;
+    } catch { return Math.round(update ?? 0); }
+  }
+
   function buildPick(): void {
     overlay?.destroy();
     const o = new Container();
@@ -600,9 +661,10 @@ export function createPrototype(): Prototype {
       const def = STICKERS.find((x) => x.id === id)!;
       const c = new Container();
       c.addChild(sticker(272, 330, C.tint, 22));
-      const circle = new Graphics().circle(0, -92, 56).fill(C.white).stroke({ width: 7, color: C.ink });
-      const ini = label(def.name.split(' ').map((w) => w[0]).join(''), 52, C.ink, { weight: '900' });
+      const circle = new Graphics().circle(0, -92, 62).fill(C.white).stroke({ width: 7, color: C.ink });
+      const ini = stickerIcon(id);
       ini.y = -92;
+      ini.scale.set(1.15);
       const nm = label(def.name, 30, C.ink, { weight: '900' });
       nm.y = 4;
       const tx = label(def.text, 22, C.board, { weight: '700', align: 'center' });
@@ -613,7 +675,6 @@ export function createPrototype(): Prototype {
       c.position.set(CX + (i - (s.options.length - 1) / 2) * 316, 400);
       c.rotation = (i - 1) * 0.04;
       c.scale.set(0.1);
-      tween(c, { scale: 1 }, 320, ease.outBack, { delay: 100 + i * 90 });
       o.addChild(c);
       cards.push(c);
     });
@@ -660,23 +721,27 @@ export function createPrototype(): Prototype {
     b.scale.set(0.1); title.scale.set(0.1);
     tween(b, { scale: 1 }, 400, ease.outBack);
     tween(title, { scale: 1 }, 400, ease.outBack);
-    const plate = sticker(560, 300, C.board, 22);
-    plate.position.set(CX, 400);
+    const plate = sticker(560, 352, C.board, 22);
+    plate.position.set(CX, 420);
     o.addChild(plate);
-    const rows = ['Score', 'Accuracy', 'Best combo', 'Stamps', 'Pages left'];
+    const prevBest = bestScore();
+    const best = bestScore(s.score);
+    const isNew = s.score > prevBest;
+    const rows = ['Score', 'Accuracy', 'Best combo', 'Stamps', 'Pages left', isNew ? 'Best run: NEW!' : 'Best run'];
     const vals: ReturnType<typeof label>[] = [];
     rows.forEach((r, i) => {
       const l = label(r, 28, C.tint, { anchor: [0, 0.5] });
-      l.position.set(CX - 240, 296 + i * 52);
+      l.position.set(CX - 240, 288 + i * 52);
       const v = label('', 32, C.white, { anchor: [1, 0.5] });
-      v.position.set(CX + 240, 296 + i * 52);
+      v.position.set(CX + 240, 288 + i * 52);
       o.addChild(l, v);
       vals.push(v);
     });
-    (o as Container & { vals: typeof vals }).vals = vals;
+    (o as Container & { vals: typeof vals; best: number }).vals = vals;
+    (o as Container & { best: number }).best = best;
     if (win) {
       const sg = new Graphics();
-      sg.position.set(CX, 590);
+      sg.position.set(CX, 662);
       o.addChild(sg);
       (o as Container & { sig: Graphics }).sig = sg;
       sigPoints = [];
@@ -686,7 +751,7 @@ export function createPrototype(): Prototype {
       }
     }
     const cards = hintPlate([{ key: glyph('a') }, 'Play again', { key: 'Start' }, 'Menu'], 26);
-    cards.position.set(CX, 730);
+    cards.position.set(CX, 740);
     cards.alpha = 0;
     o.addChild(cards);
     (o as Container & { cards: Container }).cards = cards;
@@ -698,7 +763,7 @@ export function createPrototype(): Prototype {
 
   function updateEnd(): void {
     if (!overlay || (overlayKind !== 'won' && overlayKind !== 'lost')) return;
-    const o = overlay as Container & { vals: ReturnType<typeof label>[]; sig?: Graphics; cards: Container };
+    const o = overlay as Container & { vals: ReturnType<typeof label>[]; sig?: Graphics; cards: Container; best: number };
     const t0 = overlayKind === 'won' ? 1.4 : 0.9;
     const k = (i: number) => Math.max(0, Math.min(1, (s.endT2 - t0 - i * 0.35) / 0.9));
     const acc = s.notesTotal ? s.hits / s.notesTotal : 0;
@@ -707,6 +772,7 @@ export function createPrototype(): Prototype {
     o.vals[2]!.text = String(Math.round(s.maxCombo * k(2)));
     o.vals[3]!.text = String(Math.round(s.stamps * k(3)));
     o.vals[4]!.text = String(Math.round(Math.max(0, s.pages) * k(4)));
+    o.vals[5]!.text = Math.round((o as unknown as { best: number }).best * k(5)).toLocaleString('en-US');
     if (o.sig) {
       const n = Math.floor(sigPoints.length / 2 * Math.max(0, Math.min(1, (s.endT2 - 0.8) / 1.6)));
       o.sig.clear();
@@ -738,6 +804,7 @@ export function createPrototype(): Prototype {
       spark(x, y, lane, col, grade === 'perfect' ? 14 : 8, 1 + m);
       ringPulse(x, y, 60 + m * 40, col, 340, grade === 'perfect' ? 5 : 3);
       punch(targets[lane]!, 0.3 + m * 0.2);
+      streaks[lane]!.alpha = grade === 'perfect' ? 0.9 : 0.55;
       const g = targets[lane]!.children[0] as Graphics;
       flash(g as unknown as Container, 0xffffff, 120);
       if (!auto) numberPop(world, grade.toUpperCase(), x + d.x * 72, y + d.y * 56 - 6, { size: grade === 'perfect' ? 28 : 22, color: grade === 'perfect' ? C.white : C.tint, stroke: C.ink, rise: 34, ms: 520, font: FONT });
@@ -757,6 +824,14 @@ export function createPrototype(): Prototype {
         if (dd.countIn) play(Number(dd.beat) % 4 === 0 ? 'tickHi' : 'tickLo');
         else if (s.inkBand >= 3) play('warn', { volume: 0.6 });
         wellSS.pop(0.08, 'y');
+        if (!dd.countIn || Number(dd.beat) >= -3) {
+          const down = Number(dd.beat) % 4 === 0;
+          const br = new Graphics().ellipse(0, 0, RING_RX, RING_RY).stroke({ width: down ? 4 : 2, color: down ? C.white : C.tint, alpha: down ? 0.7 : 0.45 });
+          br.position.set(CX, CY);
+          br.scale.set(1.7);
+          boardC.addChildAt(br, boardC.getChildIndex(splatC));
+          tween(br, { scale: 1, alpha: 0 }, Math.max(200, s.beatDur * 900), ease.outCubic, { onComplete: () => br.destroy() });
+        }
         break;
       }
       case 'hit': laneHit(e, String(dd.grade), Boolean(dd.auto)); break;
@@ -804,8 +879,14 @@ export function createPrototype(): Prototype {
         flyDrop(x, y, 260, C.lime, () => { play('glug', { pitch: 1 + 0.06 * Math.floor(s.ink) }); wellSS.pop(0.25, 'y'); punch(wellC, 0.12); });
         if (!seenFirstBlot) {
           seenFirstBlot = true;
-          showHint(['A miss drops a blot. At', String(sim.stats().cost), 'blots,', { key: glyph('rb') }, 'STAMP it into a fever'], 5200);
+          showHint([`A miss drops a blot. At ${sim.stats().cost} blots,`, { key: glyph('rb') }, 'STAMP it into a fever'], 5200);
         }
+        break;
+      }
+      case 'drip': {
+        flyDrop(CX + (Number(dd.lane) - 1.5) * 40, 150, 0, C.lime, () => { play('glug', { pitch: 1.5 }); wellSS.pop(0.2, 'y'); });
+        play('warn', { pitch: 1.6 });
+        if (!seenDrip) { seenDrip = true; showHint(['The well is leaking now. Do not sit on a full well:', { key: glyph('rb') }, 'STAMP'], 5200); }
         break;
       }
       case 'ink-band': syncMusic(); break;
@@ -837,7 +918,7 @@ export function createPrototype(): Prototype {
             ringPulse(CX, CY, 380, C.lime, 600, 12);
             ringPulse(CX, CY, 560, C.white, 800, 5);
             ringPulse(CX, CY, 250, C.lime, 480, 8);
-            flash(boardC, 0xffffff, 200);
+            flash(boardC, 0xffffff, 160, 0.3);
             particles.emit('confetti', CX, CY, { count: 48, speed: 1.8 });
             particles.emit('sparks', CX, CY, { count: 40, color: C.lime, speed: 2 });
             tween(pad, { alpha: 0, y: CY - 60 }, 600, ease.outCubic, { delay: 350, onComplete: () => pad.destroy() });
@@ -854,7 +935,7 @@ export function createPrototype(): Prototype {
       case 'spill': {
         play('spill'); play('spillDrop');
         shake(1);
-        flash(boardC, C.lime, 380);
+        flash(boardC, C.lime, 300, 0.4);
         burstSplats();
         particles.emit('debris', CX, CY, { count: 60, color: C.lime, speed: 2.4, size: 1.3 });
         particles.emit('puff', CX, CY, { count: 20, color: C.lime, speed: 1.6, size: 1.6 });
@@ -897,6 +978,10 @@ export function createPrototype(): Prototype {
         for (let i = 0; i < 4; i++) tween({ v: 0 }, { v: 1 }, i * 260, ease.linear, { onComplete: () => particles.emit('confetti', CX + (i - 1.5) * 220, CY - 60, { count: 50, speed: 2 }) });
         eyes.setMood('happy', 4);
         wellSS.pop(0.7, 'y');
+        geyserT = 1.8;
+        tween(wellC, { scale: 1.3 }, 380, ease.outBack, { onComplete: () => tween(wellC, { scale: 0.8 }, 700, ease.outElastic) });
+        ringPulse(CX, CY, 520, C.white, 900, 6);
+        ringPulse(CX, CY, 360, C.lime, 700, 10);
         tween({ v: 0 }, { v: 1 }, 700, ease.linear, { onComplete: () => { if (s.phase === 'won') buildEnd(true); } });
         break;
       }
@@ -943,6 +1028,8 @@ export function createPrototype(): Prototype {
       }
       drawNotes(tNow);
       updateHud();
+      frameNo++;
+      updateScore();
       updateDrops();
       updateStamp();
       updateStickersRow();
@@ -951,7 +1038,7 @@ export function createPrototype(): Prototype {
       updateEnd();
       if (s.ink >= sim.stats().cost && !seenStampReady && seenFirstBlot) {
         seenStampReady = true;
-        showHint([{ key: glyph('rb') }, 'STAMP now, or carry more ink for a longer fever'], 4200);
+        if (s.feverT <= 0) showHint([{ key: glyph('rb') }, 'STAMP now, or carry more ink for a longer fever'], 4200);
       }
     },
     onEvent,
@@ -959,7 +1046,7 @@ export function createPrototype(): Prototype {
       score: Math.round(s.score), hits: s.hits, perfects: s.perfects, misses: s.misses, strays: s.strays, stamps: s.stamps,
       spills: s.spills, blots: s.blots, maxCombo: s.maxCombo, setReached: s.set + 1,
       accuracy: s.notesTotal ? s.hits / s.notesTotal : 0, pagesLeft: s.pages, notesTotal: s.notesTotal, feverScore: Math.round(s.feverScore),
-      scoreOrProgress: Math.round(s.score) + s.set * 1000,
+      drips: s.drips, scoreOrProgress: Math.round(s.score) + s.set * 1000,
     }),
     getState() {
       const o: Record<string, number> = {

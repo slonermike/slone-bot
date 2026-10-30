@@ -151,6 +151,8 @@ export interface SimState {
   strayInk: number;
   strayAt: number;
   stampLock: number;
+  dripAt: number;
+  drips: number;
   perfectRun: number;
   stickers: StickerId[];
   options: StickerId[];
@@ -204,7 +206,7 @@ export function createSim() {
     s.score = 0; s.displayScore = 0; s.combo = 0; s.maxCombo = 0; s.mult = 1;
     s.ink = 0; s.inkBand = 0;
     s.pagesMax = Math.round(bal('pages')); s.pages = s.pagesMax;
-    s.feverT = 0; s.feverMax = 0; s.restUntil = -1; s.graceUntil = -1; s.strayInk = 0; s.strayAt = -9; s.stampLock = -1; s.perfectRun = 0;
+    s.feverT = 0; s.feverMax = 0; s.restUntil = -1; s.graceUntil = -1; s.strayInk = 0; s.strayAt = -9; s.stampLock = -1; s.dripAt = 0; s.drips = 0; s.perfectRun = 0;
     s.stickers = []; s.options = []; s.cursor = 0;
     s.laneDown = [false, false, false, false]; s.laneHold = [-1, -1, -1, -1];
     s.endT2 = 0;
@@ -221,7 +223,7 @@ export function createSim() {
     s.setT = -4 * s.beatDur;
     s.lastBeat = -5;
     s.phase = 'play';
-    s.ink = 0; s.inkBand = 0; s.feverT = 0; s.restUntil = -1; s.graceUntil = -1; s.strayInk = 0; s.strayAt = -9; s.stampLock = -1;
+    s.ink = 0; s.inkBand = 0; s.feverT = 0; s.restUntil = -1; s.graceUntil = -1; s.strayInk = 0; s.strayAt = -9; s.stampLock = -1; s.dripAt = 0;
     s.stampLastSet = 0;
     s.laneHold = [-1, -1, -1, -1];
     const chart = makeChart(ctx.rng.fork(), s.cfg);
@@ -435,6 +437,18 @@ export function createSim() {
         s.score += (40 * s.mult * (s.feverT > 0 ? bal('feverMult') : 1)) * dt;
       }
     }
+
+    // from the third set the well leaks: while it is over half full, an extra half blot drips in every four beats
+    if (s.set >= 2 && s.ink >= stats().inkMax * 0.5 && s.feverT <= 0 && s.setT >= 0) {
+      if (s.dripAt <= 0) s.dripAt = s.setT + 4 * s.beatDur;
+      else if (s.setT >= s.dripAt) {
+        s.dripAt = s.setT + 4 * s.beatDur;
+        s.drips++;
+        emit({ type: 'drip', magnitude: 0.4, data: { lane: Math.floor(s.setT / s.beatDur) % 4 } });
+        addInk(0.5, Math.floor(s.setT / s.beatDur) % 4);
+        if (s.phase !== 'play') return;
+      }
+    } else s.dripAt = 0;
 
     // misses and rest-clears
     const w = stats().windowMul * (s.feverT > 0 ? 1.4 : 1);

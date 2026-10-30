@@ -9,7 +9,7 @@
   "theme": "Every mistake leaves a mark that later becomes a tool",
   "wildcard": null,
   "juiceLayers": ["shake", "particles", "hitStop", "squashStretch", "flash", "trails", "eyes", "audio"],
-  "metrics": ["score", "hits", "perfects", "misses", "strays", "stamps", "spills", "blots", "maxCombo", "setReached", "accuracy", "pagesLeft", "notesTotal", "feverScore"],
+  "metrics": ["drips", "score", "hits", "perfects", "misses", "strays", "stamps", "spills", "blots", "maxCombo", "setReached", "accuracy", "pagesLeft", "notesTotal", "feverScore"],
   "assets": [],
   "buildStatus": "ok",
   "feedbackStatus": "needs-feedback",

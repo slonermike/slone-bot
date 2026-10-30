@@ -53,6 +53,8 @@ function makeGreedy(opts: { jitter: number; slip: number; stampAt: number; name:
 export const bots: Bot[] = [
   makeGreedy({ name: 'greedy', jitter: 0.045, slip: 0.06, stampAt: 5 }),
   makeGreedy({ name: 'sloppy', jitter: 0.09, slip: 0.22, stampAt: 4 }),
+  // a rough novice who stamps late (holds ink for a bigger fever): this is who feels the drips
+  makeGreedy({ name: 'novice', jitter: 0.11, slip: 0.3, stampAt: 6 }),
   {
     // mashes every lane every other tick: should hit everything but drown in stray ink
     name: 'degenerate-mash',
