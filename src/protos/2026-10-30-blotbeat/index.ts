@@ -1,7 +1,7 @@
 // Blot Beat: render + juice + audio around the pure sim in sim.ts.
 import { Container, Graphics, Rectangle, Sprite } from 'pixi.js';
 import type { Application } from 'pixi.js';
-import { glyph, onDeviceChange } from '../../core/index.ts';
+import { getDevice, glyph, onDeviceChange } from '../../core/index.ts';
 import type { Ctx, InputState, Prototype, SimEvent, View } from '../../core/types.ts';
 import { play } from '../../audio/index.ts';
 import { music } from '../../audio/music.ts';
@@ -17,12 +17,15 @@ import { syncStep } from './sync.ts';
 export { bots } from './bots.ts';
 
 const PHASE = { play: 0, pick: 1, won: 2, lost: 3 } as const;
-const HINTS: Record<number, Parameters<typeof hintPlate>[0]> = {
-  0: ['Every note is part of the song. Play it:', { key: 'A' }, 'kick', { key: 'Y' }, 'snare', { key: 'B' }, 'melody'],
-  1: [{ key: 'X' }, 'bass joins. Long notes: press, then hold to the tail'],
-  2: ['Six-eight: the beat sways in threes. Hold the bass'],
-  3: ['Finale: the whole band. Play it all'],
-};
+/** What strikes each lane: the face button on a pad, the arrow key on a keyboard (up, right, down, left match the lanes). */
+const ARROWS = ['\u2191', '\u2192', '\u2193', '\u2190'];
+const laneGlyph = (lane: number) => (getDevice() === 'keyboard' ? ARROWS[lane]! : glyph(LANE_BUTTON[lane]!));
+const hintFor = (set: number): Parameters<typeof hintPlate>[0] => [
+  ['Every note is part of the song. Play it:', { key: laneGlyph(2) }, 'kick', { key: laneGlyph(0) }, 'snare', { key: laneGlyph(1) }, 'melody'],
+  [{ key: laneGlyph(3) }, 'bass joins. Long notes: press, then hold to the tail'],
+  ['Six-eight: the beat sways in threes. Hold the bass'],
+  ['Finale: the whole band. Play it all'],
+][set]!;
 
 interface NoteView { g: Graphics; ribbon: Graphics | null; fading: boolean; }
 interface Splat { g: Graphics; }
@@ -339,7 +342,7 @@ export function createPrototype(): Prototype {
       const p = laneRing(l);
       c.position.set(p.x, p.y);
       const g = new Graphics().ellipse(0, 0, 40, 24).fill(C.bg).stroke({ width: 7, color: C.ink }).ellipse(0, 0, 40, 24).stroke({ width: 2, color: C.white, alpha: 0.9 });
-      const t = label(glyph(LANE_BUTTON[l]!), 18, C.tint, { weight: '900' });
+      const t = label(laneGlyph(l), 22, C.tint, { weight: '900' });
       c.addChild(g, t);
       boardC.addChild(c);
       targets.push(c);
@@ -658,7 +661,7 @@ export function createPrototype(): Prototype {
     if (s.inkBand >= 2) eyes.setMood('worried', 0.2); else if (s.feverT > 0) eyes.setMood('happy', 0.2);
     for (let l = 0; l < 4; l++) {
       const t = targetLabels[l]!;
-      const g = glyph(LANE_BUTTON[l]!);
+      const g = laneGlyph(l);
       if (t.text !== g) t.text = g;
       const down = s.laneDown[l];
       const base = laneRing(l).y;
@@ -681,7 +684,7 @@ export function createPrototype(): Prototype {
   function bannerIntro(set: number): void {
     const cfg = SETS[set]!;
     banner(`SET ${set + 1}: ${cfg.name.toUpperCase()}`, C.white, C.ink, 2200, 196);
-    showHint(HINTS[set]!, 5200);
+    showHint(hintFor(set), 5200);
   }
 
   // ---------------------------------------------------------------- overlays
@@ -1105,6 +1108,7 @@ export function createPrototype(): Prototype {
         introFor = s.set;
         bannerIntro(s.set);
       }
+      sim.setKeyboard(getDevice() === 'keyboard');
       // captures step virtual time much faster than the wall clock the audio runs on; locking to the audio there would drag the sim back
       const wallMs = performance.now();
       if (Number.isNaN(clockBase)) clockBase = wallMs - view.frame.time * 1000;

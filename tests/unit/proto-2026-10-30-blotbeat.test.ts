@@ -307,3 +307,29 @@ describe('clock lock to the audio', () => {
     expect(Math.abs(syncStep(0.15, { bigFrames: 0 }).nudge)).toBeLessThanOrEqual(0.012);
   });
 });
+
+describe('keyboard: arrows strike the lanes', () => {
+  const stickInput = (x: number, y: number) => { const i = blankInput(); i.left = { x, y }; return i; };
+  const strikes = (kb: boolean, x: number, y: number) => {
+    const { sim, s, step } = freshSim();
+    sim.setKeyboard(kb);
+    for (let i = 0; i < 300; i++) step(); // into the song, nothing struck
+    const before = s.freeTaps + s.strays + s.hits;
+    step(stickInput(x, y));
+    return s.freeTaps + s.strays + s.hits - before;
+  };
+  it('each arrow is its own lane: up, right, down, left strike one lane each', () => {
+    expect(strikes(true, 0, -1)).toBe(1);
+    expect(strikes(true, 1, 0)).toBe(1);
+    expect(strikes(true, 0, 1)).toBe(1);
+    expect(strikes(true, -1, 0)).toBe(1);
+  });
+  it('two neighbouring arrows strike two lanes (a double); opposite arrows cancel', () => {
+    expect(strikes(true, 0.707, -0.707)).toBe(2);
+    expect(strikes(true, 0, 0)).toBe(0);
+  });
+  it('a pad stick still strikes only its dominant lane, so a loose diagonal never makes a double', () => {
+    expect(strikes(false, 0.8, -0.6)).toBe(1);
+    expect(strikes(false, 0.707, 0.707)).toBe(1);
+  });
+});

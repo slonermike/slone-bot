@@ -125,6 +125,8 @@ export function createSim() {
   let out: SimEvent[] = [];
   let nextId = 1;
   let prevStick = -1;
+  let prevLanes = [false, false, false, false];
+  let keyboard = false;
   const s = {} as SimState;
 
   const bal = (id: string): number => ctx.balance[id] ?? BALANCE.find((b) => b.id === id)!.default;
@@ -336,6 +338,14 @@ export function createSim() {
     emit({ type: best.len > 0 ? 'hold-start' : 'hit', magnitude: grade === 'perfect' ? 0.8 : grade === 'good' ? 0.55 : 0.35, x: p.x, y: p.y, data: { lane, grade, points: pts, early, combo: s.combo, mult: s.mult, auto: false, kind: best.kind, midi: best.midi, len: best.len } });
   }
 
+  /** Which lanes the stick (or arrow keys) is striking. Keyboard: each arrow is its own lane, so two neighbouring arrows are a double and opposite arrows cancel. Pad: one dominant direction, so a loose diagonal never strikes two lanes. */
+  function stickLanes(input: InputState): boolean[] {
+    const { x, y } = input.left;
+    if (keyboard) return [y < -0.5, x > 0.5, y > 0.5, x < -0.5];
+    const sl = stickLane(input);
+    return [sl === 0, sl === 1, sl === 2, sl === 3];
+  }
+
   function stickLane(input: InputState): number {
     const { x, y } = input.left;
     if (Math.hypot(x, y) < 0.6) return -1;
@@ -344,14 +354,15 @@ export function createSim() {
   }
 
   function stepPlay(dt: number, input: InputState) {
-    const sl = stickLane(input);
-    const flick = sl >= 0 && sl !== prevStick ? sl : -1;
-    prevStick = sl;
+    const sticks = stickLanes(input);
     const b = input.buttons;
     const press = [b.y.pressed, b.b.pressed, b.a.pressed, b.x.pressed];
     const down = [b.y.down, b.b.down, b.a.down, b.x.down];
-    if (flick >= 0) press[flick] = true;
-    for (let l = 0; l < 4; l++) s.laneDown[l] = down[l]! || sl === l;
+    for (let l = 0; l < 4; l++) {
+      if (sticks[l] && !prevLanes[l]) press[l] = true;
+      s.laneDown[l] = down[l]! || sticks[l]!;
+    }
+    prevLanes = sticks;
 
     s.setT += dt;
     // beat events
@@ -483,7 +494,9 @@ export function createSim() {
 
   return {
     state: s,
-    init(c: Ctx) { ctx = c; nextId = 1; out = []; prevStick = -1; reset(); },
+    init(c: Ctx) { ctx = c; nextId = 1; out = []; prevStick = -1; prevLanes = [false, false, false, false]; reset(); },
+    /** Render side: true while the player is on a keyboard (arrow keys strike the lanes). Bots never call it. */
+    setKeyboard(on: boolean) { keyboard = on; },
     step(dt: number, input: InputState) {
       if (s.phase === 'play') stepPlay(dt, input);
       else if (s.phase === 'pick') stepPick(dt, input);
