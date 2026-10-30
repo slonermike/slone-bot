@@ -22,7 +22,7 @@ Slone dislikes: mastery-by-humiliation ("git gud"), online multiplayer, gritty t
 **Escalation exists for exactly one case:** broken infrastructure that blocks publishing. Leave the previous prototype playable, log the failure, stop.
 
 ## 5. Two compounding tracks
-- **Tech track (automatic):** reusable code from a night's branch merges back to main with a short note in `docs/tech/SCAFFOLD_API.md`, only if the smoke test passes. Prototype-specific code stays on its branch.
+- **Tech track:** general-use code (helpers any other game could use) is contributed to main **in a pull request, once the prototype is complete**, never during the build and never mixed into the prototype's branch. Make a separate branch off main that contains only the general-use code, a unit test, and a short entry in `docs/tech/SCAFFOLD_API.md`; open the PR only if `npm run check` passes. Never put game code, game rules, or a game's look in main. **General-use code must be style-neutral infrastructure** (performance, options, plumbing): do not codify shapes, palettes, fonts, motifs, layouts or effects that would nudge every future game toward one look or feel; those stay creative choices made in each prototype. Prototype-specific code stays on its branch. Prefer extending an existing scaffold helper with an option over copying it into the prototype.
 - **Design track (gated for nightly runs):** nightly runs never edit the Bible. They write proposed lessons to `docs/design/pending-lessons.md`, labeled **"one data point"** until a pattern repeats across nights. The Bible changes when Slone gives feedback in chat (section 15) or runs an assessment.
 
 ## 6. Knowledge policy (what a nightly agent may know)
