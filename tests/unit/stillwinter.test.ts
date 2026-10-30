@@ -218,3 +218,13 @@ describe('Stillwinter music passes the repo quality gate', () => {
     expect(new Set(Object.values(m).map((s) => s.root + s.scale)).size).toBe(1);
   });
 });
+
+describe('genre roll script', () => {
+  it('is seeded and picks one of five genres', async () => {
+    const { execFileSync } = await import('node:child_process');
+    const run = (seed: string) => execFileSync('node', ['scripts/genre-roll.mjs', '--seed', seed], { encoding: 'utf8' });
+    expect(run('2026-10-30')).toBe(run('2026-10-30'));
+    expect(run('2026-10-30')).toMatch(/ROLLED: tower-defense/);
+    expect(run('x').match(/candidates: (.*)/)![1].split(', ').length).toBe(5);
+  });
+});
