@@ -6,6 +6,15 @@ import { vfx, vfxRange } from './random.ts';
 
 export type ParticlePreset = 'puff' | 'debris' | 'confetti' | 'sparks' | 'dust';
 
+/** Particle look: soft discs (default), hard triangular shards, hard squares, or any texture you bake. */
+export type ParticleShape = 'circle' | 'shard' | 'square';
+
+export interface ParticlesOptions {
+  shape?: ParticleShape | Texture;
+  /** Replaces the default confetti colors (use the game's palette). */
+  confettiColors?: number[];
+}
+
 export interface EmitOptions {
   count?: number;
   color?: number;
@@ -55,40 +64,62 @@ const PRESETS: Record<ParticlePreset, PresetDef> = {
   dust: { count: 5, speed: [10, 60], life: [0.4, 0.9], size: [0.2, 0.4], gravity: -10, drag: 2, grow: 1.4, alpha: 0.35, spin: 0 },
 };
 
-let sharedTexture: Texture | null = null;
-function circleTexture(): Texture {
-  if (sharedTexture) return sharedTexture;
+const shapeTextures = new Map<ParticleShape, Texture>();
+function shapeTexture(shape: ParticleShape): Texture {
+  const cached = shapeTextures.get(shape);
+  if (cached) return cached;
   const c = document.createElement('canvas');
   c.width = c.height = 64;
   const g = c.getContext('2d')!;
-  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  grad.addColorStop(0, 'rgba(255,255,255,1)');
-  grad.addColorStop(0.7, 'rgba(255,255,255,1)');
-  grad.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = grad;
-  g.fillRect(0, 0, 64, 64);
-  sharedTexture = Texture.from(c);
-  return sharedTexture;
+  if (shape === 'circle') {
+    const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.7, 'rgba(255,255,255,1)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 64, 64);
+  } else if (shape === 'square') {
+    g.fillStyle = '#fff';
+    g.fillRect(8, 8, 48, 48);
+  } else {
+    // a flat arrowhead pointing right: stretched presets (sparks) then read as hard streaks
+    g.fillStyle = '#fff';
+    g.beginPath();
+    g.moveTo(60, 32);
+    g.lineTo(6, 8);
+    g.lineTo(18, 32);
+    g.lineTo(6, 56);
+    g.closePath();
+    g.fill();
+  }
+  const t = Texture.from(c);
+  shapeTextures.set(shape, t);
+  return t;
 }
 
 /**
  * Thin wrapper over Pixi's ParticleContainer (we do not write a particle engine).
- *   const fx = new Particles(view.world);   // in mount()
+ *   const fx = new Particles(view.world);   // in mount(); or new Particles(view.world, { shape: 'shard', confettiColors: [...] })
  *   fx.emit('sparks', x, y, { color: 0xffd166, angle: -Math.PI/2 });
  *   fx.update(dtSeconds);                   // every render frame
  * Counts are capped per emit and in total; the dial's particle layer and intensity scale them.
  */
 export class Particles {
   readonly container: ParticleContainer;
+  private readonly texture: Texture;
+  private readonly confettiColors?: number[];
   private live: PState[] = [];
   /** Hard cap on live particles. */
   maxTotal = 600;
   /** Cap per emit() call before intensity scaling. */
   maxPerEmit = 64;
 
-  constructor(parent: Container) {
+  constructor(parent: Container, opts: ParticlesOptions = {}) {
+    const shape = opts.shape ?? 'circle';
+    this.texture = typeof shape === 'string' ? shapeTexture(shape) : shape;
+    this.confettiColors = opts.confettiColors;
     this.container = new ParticleContainer({
-      texture: circleTexture(),
+      texture: this.texture,
       dynamicProperties: { position: true, rotation: true, vertex: true, color: true },
     });
     parent.addChild(this.container);
@@ -106,9 +137,10 @@ export class Particles {
       const ang = opts.angle === undefined ? vfx() * Math.PI * 2 : opts.angle + (vfx() * 2 - 1) * (opts.spread ?? Math.PI / 3);
       const sp = vfxRange(def.speed[0], def.speed[1]) * (opts.speed ?? 1);
       const size = vfxRange(def.size[0], def.size[1]) * (opts.size ?? 1);
-      const color = opts.color ?? (def.colors ? def.colors[Math.floor(vfx() * def.colors.length)]! : 0xffffff);
+      const palette = preset === 'confetti' && this.confettiColors ? this.confettiColors : def.colors;
+      const color = opts.color ?? (palette ? palette[Math.floor(vfx() * palette.length)]! : 0xffffff);
       const p = new Particle({
-        texture: circleTexture(),
+        texture: this.texture,
         x,
         y,
         anchorX: 0.5,
