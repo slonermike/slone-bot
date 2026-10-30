@@ -10,6 +10,23 @@ const cfg = resolveConfig({
   dirs: [app.getPath('userData'), path.dirname(app.getPath('exe'))],
 });
 
+// A plain-text log next to the settings (~/.config/minigame-bot-host/host.log), so a launch that hangs or dies
+// under Steam, where there is no terminal, can still be diagnosed. The previous run is kept as host.log.1.
+const logFile = path.join(app.getPath('userData'), 'host.log');
+try {
+  fs.mkdirSync(path.dirname(logFile), { recursive: true });
+  if (fs.existsSync(logFile)) fs.renameSync(logFile, `${logFile}.1`);
+} catch { /* logging must never stop the app */ }
+const t0 = Date.now();
+let logged = 0;
+function log(...parts) {
+  const line = `${new Date().toISOString()} +${((Date.now() - t0) / 1000).toFixed(2)}s ${parts.map((p) => (typeof p === 'string' ? p : JSON.stringify(p))).join(' ')}\n`;
+  if ((logged += line.length) > 256 * 1024) return; // a retry loop must not fill the disk
+  try { fs.appendFileSync(logFile, line); } catch { /* ignore */ }
+}
+process.on('uncaughtException', (err) => { log('uncaughtException', String(err && err.stack || err)); });
+process.on('unhandledRejection', (err) => { log('unhandledRejection', String(err && err.stack || err)); });
+
 // Gamepad and audio just work in the page: no autoplay gate, and keep running when the window loses focus
 // (Steam's overlay steals focus briefly).
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -25,12 +42,15 @@ if (process.platform === 'linux') {
   if (process.argv.includes('--no-sandbox-if-needed') || sandboxUnavailable(readText)) app.commandLine.appendSwitch('no-sandbox');
 }
 
-if (!app.requestSingleInstanceLock()) app.quit();
+if (!app.requestSingleInstanceLock()) { log('another instance holds the lock; quitting'); app.quit(); }
 
 let osRelease = '';
 try { osRelease = fs.readFileSync('/etc/os-release', 'utf8'); } catch { /* not Linux */ }
 const deck = isSteamDeck(process.env, osRelease);
 const viaSteam = launchedBySteam(process.env);
+const env = process.env;
+log('start', { version: app.getVersion(), electron: process.versions.electron, platform: process.platform, arch: process.arch, argv: process.argv.slice(1), url: cfg.url, windowed: cfg.windowed });
+log('env', { deck, viaSteam, XDG_SESSION_TYPE: env.XDG_SESSION_TYPE, WAYLAND_DISPLAY: env.WAYLAND_DISPLAY, DISPLAY: env.DISPLAY, GAMESCOPE_WAYLAND_DISPLAY: env.GAMESCOPE_WAYLAND_DISPLAY, SteamGameId: env.SteamGameId, STEAM_COMPAT_APP_ID: env.STEAM_COMPAT_APP_ID, STEAM_COMPAT_DATA_PATH: env.STEAM_COMPAT_DATA_PATH, APPIMAGE: env.APPIMAGE, noSandbox: app.commandLine.hasSwitch('no-sandbox') });
 let win;
 let retry;
 let updater;
@@ -51,7 +71,13 @@ function createWindow() {
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, devTools: cfg.devtools },
   });
   win.removeMenu();
-  win.once('ready-to-show', () => win.show());
+  win.once('ready-to-show', () => { log('ready-to-show'); win.show(); });
+  // If the first paint never comes (a GPU or display-backend problem), show the window anyway rather than hang invisibly.
+  setTimeout(() => { if (win && !win.isDestroyed() && !win.isVisible()) { log('no ready-to-show after 5s; showing anyway'); win.show(); } }, 5000);
+  win.webContents.on('did-finish-load', () => log('did-finish-load', win.webContents.getURL()));
+  win.webContents.on('render-process-gone', (_e, d) => log('render-process-gone', d));
+  win.webContents.on('unresponsive', () => log('page unresponsive'));
+  win.webContents.on('console-message', (_e, level, message, line, source) => { if (level >= 2) log('page error', message, `${source}:${line}`); });
 
   // Window-local shortcuts (global ones need OS permission on some systems and fight other apps).
   win.webContents.on('before-input-event', (e, input) => {
@@ -81,6 +107,7 @@ function createWindow() {
 
   // Offline or server down: show the local page, keep retrying the real one.
   win.webContents.on('did-fail-load', (_e, code, _desc, failedUrl, isMainFrame) => {
+    log('did-fail-load', { code, desc: _desc, url: failedUrl, isMainFrame });
     if (!isMainFrame || code === -3 /* aborted */) return;
     if (failedUrl.startsWith('file:')) return;
     win.loadFile(path.join(__dirname, 'offline.html'), { query: { url: cfg.url } }).catch(() => {});
@@ -116,7 +143,9 @@ function setupUpdates() {
   setInterval(() => updater.check(), 6 * 60 * 60 * 1000);
 }
 
+app.on('child-process-gone', (_e, d) => log('child-process-gone', d));
 app.whenReady().then(() => {
+  log('ready; gpu', app.getGPUFeatureStatus());
   setupUpdates();
   // Deny every permission prompt (the launcher needs none; the Gamepad API is not permission-gated).
   session.defaultSession.setPermissionRequestHandler((_wc, _perm, cb) => cb(false));
@@ -127,8 +156,9 @@ app.whenReady().then(() => {
     cb({ requestHeaders: headers });
   });
   createWindow();
+  log('window created');
   // Escape hatches for desktop testing; on the Deck, quit from Steam's own menu.
   app.on('second-instance', () => win && (win.isMinimized() && win.restore(), win.focus()));
 });
 
-app.on('window-all-closed', () => app.quit());
+app.on('window-all-closed', () => { log('window-all-closed'); app.quit(); });
