@@ -19,6 +19,7 @@ Recovery loop: what a soft failure looks like and how it generates a story
 Different from the last five nights (from the ledger only): one line
 Scope cut line: what is in, what is explicitly out
 Feel plan: sound and juice on main verb, feedback events, pressure state
+Screens and UI plan: how the prompts are anchored, where each meter and currency sits, how the win and the loss are shown and named, what each unit type's one job is and how its look and animation say it
 Balance knobs (3 to 8): id, default, range, what it changes (exposed in the pause menu's Balance screen)
 Telemetry plan: metrics and bots
 Feedback questions (3-5): see below
