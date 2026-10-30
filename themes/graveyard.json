@@ -1,20 +1,5 @@
 [
   {
-    "id": "t034",
-    "text": "The level never changes, but you do",
-    "type": "constraint",
-    "source": "human",
-    "strikes": 0,
-    "reasons": [
-      {
-        "date": "2026-10-30",
-        "text": "removed by human: confusing: hard to turn into a mechanic or a feeling"
-      }
-    ],
-    "used": null,
-    "retired": "2026-10-30"
-  },
-  {
     "id": "t043",
     "text": "Almost remembering something important",
     "type": "feeling",
