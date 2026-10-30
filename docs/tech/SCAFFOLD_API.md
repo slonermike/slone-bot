@@ -6,7 +6,7 @@ Imports from a prototype at `src/protos/<slug>/index.ts`:
 ```ts
 import { Rng, InputBuffer, Coyote, shapeStick, track } from '../../core/index.ts';
 import { play, defineSound } from '../../audio/index.ts';
-import { tween, ease, shake, hitStop, flash, punch, SquashStretch, Trail, Particles, Eyes, numberPop, dial, ngon, chamfer, slab, polyRing, bakeTexture, SpritePool } from '../../juice/index.ts';
+import { tween, ease, shake, hitStop, flash, punch, SquashStretch, Trail, Particles, Eyes, numberPop, dial, bakeTexture, SpritePool } from '../../juice/index.ts';
 import { idleBot, randomBot, steerToward } from '../../bots/index.ts';
 ```
 
@@ -189,10 +189,9 @@ All respect the juice dial: if a layer is off, the helper does nothing.
 | `shake` | `shake(0.4)`: add trauma 0..1 (felt shake is trauma squared, amplitude capped). The shell applies it to `view.world`. |
 | `hitStop` | `hitStop(4)`: freeze the sim for N steps (3 to 8 reads well). |
 | `Trail` | `const t = new Trail(view.world, { color, width, length })`; `t.push(x, y)` then `t.draw()` each render; `t.clear()` |
-| `Particles` | `const p = new Particles(view.world)`; `view.onFrame((dt) => p.update(dt))`; `p.emit('sparks', x, y, { count, color, speed, size, angle, spread })`. Presets: `puff`, `debris`, `confetti`, `sparks`, `dust`. Capped per emit (64) and in total (600). Wraps Pixi's `ParticleContainer`. **Look options:** `new Particles(view.world, { shape: 'circle' | 'shard' | 'square' | texture, confettiColors: [...] })`: soft discs by default; `'shard'` is a hard triangle (stretched sparks read as hard streaks), `'square'` a hard square; `confettiColors` swaps the confetti palette for the game's own. |
+| `Particles` | `const p = new Particles(view.world)`; `view.onFrame((dt) => p.update(dt))`; `p.emit('sparks', x, y, { count, color, speed, size, angle, spread })`. Presets: `puff`, `debris`, `confetti`, `sparks`, `dust`. Capped per emit (64) and in total (600). Wraps Pixi's `ParticleContainer`. **Options:** `new Particles(view.world, { texture, confettiColors: [...] })`: the soft disc is the default; pass your own texture (see `bakeTexture`) for any other particle look, and `confettiColors` to use the game's palette. |
 | `Eyes` | `const e = new Eyes({ size: 8 })`; add `e.container` to an entity; `view.onFrame((dt) => e.update(dt))`; `e.lookAt(dx, dy)`, `e.setMood('happy' | 'worried' | 'frown' | 'neutral', seconds)`, `e.blink()` |
 | `numberPop` | `numberPop(view.world, '+1', x, y, { color, size, rise, ms, font, stroke, strokeWidth })`. The outline scales with size by default; set `stroke` to a color that contrasts with BOTH the text and whatever it floats over (light text on a bright background needs a dark outline). |
-| `ngon`, `chamfer`, `slab`, `polyRing` | Vertex helpers for flat, angular looks (`graphics.poly(ngon(x, y, r, 6, rot)).fill(c)`): regular polygon, corner-cut rectangle, slanted panel, and a hollow polygon ring (`polyRing(g, x, y, r, thick, sides, rot, color, alpha)`, drawn as a fill with a hole, no strokes). |
 | `bakeTexture`, `SpritePool` | For crowds: bake a shape once (`const tex = bakeTexture(view.app as Application, (g) => g.poly(...).fill(c))`), then each frame `pool.begin(); const sp = pool.next(tex); sp.position.set(x, y); ... pool.end();` (hides unused sprites). Far cheaper than redrawing hundreds of vector shapes every frame. |
 | `dial` | the juice dial: `dial.enabled('shake')`, `dial.scale('shake', amount)`, `dial.toggle(layer)`, `dial.setIntensity(0.5)`, `dial.activeLayers()`. Layers: `shake, particles, hitStop, squashStretch, flash, trails, eyes, audio`. |
 | `vfx()`, `vfxRange(a, b)` | visual-only randomness (seeded from `ctx.vfxRng`) |

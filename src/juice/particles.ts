@@ -6,11 +6,9 @@ import { vfx, vfxRange } from './random.ts';
 
 export type ParticlePreset = 'puff' | 'debris' | 'confetti' | 'sparks' | 'dust';
 
-/** Particle look: soft discs (default), hard triangular shards, hard squares, or any texture you bake. */
-export type ParticleShape = 'circle' | 'shard' | 'square';
-
 export interface ParticlesOptions {
-  shape?: ParticleShape | Texture;
+  /** Particle texture. Default is the soft disc; pass your own (see `bakeTexture`) for any other look. */
+  texture?: Texture;
   /** Replaces the default confetti colors (use the game's palette). */
   confettiColors?: number[];
 }
@@ -64,42 +62,25 @@ const PRESETS: Record<ParticlePreset, PresetDef> = {
   dust: { count: 5, speed: [10, 60], life: [0.4, 0.9], size: [0.2, 0.4], gravity: -10, drag: 2, grow: 1.4, alpha: 0.35, spin: 0 },
 };
 
-const shapeTextures = new Map<ParticleShape, Texture>();
-function shapeTexture(shape: ParticleShape): Texture {
-  const cached = shapeTextures.get(shape);
-  if (cached) return cached;
+let discTexture: Texture | null = null;
+function circleTexture(): Texture {
+  if (discTexture) return discTexture;
   const c = document.createElement('canvas');
   c.width = c.height = 64;
   const g = c.getContext('2d')!;
-  if (shape === 'circle') {
-    const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(0.7, 'rgba(255,255,255,1)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 64, 64);
-  } else if (shape === 'square') {
-    g.fillStyle = '#fff';
-    g.fillRect(8, 8, 48, 48);
-  } else {
-    // a flat arrowhead pointing right: stretched presets (sparks) then read as hard streaks
-    g.fillStyle = '#fff';
-    g.beginPath();
-    g.moveTo(60, 32);
-    g.lineTo(6, 8);
-    g.lineTo(18, 32);
-    g.lineTo(6, 56);
-    g.closePath();
-    g.fill();
-  }
-  const t = Texture.from(c);
-  shapeTextures.set(shape, t);
-  return t;
+  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.7, 'rgba(255,255,255,1)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 64, 64);
+  discTexture = Texture.from(c);
+  return discTexture;
 }
 
 /**
  * Thin wrapper over Pixi's ParticleContainer (we do not write a particle engine).
- *   const fx = new Particles(view.world);   // in mount(); or new Particles(view.world, { shape: 'shard', confettiColors: [...] })
+ *   const fx = new Particles(view.world);   // in mount(); or new Particles(view.world, { texture, confettiColors: [...] })
  *   fx.emit('sparks', x, y, { color: 0xffd166, angle: -Math.PI/2 });
  *   fx.update(dtSeconds);                   // every render frame
  * Counts are capped per emit and in total; the dial's particle layer and intensity scale them.
@@ -115,8 +96,7 @@ export class Particles {
   maxPerEmit = 64;
 
   constructor(parent: Container, opts: ParticlesOptions = {}) {
-    const shape = opts.shape ?? 'circle';
-    this.texture = typeof shape === 'string' ? shapeTexture(shape) : shape;
+    this.texture = opts.texture ?? circleTexture();
     this.confettiColors = opts.confettiColors;
     this.container = new ParticleContainer({
       texture: this.texture,
