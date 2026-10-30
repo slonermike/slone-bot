@@ -178,3 +178,37 @@ describe('genre roll', () => {
     expect(pickGenre(['tower defense', 'roguelike', 'x'], ['x', 'tower defense', 'roguelike'], 3).repeated).toBe(true);
   });
 });
+
+describe('sync-themes', () => {
+  it('pushes themes/ to main from another branch and pulls it back', async () => {
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const { execFileSync } = await import('node:child_process');
+    const { push, pull } = await import('../../scripts/sync-themes.mjs');
+    const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
+    const g = (cwd: string, ...a: string[]) => execFileSync('git', a, { cwd, env, encoding: 'utf8' }).trim();
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sync-'));
+    const bare = path.join(base, 'remote.git');
+    const a = path.join(base, 'a');
+    const b = path.join(base, 'b');
+    g(base, 'init', '-q', '--bare', '-b', 'main', bare);
+    g(base, 'clone', '-q', bare, a);
+    fs.mkdirSync(path.join(a, 'themes'));
+    fs.writeFileSync(path.join(a, 'themes/pool.json'), '[1,2,3]');
+    g(a, 'add', '.'); g(a, 'commit', '-q', '-m', 'seed'); g(a, 'push', '-q', 'origin', 'HEAD:main');
+    g(base, 'clone', '-q', bare, b);
+    g(b, 'checkout', '-q', '-b', 'proto/x');
+    const old = { ...process.env };
+    Object.assign(process.env, { GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' });
+    try {
+      fs.writeFileSync(path.join(b, 'themes/pool.json'), '[2,3]'); // a run consumed theme 1 on its proto branch
+      expect(push(b, 'msg')).toMatch(/pushed/);
+      expect(g(a, 'fetch', '-q', 'origin') + g(a, 'show', 'origin/main:themes/pool.json')).toBe('[2,3]');
+      expect(push(b, 'again')).toMatch(/already has/);
+      fs.writeFileSync(path.join(b, 'themes/pool.json'), 'stale');
+      pull(b);
+      expect(fs.readFileSync(path.join(b, 'themes/pool.json'), 'utf8')).toBe('[2,3]');
+    } finally { process.env = old; }
+  });
+});
