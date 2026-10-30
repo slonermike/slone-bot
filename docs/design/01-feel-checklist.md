@@ -1,23 +1,23 @@
 # 01 Feel Checklist (read-only)
 
-Run this on every build before wrap-up. For each item, mark: yes, no, n/a, or untested. Report counts in the post mortem. Items marked [bot] can be checked by telemetry; [Slone] need his feedback.
+Run this on every build before wrap-up. For each item, mark: yes, no, n/a, or untested. Report counts in the post mortem. Items marked [bot] can be checked by telemetry; [Slone] need his feedback. Items written around an actor, a camera, real-time input or collisions apply only if the game has them: mark them n/a otherwise and say what plays that role instead.
 
 ## A. Responsiveness
-- [ ] Input to visible response within one frame (about 16ms) for the main verb. [bot]
+- [ ] Input to visible response is immediate (for real-time input, within one frame, about 16ms) for the main interaction. [bot]
 - [ ] Input to audio response under about 50ms. [bot]
 - [ ] Input buffering on time-critical actions (accept presses slightly before they are legal). [bot]
 - [ ] Coyote time or equivalent forgiveness on edge actions. [bot]
-- [ ] Analog stick shaped: dead zone, response curve tuned, no jitter at rest. [bot]
+- [ ] If the game uses analog input: shaped with a dead zone and a tuned response curve, no jitter at rest. [bot]
 - [ ] Restart after failure is immediate (under a second). [bot]
 
 ## B. Motion
 - [ ] Everything arrives, moves, and leaves with easing; no linear snaps on UI or entities.
-- [ ] Acceleration and deceleration give the main verb weight; the movement is a toy before any level exists. [Slone]
-- [ ] Camera follows with smoothing (`chase`), with look-ahead or deadzone where useful.
+- [ ] The main interaction has weight and is satisfying before anything is built on it (for a controllable actor: acceleration and deceleration, motion that is a toy on its own). [Slone]
+- [ ] If the game has a moving camera: it follows with smoothing (`chase`), with look-ahead or deadzone where useful.
 - [ ] Entrances use random delay jitter so groups feel organic.
 
 ## C. Impact and feedback (stack small effects)
-- [ ] Squash and stretch on the main actor and on impacts.
+- [ ] Squash and stretch (or an equivalent give) on the main actor, pieces or UI, and on impacts.
 - [ ] Flash on contact (white or color), then fade.
 - [ ] Hit-stop on big impacts (2 to 6 frames), scaled to impact.
 - [ ] Screen shake scaled to event magnitude, trauma-based, amplitude capped. Over-shake is a failure.
@@ -42,8 +42,8 @@ Run this on every build before wrap-up. For each item, mark: yes, no, n/a, or un
 - [ ] The main actor has character: eyes, expressions, idle animation, reactions to success and near-miss.
 - [ ] The world reacts to the player (things wobble, sway, notice).
 - [ ] Failure is funny, dramatic, or readable, never just a freeze.
-- [ ] A power moment, if the build has one, is announced with a prompt, triggered by the player, and clearly flips the pressure (hazards become targets) with the biggest juice in the game. [Slone]
-- [ ] Failure gets the same effect stack as the main verb (layered sound, freeze, shake, flash, particles, text, a reaction from the actor). [Slone]
+- [ ] A power moment, if the build has one, is announced with a prompt, triggered by the player, and clearly flips the pressure (what normally pressures the player becomes something they can use or overcome) with the biggest juice in the game. [Slone]
+- [ ] A failure or setback gets the same expressive stack as the main interaction (layered sound, a hold beat, a visible reaction). [Slone]
 
 ## F. Readability and Deck fit
 - [ ] Good and bad things distinguishable by color and shape at a glance.
@@ -53,7 +53,7 @@ Run this on every build before wrap-up. For each item, mark: yes, no, n/a, or un
 - [ ] Pressure is visible: the player can see what is coming and how bad it is.
 
 ## G. Pressure and recovery (taste)
-- [ ] Idle bot proves back pressure acts without player input. [bot]
+- [ ] If the game has back pressure: the idle bot proves it acts without player input. [bot]
 - [ ] Pressure rises over time or with exploration, with a visible curve.
 - [ ] Forward pressure exists: the player's power or options also grow as the pressure does (meter, power moment, unlocks). [Slone]
 - [ ] Pressure gains complexity, not just speed: a new source or a change in character appears as the session goes on. [bot: count distinct pressure events by minute]
