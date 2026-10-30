@@ -2,7 +2,7 @@
 
 Design principles for making prototypes Slone will like. Nightly runs read and follow this file but never edit it. It changes when Slone gives feedback in chat (the chat agent updates it directly as the first step, see `CONSTITUTION.md` section 15) or runs an assessment of `pending-lessons.md`. **Every lesson here is written to apply to any kind of game**: principles in genre-neutral terms, no prototype names, no vocabulary that implies a genre (see `CONSTITUTION.md` section 15). Keep it that way in every edit.
 
-Version: 7 (seeded from six GMTK sources and Slone's taste; feedback incorporated from the `_demo` prototype and from a first nightly prototype, 2026-10-29. One data point per lesson so far; see the revision log at the end).
+Version: 8 (seeded from six GMTK sources and Slone's taste; feedback incorporated from the `_demo` prototype and from a first nightly prototype, 2026-10-29. One data point per lesson so far; see the revision log at the end).
 
 ## 1. What a prototype is for
 A prototype answers one question quickly. The big three questions: Is it fun? Is it viable? Will people like it? Our nightly prototypes mostly ask "is it fun and what does it feel like?" Slone is the only playtester, so every build must make his feedback easy and specific.
@@ -52,6 +52,13 @@ A prototype answers one question quickly. The big three questions: Is it fun? Is
 - **If a resource drives play, running out of its source can be the fail state.** When a theme makes one thing the engine of the game (time that only moves when something breaks), having nothing left to feed it is a real, readable loss. Start the player with some, and guard the loop with a queued state so the source cannot be conjured and spent in the same breath. (v4, one data point: `2026-10-30-stillwinter`.)
 - **A familiar genre with its central tension flipped can win over a genre-sceptic.** Slone is usually ambivalent about tower defense and was intrigued once the central rule changed. Hook plus anchor (section 9) applies to genres too. (v4, one data point: `2026-10-30-stillwinter`.)
 
+- **A pull can replace a push.** Open-ended play needs something that drives the player on: either pressure pushing back, or a pull, a world waiting to be revealed. Watching something empty, dead or hidden take form because of the player's actions can carry a calm game with no pressure at all, if the change is visible, beautiful and clearly caused by them. The strongest builds have both. (v8, one data point: Slone.)
+- **One distinctive verb, asked new questions.** A single memorable core action whose input never changes, with the world's demands changing around it: introduce each demand alone, then combine them in increasingly layered ways. (v8, one data point.)
+- **Costly choices.** A resource with two good uses makes every spend a sacrifice of the other, so the choice is felt. A powerful move that is dangerous to use (hard to control, a risk to spend) feels better than a safe one. Tune toward the edge: one mistake from disaster, one good move from triumph. (v8, one data point.)
+- **Short and sharp.** Prefer mechanics and challenges that end before they get stale; variety and momentum beat depth for its own sake. (v8, one data point.)
+- **Cryptic is good, obfuscated is not.** Mystery and hidden things are welcome when every secret has a clue the player can find by looking carefully. If the only path is guessing, the secret is too hidden. (v8, one data point.)
+- **Silly is welcome.** A kooky, unashamed tone and absurd scale can be the point of a game. (v8, one data point.)
+
 ## 7a. Interface, screens and readability (v7)
 - **UI is designed, not typed on.** Prompts, hints and menus are anchored components (a plate with key-cap chips and short labels, choice cards), never loose text floating over the game. A cyclable list shows its bumper glyphs at its ends and lies horizontally. (v7, one data point: `2026-10-30-stillwinter`.)
 - **Put each number where it is used, and keep unlike meters apart.** A currency sits beside the thing you spend it on. Two meters that fill from different causes are separated in space and in shape, so a flying number never looks like it feeds the wrong one; a state that matters (time frozen or flowing) is also carried by shape, not only by digits. (v7, one data point.)
@@ -92,6 +99,7 @@ A game can have plenty of activity (motion, numbers, events, effects, systems) a
 - **Test:** show a new player ten seconds of play with no text. Could they say what the goal is, what they control, and whether the last action was good? If not, fix clarity before polishing feel.
 
 ## Revision log
+- v8, 2026-10-30: from Slone's list of games he loves (ten new taste cards): a pull can replace a push, one distinctive verb asked new questions, costly choices and edge-of-catastrophe tuning, short and sharp, cryptic but not obfuscated, silly is welcome (6). One data point each. Flagged against the earlier rule that open-ended play needs back pressure; see `pending-lessons.md`.
 - v7, 2026-10-30: from Slone's later rounds on `2026-10-30-stillwinter`: designed UI instead of loose text, currency near its use and unlike meters apart (shape as well as numbers), win and lose as designed events with plainly named modes, loud projectiles and hits, unit types with distinct jobs (7a). All one data point.
 - v4, 2026-10-30: from Slone's first play of `2026-10-30-stillwinter`: show the rule through nonverbal cause and effect, running out of the engine resource as a fail state with a queued guard, flipped genres (6). Selection lists must show their bumper glyphs (feel checklist). All one data point.
 - v6, 2026-10-30: iteration is the method (4). Prompted by nightly agents declaring themselves done after about 20 minutes instead of looping play, note, change, and stepping back.
