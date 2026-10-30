@@ -9,6 +9,7 @@ Question: the one thing this build tests
 Target feeling: specific emotion or fantasy (not "fun")
 Mode: content-driven (5-10 min) | systemic (endless, polish 1-2 mechanics)
 Theme: <text>   Why picked: one line
+Genre: <rolled genre>   Options considered: <the 3 to 5 you listed>   (from `node scripts/night-state.mjs genre ...`; reinterpret freely, stay recognizable)
 Atoms: <id>, <id>      Wildcard: <text or none>
 Look (from `node scripts/night-state.mjs look`; override at most one dimension, say which and why): palette, shapes, rendering, framing, ui. Then the 3 to 5 hex colors you will actually use and one sentence on what the game looks like at rest.
 Loop (4 lines): win/reward | obstacle/pressure | fail state and recovery | player actions
@@ -18,6 +19,7 @@ Recovery loop: what a soft failure looks like and how it generates a story
 Different from the last five nights (from the ledger only): one line
 Scope cut line: what is in, what is explicitly out
 Feel plan: sound and juice on main verb, feedback events, pressure state
+Screens and UI plan: how the prompts are anchored, where each meter and currency sits, how the win and the loss are shown and named, what each unit type's one job is and how its look and animation say it
 Balance knobs (3 to 8): id, default, range, what it changes (exposed in the pause menu's Balance screen)
 Telemetry plan: metrics and bots
 Feedback questions (3-5): see below
@@ -59,13 +61,14 @@ Questions are tied to the night's target feeling and risk. Phrase them as feelin
 # Post mortem: <title>
 Question and target feeling: (copied from the brief)
 What shipped: one sentence (main verb, pressure source)
+Rounds: how many rounds and step-backs, and the biggest thing each changed (one line each)
 Core before polish: was the bare core interesting with juice off? how I judged it
 Did it work (honest read): checklist counts (pass / fail / untested); the shaky items
 Measured (telemetry): runLength, deaths, firstPressureSimSec, idleSurvivalSec, variance, fps, inputToAudioMs (a few numbers)
 Believed (labeled): my guesses about feel, which I cannot verify (I cannot play or hear the build)
 Degenerate strategies found: or "none found"
 What I cut or ran out of time for:
-Surprises (follow the fun): accidents, emergent behavior, pivots (and whether a pivot reinforced the target feeling)
+Surprises (follow the fun): accidents, emergent behavior, pivots (what was not working, what you changed, and whether it helped)
 Biggest risk for Slone to check: the one thing most likely to feel wrong
 Reusable tech proposed to main (as a PR opened after the prototype is complete, not merged during the build): or "none"
 Assets sourced: (source, license) or "all synthesized"

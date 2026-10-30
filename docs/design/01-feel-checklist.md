@@ -64,6 +64,18 @@ Run this on every build before wrap-up. For each item, mark: yes, no, n/a, or un
 - [ ] Discovery of a new verb, item, or pattern happens within the first few minutes. [Slone]
 - [ ] No mastery wall: a first-time player can progress. [bot: greedy vs. random]
 
+## F2. Legibility of the rule (v4)
+- [ ] Anything a break, kill or pickup releases visibly travels to the meter it feeds, and the meter fills on arrival, so cause and effect are linked without words. [Slone]
+- [ ] A new player can tell what to do first from the screen alone (markers on what to press), and ghosted or queued states look different from real ones. [Slone]
+- [ ] A list the player can cycle (spires, tools) is laid out horizontally with the bumper glyphs (LB / RB) at its ends. [Slone]
+
+## F3. Interface, screens and units (v7)
+- [ ] Every prompt is an anchored UI component (key-cap chips on a plate), not loose text over the game; cyclable lists show their bumper glyphs. [Slone]
+- [ ] The currency is shown beside where it is spent; unlike meters are apart and differ in shape; state that matters is carried by shape as well as digits. [Slone]
+- [ ] The win is unmistakable (hero object powers up, threats cleared in sequence) and the win and loss screens are designed (sequence, counting tally, plain reason, choice cards). Modes and rewards are named plainly with a one-line explanation. [Slone]
+- [ ] Projectiles are visible on light and dark ground (size, contrast, trail, particles, flight time); each shooter has a visible, animated emitter; a hit has a big tell; damage marks line up with the art. [Slone]
+- [ ] Each unit type has one obvious job that its shape, idle animation and behaviour all show; helping effects travel from source to target. [Slone]
+
 ## H. Performance
 - [ ] 60fps target; at least 55fps average with all effects on. [bot]
 - [ ] Particle counts capped; frame time logged with effects on and off. [bot]
