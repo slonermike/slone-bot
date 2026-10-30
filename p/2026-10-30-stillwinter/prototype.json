@@ -1,0 +1,43 @@
+{
+  "slug": "2026-10-30-stillwinter",
+  "title": "Stillwinter",
+  "date": "2026-10-30",
+  "question": "Does tower defense feel fresh when the world is frozen and the only way to move time is to break your own defenses?",
+  "targetFeeling": "tense, crafty stewardship: a held breath, then a thrilling release",
+  "mode": "content",
+  "tags": [
+    "v-place-build",
+    "l-recoverable-setback",
+    "tower-defense",
+    "arctic"
+  ],
+  "theme": "Time only moves when something breaks",
+  "wildcard": null,
+  "juiceLayers": [
+    "shake",
+    "particles",
+    "hitStop",
+    "squashStretch",
+    "flash",
+    "audio"
+  ],
+  "metrics": [
+    "dawnPct",
+    "thawedSeconds",
+    "shatters",
+    "maxChain",
+    "kills",
+    "placed",
+    "heartsLost",
+    "longestFrozenSec",
+    "spiresEaten",
+    "snaps",
+    "enemyKindsSeen"
+  ],
+  "assets": [],
+  "buildStatus": "ok",
+  "feedbackStatus": "needs-feedback",
+  "sizeKB": 2868,
+  "thumbnail": "thumb.png",
+  "preview": "preview.gif"
+}
