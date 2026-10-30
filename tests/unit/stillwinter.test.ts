@@ -75,6 +75,7 @@ describe('Stillwinter core rule: time only moves when something breaks', () => {
 
   it('placing costs ice, shattering refunds half, and an empty board never soft-locks', () => {
     const sim = fresh();
+    sim.s.dawn = sim.s.dawnLen * 0.2; // past the free-to-learn first tenth
     const ice0 = sim.s.ice;
     placeAt(sim, 4, 0);
     expect(sim.s.ice).toBe(ice0 - SPIRE.spike.cost);
@@ -126,6 +127,19 @@ describe('Stillwinter core rule: time only moves when something breaks', () => {
 });
 
 describe('Stillwinter controls and bots', () => {
+  it('the first tenth of the night refunds a shatter in full, and B / RT hop the cursor', () => {
+    const sim = fresh();
+    const ice0 = sim.s.ice;
+    placeAt(sim, 4, 0);
+    placeAt(sim, 5, 0);
+    sim.s.cx = 4; sim.s.cy = 0;
+    sim.step(1 / 60, press('x'));
+    expect(sim.s.ice).toBeGreaterThan(ice0 - SPIRE.spike.cost * 2 + SPIRE.spike.cost - 0.01);
+    sim.s.cx = 0; sim.s.cy = 0;
+    sim.step(1 / 60, press('b'));
+    expect([sim.s.cx, sim.s.cy]).toEqual([5, 0]);
+  });
+
   it('maps the stick onto the isometric grid in eight directions', () => {
     expect(stickToDelta(1, 0)).toEqual([1, -1]);
     expect(stickToDelta(0, 1)).toEqual([1, 1]);
@@ -181,10 +195,10 @@ describe('Stillwinter sounds', () => {
 
 describe('Stillwinter balance knobs', () => {
   it('each knob changes what the sim does', () => {
-    const base = runSim(createPrototype, bots[0], { seed: 4, maxSimSeconds: 400 });
+    const base = runSim(createPrototype, bots[2], { seed: 4, maxSimSeconds: 400 });
     for (const spec of BALANCE) {
-      const lo = runSim(createPrototype, bots[0], { seed: 4, maxSimSeconds: 400, balance: { [spec.id]: spec.min } });
-      const hi = runSim(createPrototype, bots[0], { seed: 4, maxSimSeconds: 400, balance: { [spec.id]: spec.max } });
+      const lo = runSim(createPrototype, bots[2], { seed: 4, maxSimSeconds: 400, balance: { [spec.id]: spec.min } });
+      const hi = runSim(createPrototype, bots[2], { seed: 4, maxSimSeconds: 400, balance: { [spec.id]: spec.max } });
       const key = (r: typeof base) => JSON.stringify([r.telemetry.outcome, r.telemetry.simSeconds, r.telemetry.metrics]);
       expect(key(lo) !== key(base) || key(hi) !== key(base), spec.id).toBe(true);
     }

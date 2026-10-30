@@ -9,3 +9,7 @@ Logged before fixing, as the protocol asks.
 5. **Idle bot: time really does stop.** The idle bot's world never moves (600 s of nothing). That is the theme working as intended, but it means the checklist item "idle bot proves back pressure acts without input" is false by design for this game.
 
 Pivots: none. Everything above reinforced the target feeling (held breath, then release).
+
+## Second pass (imagined hates and loves)
+Hates fixed: (1) fiddly cursor travel and a stingy first minute: B hops to the next spire, RT hops to a building cell near the lead enemy, the first tenth of dawn refunds a shatter in full, start ice 12. (2) guessing the cost of releasing time: orange ETA markers show where each walker will be after one more shatter, so planning is not a gamble.
+Loves doubled: (1) chains and Cold Snap: a CHAIN x N counter, rising whole-tone pings per link, hit-stop and a punch on Cold Snap. (2) the held breath: ticks speed up and rise in pitch as the time bank drains.

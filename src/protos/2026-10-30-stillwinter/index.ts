@@ -5,7 +5,7 @@ import { play, defineSound } from '../../audio/index.ts';
 import { music } from '../../audio/music.ts';
 import { tween, ease, shake, hitStop, flash, punch, Particles, numberPop, chaseDt, vfxRange, Trail } from '../../juice/index.ts';
 import type { Prototype, SimEvent, View, Ctx, InputState } from '../../core/types.ts';
-import { createSim, BALANCE, SPIRE, KINDS, N, ENEMY, ENEMY_BLURB, type Kind, type EnemyKind, type Sim, type Spire, type Enemy } from './sim.ts';
+import { createSim, BALANCE, SPIRE, KINDS, N, ENEMY, ENEMY_BLURB, pathAt, type Kind, type EnemyKind, type Sim, type Spire, type Enemy } from './sim.ts';
 import { bots } from './bots.ts';
 import { composeMusic, partsFor, type MusicSet } from './music.ts';
 
@@ -244,6 +244,9 @@ export function createPrototype(): Prototype {
   let snow: { g: Graphics; x: number; y: number; v: number; d: number }[] = [];
   let sunG!: Graphics;
   let faultC!: Container;
+  let etaG!: Graphics;
+  let chainText!: Text;
+  let snapIdx = 0;
   let trailLayer!: Container;
   let decals: { g: Graphics; age: number }[] = [];
   let decalC!: Container;
@@ -400,6 +403,7 @@ export function createPrototype(): Prototype {
     const t = sim.telemetry();
     if (t.placed === 0) return `${glyph('a')}  place a spire`;
     if (t.shatters === 0) return `${glyph('x')}  shatter it: time only moves when something breaks`;
+    if (t.shatters < 4 && sim.s.dawn / sim.s.dawnLen < 0.1) return `${glyph('b')} next spire    ${glyph('rt')} jump to the lead enemy`;
     if (sim.s.dawn / sim.s.dawnLen < 0.12) return `${glyph('lb')} / ${glyph('rb')}  spire    ${glyph('a')}  place    ${glyph('x')}  shatter`;
     if (sim.s.snap >= 25 && !sim.s.snapReady && t.snaps === 0 && sim.s.dawn / sim.s.dawnLen < 0.6) return 'chains fill the COLD SNAP meter';
     return '';
@@ -490,7 +494,8 @@ export function createPrototype(): Prototype {
       frontG = new Graphics();
       decalC = new Container();
       trailLayer = new Container();
-      world.addChild(faultC, frontG, decalC);
+      etaG = new Graphics();
+      world.addChild(faultC, frontG, decalC, etaG);
 
       chainG = new Graphics();
       rangeG = new Graphics();
@@ -595,7 +600,11 @@ export function createPrototype(): Prototype {
       bannerSub.anchor.set(0.5);
       bannerSub.position.set(640, 168);
       bannerSub.alpha = 0;
-      ui.addChild(bannerText, bannerSub);
+      chainText = mk(72, C.orange);
+      chainText.anchor.set(0.5);
+      chainText.position.set(640, 660);
+      chainText.alpha = 0;
+      ui.addChild(bannerText, bannerSub, chainText);
 
       // spire tray
       trayG = new Container();
@@ -788,6 +797,20 @@ export function createPrototype(): Prototype {
         }
       }
 
+      // --- while frozen, show where each walker will be after one more shatter's worth of time
+      etaG.clear();
+      if (!flowing && s.phase === 'play') {
+        const dtT = (ctx.balance?.thawPerShatter ?? 3) * (ctx.balance?.enemySpeed ?? 1);
+        let n = 0;
+        for (const e of s.enemies) {
+          if (e.flier || n++ > 8) continue;
+          const to = Math.min(sim.path.len, e.s + ENEMY[e.kind].speed * dtT);
+          const [gx, gy] = pathAt(sim.path, to);
+          const [fx, fy] = pathAt(sim.path, e.s);
+          etaG.moveTo(sx(fx, fy), sy(fx, fy)).lineTo(sx(gx, gy), sy(gx, gy)).stroke({ width: 3, color: C.orange, alpha: 0.35 });
+          etaG.poly(diamondPts(sx(gx, gy), sy(gx, gy), 30, 16)).stroke({ width: 3, color: C.orange, alpha: 0.5 + 0.3 * Math.sin(timeNow() * 5) });
+        }
+      }
       // --- danger: the closer the lead enemy gets, the harder the beacon's hearts throb
       let lead = 99;
       for (const e of s.enemies) lead = Math.min(lead, e.flier ? Math.hypot(sim.path.beacon[0] - e.x, sim.path.beacon[1] - e.y) : sim.path.len - e.s);
@@ -974,6 +997,17 @@ export function createPrototype(): Prototype {
           play('sw-crunch', { pitch: 0.9 + big * 0.2, variation: 0.06, pan, volume: 0.6 + big * 0.4 });
           // time returning: a whoosh that climbs in equal whole tones with the chain, capped at an octave
           play('sw-thaw', { pitch: wholeTone(depth), pan, volume: eaten || melted ? 0.5 : 0.8 });
+          if (snapped) snapIdx++; else snapIdx = 0;
+          if (depth >= 1 || snapped) {
+            const n = snapped ? snapIdx : depth + 1;
+            chainText.text = snapped ? `COLD SNAP x${n}` : `CHAIN x${n}`;
+            chainText.style.fontSize = 54 + Math.min(40, n * 6);
+            chainText.alpha = 1;
+            chainText.scale.set(1.4);
+            tween(chainText, { scale: 1 }, 180, ease.outBack);
+            tween(chainText, { alpha: 0 }, 500, ease.inQuad, { delay: 650 });
+            if (snapped) play('sw-ice', { pitch: wholeTone(n - 1), volume: 0.8 });
+          }
           if (data.fault) {
             numberPop(view.world as Container, 'x2', X, Y - 120, { color: C.glow, size: 40, rise: 40, ms: 900 });
             ring(X, Y, C.glow, 200, 650, 6);
@@ -992,7 +1026,7 @@ export function createPrototype(): Prototype {
           particles.emit('dust', 640, 420, { count: 16, color: C.ice, speed: 1.5, size: 1.1 });
           break;
         case 'tick':
-          play(m > 0.5 ? 'sw-tock' : 'sw-tick', { variation: 0.02 });
+          play(m > 0.5 ? 'sw-tock' : 'sw-tick', { pitch: 1 + 0.5 * (1 - Math.min(1, s.thaw / 3)), volume: 0.8 + 0.4 * (1 - Math.min(1, s.thaw / 3)), variation: 0.02 });
           break;
         case 'spawn':
           play('sw-spawn', { pan });
@@ -1080,6 +1114,8 @@ export function createPrototype(): Prototype {
           banner('COLD SNAP', C.glow, 68);
           play('sw-snap');
           shake(0.8);
+          hitStop(8);
+          punch(view.world as Container, 0.05);
           flashDiamond(640, 420, C.ice, 1100, 500);
           ring(640, 420, C.orange, 560, 800, 9);
           break;

@@ -46,7 +46,7 @@ export const BALANCE: BalanceSpec[] = [
   { id: 'enemySpeed', label: 'Enemy speed (x)', min: 0.5, max: 1.8, step: 0.1, default: 1 },
   { id: 'spawnRate', label: 'Wave frequency (x)', min: 0.5, max: 2, step: 0.1, default: 1 },
   { id: 'dawnLength', label: 'Thawed seconds until dawn', min: 60, max: 240, step: 10, default: 90 },
-  { id: 'startIce', label: 'Starting ice', min: 4, max: 25, step: 1, default: 10 },
+  { id: 'startIce', label: 'Starting ice', min: 4, max: 25, step: 1, default: 12 },
   { id: 'hearts', label: 'Beacon hearts (next run)', min: 2, max: 9, step: 1, default: 5 },
   { id: 'killThaw', label: 'Time released per kill (seconds)', min: 0, max: 0.6, step: 0.05, default: 0.15 },
   { id: 'snapGain', label: 'Cold Snap fill speed (x)', min: 0.4, max: 2.5, step: 0.1, default: 1 },
@@ -320,7 +320,7 @@ export function createSim(ctx: Ctx): Sim {
     s.spires.splice(idx, 1);
     const def = SPIRE[sp.kind];
     const depth = reason === 'chain' ? sp.depth : 0;
-    s.ice += reason === 'snap' ? def.cost : refundOf(sp.kind);
+    s.ice += reason === 'snap' || s.dawn < s.dawnLen * 0.1 ? def.cost : refundOf(sp.kind); // the first tenth of the night is free to learn in
     const base = reason === 'eaten' || reason === 'melt' ? 1.5 : bal('thawPerShatter', 1.5) * (reason === 'snap' ? 0.5 : 1);
     const onFault = s.faultsShown && s.faults.includes(cellKey(sp.gx, sp.gy));
     const gain = base * def.thawMul * (1 + 0.2 * depth) * (onFault ? 2 : 1);
@@ -622,6 +622,29 @@ export function createSim(ctx: Ctx): Sim {
       else emit('deny', s.cx, s.cy, 0.2, { why: 'nothing' });
     }
     if (b.y.pressed && s.snapReady) snap();
+    if (b.b.pressed && s.spires.length) {
+      // B: hop the cursor to the next spire
+      const order = [...s.spires].sort((p, q) => p.gy * N + p.gx - (q.gy * N + q.gx));
+      const here = order.findIndex((p) => p.gx === s.cx && p.gy === s.cy);
+      const nxt = order[(here + 1) % order.length];
+      s.cx = nxt.gx;
+      s.cy = nxt.gy;
+      emit('cursor', s.cx, s.cy, 0.1);
+    }
+    if (b.rt.pressed) {
+      // RT: hop to a good building cell near the lead enemy
+      const lead = [...s.enemies].sort((p, q) => q.s - p.s)[0];
+      if (lead) {
+        let best: { gx: number; gy: number } | null = null;
+        let bd = 99;
+        for (const c of cells()) {
+          if (!canPlace(c.gx, c.gy)) continue;
+          const d = Math.abs(Math.hypot(c.gx - lead.x, c.gy - lead.y) - 2.3);
+          if (d < bd) { bd = d; best = c; }
+        }
+        if (best) { s.cx = best.gx; s.cy = best.gy; emit('cursor', s.cx, s.cy, 0.1); }
+      }
+    }
   }
 
   function step(dt: number, input: InputState): void {
