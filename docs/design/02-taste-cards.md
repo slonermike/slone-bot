@@ -115,6 +115,13 @@ Each card strips a game he loves to its heart: the loop and the feeling, not the
 **Feeling:** weight in every decision, scarcity that matters.
 **Atoms:** either-or spend, scarcity, sacrifice choice.
 
+### Minecraft (an open question, not a dislike)
+**Heart:** a world rich with discovery, oddity and curiosity, where the player's own creativity is the driving force.
+**Loop:** explore, find something odd, make something, find what it enables.
+**Feeling:** curiosity and creativity, with or without pressure.
+**Note:** he has watched it but not given it a real chance, so this is a weak signal, not a negative one. Earlier guidance that he "prefers sandboxes with back pressure" is withdrawn: he says a game rich with discovery, oddity and curiosity works with or without pressure.
+**Atoms:** sandbox surprise, creative ownership, new-verb discovery.
+
 ### Townscaper
 **Heart:** a sandbox toy; simple placement produces layouts you did not plan, and discovering a new one is the delight.
 **Loop:** place, watch the structure reshape itself, wonder what else it can make, place again.
@@ -130,7 +137,6 @@ Each card strips a game he loves to its heart: the loop and the feeling, not the
 ## Negative cards
 - **Smash Bros. / Counter-Strike:** mastery through repeated humiliation and technical skill walls. Do not make this the main loop.
 - **Fortnite / online multiplayer:** not wanted. No online, no PvP.
-- **Minecraft:** weak signal (watched, never played). Slone prefers sandboxes with back pressure over slack ones.
 - **Gritty theming:** drop it. Keep the loop, change the skin.
 
 ## Cross-card patterns
@@ -141,7 +147,7 @@ Each card strips a game he loves to its heart: the loop and the feeling, not the
 5. Verb first, theme second.
 6. Readable systems that accumulate consequences.
 7. Dense small worlds that open up with new powers.
-8. **Transformation as the payoff.** Seeing something dead, gray or empty come alive in front of you can carry a game with little or no pressure (Cloud Gardens, Chicory, Townscaper). This sits beside pattern 1: either something pushes back, or something pulls (a world waiting to be revealed). Open-ended play needs one of the two; the best has both.
+8. **Curiosity and creativity can drive a game on their own.** A world rich with discovery and oddity, or one the player transforms (something dead, gray or empty coming alive), works with or without pressure (Cloud Gardens, Chicory, Townscaper, Fez, and possibly Minecraft). Pattern 1 (back pressure) is one way to drive play, not a requirement; what matters is that something keeps the player going.
 9. **One verb, many questions.** A single distinctive move, and the game keeps asking it new things one at a time, then layered (VVVVVV, DuckTales).
 10. **Short and sharp.** Mechanics and challenges end before they overstay (WarioWare, Lego Party).
 11. **Costly choices.** One resource with two good uses, so every spend hurts (The Last of Us); a boost or power that is dangerous to use (Hot Wheels Unleashed).
