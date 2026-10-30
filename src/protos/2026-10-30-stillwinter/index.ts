@@ -17,6 +17,8 @@ const TW = 112;
 const TH = 56;
 const OX = 640;
 const OY = 214;
+const CLOCK_X = 1166;
+const CLOCK_Y = 112;
 const sx = (gx: number, gy: number): number => OX + ((gx - gy) * TW) / 2;
 const sy = (gx: number, gy: number): number => OY + ((gx + gy) * TH) / 2;
 const css = (c: number): string => `#${c.toString(16).padStart(6, '0')}`;
@@ -320,6 +322,7 @@ export function createPrototype(): Prototype {
   // hud
   let iceText!: Text;
   let thawText!: Text;
+  let clockText!: Text;
   let nightText!: Text;
   let thawBar!: Graphics;
   let dawnBar!: Graphics;
@@ -668,8 +671,11 @@ export function createPrototype(): Prototype {
       nightText.position.set(952, 14);
       ui.addChild(nightText);
       thawText.anchor.set(0.5, 0);
-      thawText.position.set(640, 64);
-      ui.addChild(thawText);
+      thawText.position.set(CLOCK_X, CLOCK_Y + 66);
+      clockText = mk(32, C.orange);
+      clockText.anchor.set(0.5);
+      clockText.position.set(CLOCK_X, CLOCK_Y);
+      ui.addChild(thawText, clockText);
 
       // hint + banner
       hintText = mk(26, C.frost, 'normal');
@@ -763,8 +769,8 @@ export function createPrototype(): Prototype {
         if (f.t < 0) continue;
         const p = Math.min(1, f.t / f.dur);
         const e = p * p * (3 - 2 * p);
-        const ex = 640;
-        const ey = 62;
+        const ex = CLOCK_X;
+        const ey = CLOCK_Y;
         const cx = (f.x0 + ex) / 2 + (f.x0 < 640 ? -90 : 90);
         const cy = Math.min(f.y0, ey) - 110;
         const x = (1 - e) * (1 - e) * f.x0 + 2 * (1 - e) * e * cx + e * e * ex;
@@ -779,7 +785,7 @@ export function createPrototype(): Prototype {
           arrivals = arrivalT > 0 ? Math.min(12, arrivals + 1) : 0;
           arrivalT = 0.5;
           play('sw-ice', { pitch: wholeTone(arrivals), volume: 0.5 + Math.min(0.4, f.amount / 6) });
-          punch(thawText, Math.min(0.5, 0.12 + f.amount / 10));
+          punch(clockText, Math.min(0.5, 0.12 + f.amount / 10));
           thawFlash = 1;
           f.trail.gfx.destroy();
           f.txt.destroy();
@@ -1010,12 +1016,30 @@ export function createPrototype(): Prototype {
       }
       star(dawnBar, 8, 17, 8, 0, bx + bw + 24, 38).fill(f >= 1 ? C.glow : C.orange);
       nightText.text = s.endless ? `POLAR NIGHT  ${Math.floor(s.polar / 60)}:${String(Math.floor(s.polar % 60)).padStart(2, '0')}` : '';
+      // the clock: a spiky ice crystal while frozen, a round dial with a sweeping hand while time flows
       thawBar.clear();
-      thawBar.roundRect(540, 58, 200, 10, 5).fill({ color: C.night, alpha: 0.7 });
-      if (shownThaw > 0) thawBar.roundRect(540, 58, Math.max(10, 200 * Math.min(1, shownThaw / 12)), 10, 5).fill(shownThaw > 12 || thawFlash > 0.5 ? C.glow : C.orange);
-      thawText.text = s.phase !== 'play' ? '' : s.thaw > 0 ? `TIME  ${shownThaw.toFixed(1)}` : 'FROZEN';
-      thawText.style.fill = s.thaw > 0 ? C.orange : C.frost;
-      thawText.position.set(640, 70);
+      const R = 50;
+      const on = shownThaw > 0 && s.phase === 'play';
+      if (!on) {
+        star(thawBar, 12, R + 14, R - 6, 0, CLOCK_X, CLOCK_Y).fill({ color: C.frost, alpha: 0.4 }).stroke({ width: 3, color: C.ice, join: 'round' });
+        thawBar.circle(CLOCK_X, CLOCK_Y, R - 12).fill({ color: C.night, alpha: 0.85 }).stroke({ width: 3, color: C.frost });
+      } else {
+        thawBar.circle(CLOCK_X, CLOCK_Y, R).fill({ color: C.night, alpha: 0.88 }).stroke({ width: 4, color: C.deep });
+        const frac = Math.min(1, shownThaw / 12);
+        const a0 = -Math.PI / 2;
+        thawBar.moveTo(CLOCK_X, CLOCK_Y - (R - 6)).arc(CLOCK_X, CLOCK_Y, R - 6, a0, a0 + Math.PI * 2 * frac).stroke({ width: 10, color: shownThaw > 12 || thawFlash > 0.5 ? C.glow : C.orange, cap: 'round' });
+        for (let i = 0; i < 12; i++) {
+          const an = (i / 12) * Math.PI * 2 - Math.PI / 2;
+          thawBar.moveTo(CLOCK_X + Math.cos(an) * (R - 20), CLOCK_Y + Math.sin(an) * (R - 20)).lineTo(CLOCK_X + Math.cos(an) * (R - 14), CLOCK_Y + Math.sin(an) * (R - 14)).stroke({ width: 2, color: C.frost, alpha: 0.7 });
+        }
+        const ha = timeNow() * Math.PI * 2 - Math.PI / 2;
+        thawBar.moveTo(CLOCK_X + Math.cos(ha) * 25, CLOCK_Y + Math.sin(ha) * 25).lineTo(CLOCK_X + Math.cos(ha) * (R - 12), CLOCK_Y + Math.sin(ha) * (R - 12)).stroke({ width: 3, color: C.glow, cap: 'round' });
+        if (shownThaw > 12) thawBar.circle(CLOCK_X, CLOCK_Y, R + 6).stroke({ width: 3, color: C.glow, alpha: 0.6 + 0.3 * Math.sin(timeNow() * 10) });
+      }
+      clockText.text = s.phase !== 'play' || !on ? '' : shownThaw.toFixed(1);
+      clockText.style.fill = C.ice;
+      thawText.text = s.phase !== 'play' ? '' : on ? 'TIME' : 'FROZEN';
+      thawText.style.fill = on ? C.orange : C.frost;
 
       // tray
       trayPlates.forEach((p, i) => {
