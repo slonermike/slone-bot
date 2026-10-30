@@ -314,14 +314,14 @@ export function createSim(ctx: Ctx): Sim {
   }
 
   /** Remove a spire: refund, release time, blast, crack its neighbours. */
-  function breakSpire(sp: Spire, reason: 'player' | 'eaten' | 'chain' | 'snap'): void {
+  function breakSpire(sp: Spire, reason: 'player' | 'eaten' | 'melt' | 'chain' | 'snap'): void {
     const idx = s.spires.indexOf(sp);
     if (idx < 0) return;
     s.spires.splice(idx, 1);
     const def = SPIRE[sp.kind];
     const depth = reason === 'chain' ? sp.depth : 0;
     s.ice += reason === 'snap' ? def.cost : refundOf(sp.kind);
-    const base = reason === 'eaten' ? 1.5 : bal('thawPerShatter', 1.5) * (reason === 'snap' ? 0.5 : 1);
+    const base = reason === 'eaten' || reason === 'melt' ? 1.5 : bal('thawPerShatter', 1.5) * (reason === 'snap' ? 0.5 : 1);
     const onFault = s.faultsShown && s.faults.includes(cellKey(sp.gx, sp.gy));
     const gain = base * def.thawMul * (1 + 0.2 * depth) * (onFault ? 2 : 1);
     if (onFault) tel.faultShatters++;
@@ -336,7 +336,7 @@ export function createSim(ctx: Ctx): Sim {
       if (!e.alive) continue;
       if (Math.hypot(e.x - sp.gx, e.y - sp.gy) <= def.blast + (reason === 'snap' ? 0.8 : 0)) damage(e, dmg, true);
     }
-    if (reason !== 'eaten' && reason !== 'snap') {
+    if (reason !== 'eaten' && reason !== 'melt' && reason !== 'snap') {
       s.snap = Math.min(100, s.snap + (depth === 0 ? 2 : 12) * bal('snapGain', 1));
     }
     emit('shatter', sp.gx, sp.gy, Math.min(1, 0.45 + 0.12 * depth + (def.thawMul > 1 ? 0.2 : 0)), { kind: sp.kind, depth, reason, thaw: gain, wasFrozen, fault: onFault });
@@ -519,7 +519,7 @@ export function createSim(ctx: Ctx): Sim {
           sp.hp -= 2;
           tel.frontMelts++;
           emit('melt', sp.gx, sp.gy, 0.5, { hp: sp.hp });
-          if (sp.hp <= 0) breakSpire(sp, 'eaten');
+          if (sp.hp <= 0) breakSpire(sp, 'melt');
         }
       }
     } else if (f >= 0.4 && (f < 0.95 || s.endless)) {

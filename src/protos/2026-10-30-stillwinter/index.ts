@@ -702,12 +702,24 @@ export function createPrototype(): Prototype {
         v.shadow.scale.set(1 - (lift - 20) / 200);
         if (flowing) v.spin.rotation += dt * (e.kind === 'glider' ? 9 : e.kind === 'ram' ? 1.5 : e.kind === 'thaw' ? 0.6 : 2.4) * flowK;
         else v.spin.rotation += Math.sin(timeNow() * 40 + e.id) * 0.002; // a frozen shiver
-        // eyes look along the path / toward the beacon
+        // eyes: wide and worried while frozen in place, pupils always on the beacon, a squint when hit
         v.eyes.clear();
         const ey = -lift + eyeY[e.kind];
-        const open = e.hit > 0 ? 1.4 : 1;
-        v.eyes.rect(-6, ey - 3 * open, 4, 6 * open).fill(C.night);
-        v.eyes.rect(3, ey - 3 * open, 4, 6 * open).fill(C.night);
+        const bxs = sx(sim.path.beacon[0], sim.path.beacon[1]) - v.c.x;
+        const bys = sy(sim.path.beacon[0], sim.path.beacon[1]) - v.c.y;
+        const bl = Math.hypot(bxs, bys) || 1;
+        const px = (bxs / bl) * 1.6;
+        const py = (bys / bl) * 1.2;
+        const sc = e.kind === 'thaw' ? 2.2 : e.kind === 'ram' ? 1.3 : 1;
+        if (e.hit > 0) {
+          v.eyes.moveTo(-8 * sc, ey - 2).lineTo(-3 * sc, ey + 1).moveTo(8 * sc, ey - 2).lineTo(3 * sc, ey + 1).stroke({ width: 2.5, color: C.night });
+        } else {
+          const r = (flowing ? 3.4 : 4.4) * sc;
+          v.eyes.ellipse(-5 * sc, ey, r, r * 1.15).fill(C.ice).stroke({ width: 1.5, color: C.night });
+          v.eyes.ellipse(5 * sc, ey, r, r * 1.15).fill(C.ice).stroke({ width: 1.5, color: C.night });
+          v.eyes.circle(-5 * sc + px, ey + py, 1.8 * sc).fill(C.night);
+          v.eyes.circle(5 * sc + px, ey + py, 1.8 * sc).fill(C.night);
+        }
         // health pips only when hurt
         v.bar.clear();
         if (e.hp < e.maxHp) {
@@ -943,6 +955,7 @@ export function createPrototype(): Prototype {
           const depth = Number(data.depth) || 0;
           const kind = data.kind as Kind;
           const eaten = data.reason === 'eaten';
+          const melted = data.reason === 'melt';
           const snapped = data.reason === 'snap';
           const big = Math.min(1, m);
           hitStop(snapped ? 2 : 3 + Math.min(4, depth));
@@ -956,9 +969,11 @@ export function createPrototype(): Prototype {
           flashDiamond(X, Y - 20, C.ice, 160 + depth * 20, 240);
           numberPop(view.world as Container, `+${Number(data.thaw).toFixed(1)}s`, X, Y - 80, { color: C.orange, size: 28 + Math.min(18, depth * 4), rise: 40, ms: 800 });
           play('sw-glass', { pitch: 1 + (kind === 'chime' ? 0.2 : 0), pan, volume: 0.7 + big * 0.3 });
+          if (melted) { play('sw-melt', { pan }); numberPop(view.world as Container, 'melted', X, Y - 40, { color: C.glow, size: 24, rise: 24, ms: 700 }); }
+          if (eaten) { play('sw-eaten', { pan }); numberPop(view.world as Container, 'eaten', X, Y - 40, { color: C.frost, size: 24, rise: 24, ms: 700 }); }
           play('sw-crunch', { pitch: 0.9 + big * 0.2, variation: 0.06, pan, volume: 0.6 + big * 0.4 });
           // time returning: a whoosh that climbs in equal whole tones with the chain, capped at an octave
-          play('sw-thaw', { pitch: wholeTone(depth), pan, volume: eaten ? 0.5 : 0.8 });
+          play('sw-thaw', { pitch: wholeTone(depth), pan, volume: eaten || melted ? 0.5 : 0.8 });
           if (data.fault) {
             numberPop(view.world as Container, 'x2', X, Y - 120, { color: C.glow, size: 40, rise: 40, ms: 900 });
             ring(X, Y, C.glow, 200, 650, 6);

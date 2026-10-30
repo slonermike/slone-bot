@@ -208,3 +208,13 @@ describe('Stillwinter Polar Night', () => {
     expect(sim.telemetry().won).toBe(1);
   });
 });
+
+describe('Stillwinter music passes the repo quality gate', () => {
+  it('composes a loop and five stingers in one key with no problems', async () => {
+    const { composeMusic } = await import('../../src/protos/2026-10-30-stillwinter/music.ts');
+    const { checkBatch } = await import('../../src/music/coverage.ts');
+    const m = composeMusic();
+    expect(checkBatch(Object.values(m)).problems).toEqual([]);
+    expect(new Set(Object.values(m).map((s) => s.root + s.scale)).size).toBe(1);
+  });
+});

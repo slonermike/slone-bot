@@ -25,11 +25,11 @@ export function composeMusic(): MusicSet {
   const common = { ...KEY, form: 'oneshot' as const, style: 'glacial synth pulse' };
   return {
     loop,
-    unlock: composeStinger({ ...common, seed: 3012, name: 'Thaw Opens', description: 'A bright two-bar rise: something new in the ice.', mood: 'curious', event: 'powerup', bpm: 150 }),
-    snap: composeStinger({ ...common, seed: 3013, name: 'Cold Snap', description: 'The meter is full: a rushing lift into the snap.', mood: 'charged', event: 'powerup', bpm: 168 }),
-    win: composeStinger({ ...common, seed: 3014, name: 'First Light', description: 'Dawn on the ice: a long open resolve.', mood: 'relieved', event: 'win', bpm: 120 }),
-    lose: composeStinger({ ...common, seed: 3015, name: 'Beacon Dark', description: 'The light goes out, slowly.', mood: 'hushed', event: 'lose', bpm: 80 }),
-    boss: composeStinger({ ...common, seed: 3016, name: 'The Thaw Comes', description: 'Something warm and wrong walks the path.', mood: 'ominous', event: 'boss', bpm: 108 }),
+    unlock: composeStinger({ ...common, seed: 3012, name: 'Thaw Opens', description: 'A bright two-bar rise in the same cold dorian key: something new has opened in the ice, a spire type or a rule, and the loop ducks to let it ring.', mood: 'curious', event: 'powerup', bpm: 150 }),
+    snap: composeStinger({ ...common, seed: 3013, name: 'Cold Snap', description: 'The Cold Snap meter is full: a fast, charged two-bar lift that asks the player to press the button, held in the loop key so it sits on the pad.', mood: 'charged', event: 'powerup', bpm: 168 }),
+    win: composeStinger({ ...common, seed: 3014, name: 'First Light', description: 'Dawn on the ice: a long, open four-bar resolve that lands in the tonic and lets the pad ring out as the sun comes up over the frozen board.', mood: 'relieved', event: 'win', bpm: 120 }),
+    lose: composeStinger({ ...common, seed: 3015, name: 'Beacon Dark', description: 'The beacon goes dark: a slow three-bar slump that ritards to a stop, hushed rather than harsh, so a lost run feels like a held breath let go.', mood: 'hushed', event: 'lose', bpm: 80 }),
+    boss: composeStinger({ ...common, seed: 3016, name: 'The Thaw Comes', description: 'Something warm and wrong walks the path: a low, ominous four-bar figure in the loop key that announces the Thaw before it reaches the table.', mood: 'ominous', event: 'boss', bpm: 108 }),
   };
 }
 
