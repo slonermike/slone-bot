@@ -209,3 +209,22 @@ describe('glyphs', () => {
     expect(g.KEY_BUTTONS.Backspace).toBe('b');
   });
 });
+
+describe('input device prompts', () => {
+  it('shows gamepad prompts as soon as a pad is connected, until a key is pressed', async () => {
+    const { vi } = await import('vitest');
+    const { InputManager } = await import('../../src/core/input.ts');
+    const g = await import('../../src/core/glyphs.ts');
+    g.setDevice('keyboard');
+    const pad = { connected: true, buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })), axes: [0, 0, 0, 0] };
+    vi.stubGlobal('navigator', { getGamepads: () => [pad] });
+    try {
+      new InputManager(false).poll(0);
+      expect(g.getDevice()).toBe('gamepad');
+      expect(g.glyph('x')).toBe('X');
+    } finally {
+      vi.unstubAllGlobals();
+      g.setDevice('keyboard');
+    }
+  });
+});

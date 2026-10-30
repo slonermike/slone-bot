@@ -67,7 +67,7 @@ Degenerate strategies found: or "none found"
 What I cut or ran out of time for:
 Surprises (follow the fun): accidents, emergent behavior, pivots (and whether a pivot reinforced the target feeling)
 Biggest risk for Slone to check: the one thing most likely to feel wrong
-Reusable tech merged to main: or "none"
+Reusable tech proposed to main (as a PR opened after the prototype is complete, not merged during the build): or "none"
 Assets sourced: (source, license) or "all synthesized"
 Theme picked and why: one line
 Themes added: the 1-3 new theme texts
@@ -85,6 +85,6 @@ After assessment, Slone updates the verdict.
 ## <date> <slug>
 - Lesson: <one line>   Status: one data point | repeated (<n> nights)
 - Evidence: <telemetry or Slone's words>
-- Proposed Bible change: <section and wording> (Slone decides)
+- Proposed Bible change: <section and wording, genre-neutral: no prototype names, no genre vocabulary> (Slone decides)
 - Proposed atoms: <id: description> (optional)
 ```

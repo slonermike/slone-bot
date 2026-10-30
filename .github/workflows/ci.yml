@@ -17,12 +17,17 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - name: Desktop app version bumped when host/ changed
+        if: ${{ github.event_name == 'pull_request' }}
+        run: node scripts/check-host-version.mjs origin/${{ github.base_ref }}
       - name: Secret patterns
         run: node scripts/check-secrets.mjs
       - name: Dependency licenses
@@ -78,7 +83,7 @@ jobs:
         run: |
           # Frozen snapshots: every other p/<slug>/ folder in site-out is left untouched.
           if [ "$REF_NAME" = "main" ]; then
-            node scripts/build-site.mjs --out site-out --protos none --no-fixtures
+            node scripts/build-site.mjs --out site-out --protos none
           else
             SLUG="${REF_NAME#proto/}"
             if ! printf '%s' "$SLUG" | grep -Eq '^[a-z0-9][a-z0-9_-]{0,80}$'; then

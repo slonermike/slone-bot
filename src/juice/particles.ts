@@ -6,6 +6,13 @@ import { vfx, vfxRange } from './random.ts';
 
 export type ParticlePreset = 'puff' | 'debris' | 'confetti' | 'sparks' | 'dust';
 
+export interface ParticlesOptions {
+  /** Particle texture. Default is the soft disc; pass your own (see `bakeTexture`) for any other look. */
+  texture?: Texture;
+  /** Replaces the default confetti colors (use the game's palette). */
+  confettiColors?: number[];
+}
+
 export interface EmitOptions {
   count?: number;
   color?: number;
@@ -55,9 +62,9 @@ const PRESETS: Record<ParticlePreset, PresetDef> = {
   dust: { count: 5, speed: [10, 60], life: [0.4, 0.9], size: [0.2, 0.4], gravity: -10, drag: 2, grow: 1.4, alpha: 0.35, spin: 0 },
 };
 
-let sharedTexture: Texture | null = null;
+let discTexture: Texture | null = null;
 function circleTexture(): Texture {
-  if (sharedTexture) return sharedTexture;
+  if (discTexture) return discTexture;
   const c = document.createElement('canvas');
   c.width = c.height = 64;
   const g = c.getContext('2d')!;
@@ -67,28 +74,32 @@ function circleTexture(): Texture {
   grad.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = grad;
   g.fillRect(0, 0, 64, 64);
-  sharedTexture = Texture.from(c);
-  return sharedTexture;
+  discTexture = Texture.from(c);
+  return discTexture;
 }
 
 /**
  * Thin wrapper over Pixi's ParticleContainer (we do not write a particle engine).
- *   const fx = new Particles(view.world);   // in mount()
+ *   const fx = new Particles(view.world);   // in mount(); or new Particles(view.world, { texture, confettiColors: [...] })
  *   fx.emit('sparks', x, y, { color: 0xffd166, angle: -Math.PI/2 });
  *   fx.update(dtSeconds);                   // every render frame
  * Counts are capped per emit and in total; the dial's particle layer and intensity scale them.
  */
 export class Particles {
   readonly container: ParticleContainer;
+  private readonly texture: Texture;
+  private readonly confettiColors?: number[];
   private live: PState[] = [];
   /** Hard cap on live particles. */
   maxTotal = 600;
   /** Cap per emit() call before intensity scaling. */
   maxPerEmit = 64;
 
-  constructor(parent: Container) {
+  constructor(parent: Container, opts: ParticlesOptions = {}) {
+    this.texture = opts.texture ?? circleTexture();
+    this.confettiColors = opts.confettiColors;
     this.container = new ParticleContainer({
-      texture: circleTexture(),
+      texture: this.texture,
       dynamicProperties: { position: true, rotation: true, vertex: true, color: true },
     });
     parent.addChild(this.container);
@@ -106,9 +117,10 @@ export class Particles {
       const ang = opts.angle === undefined ? vfx() * Math.PI * 2 : opts.angle + (vfx() * 2 - 1) * (opts.spread ?? Math.PI / 3);
       const sp = vfxRange(def.speed[0], def.speed[1]) * (opts.speed ?? 1);
       const size = vfxRange(def.size[0], def.size[1]) * (opts.size ?? 1);
-      const color = opts.color ?? (def.colors ? def.colors[Math.floor(vfx() * def.colors.length)]! : 0xffffff);
+      const palette = preset === 'confetti' && this.confettiColors ? this.confettiColors : def.colors;
+      const color = opts.color ?? (palette ? palette[Math.floor(vfx() * palette.length)]! : 0xffffff);
       const p = new Particle({
-        texture: circleTexture(),
+        texture: this.texture,
         x,
         y,
         anchorX: 0.5,

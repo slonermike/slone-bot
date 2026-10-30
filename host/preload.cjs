@@ -11,6 +11,8 @@ if (info.mouseOff) {
 contextBridge.exposeInMainWorld('mgbHost', {
   version: info.version,
   platform: info.platform,
+  deck: !!info.deck,
+  steam: !!info.steam,
   getUpdate: () => ipcRenderer.invoke('mgb:update-state'),
   checkUpdate: () => ipcRenderer.invoke('mgb:update-check'),
   installUpdate: () => ipcRenderer.invoke('mgb:update-install'),

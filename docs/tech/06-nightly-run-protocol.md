@@ -35,7 +35,7 @@ Check elapsed time at every phase boundary and before any long command.
 - Branch `proto/YYYY-MM-DD-name`. Code in `src/protos/<slug>/`.
 - Bare core first. Confirm with the idle, random, and greedy bots that the core does something. Then the feel pass. Then the full bot suite and the feel checklist.
 - Follow the Follow-the-Fun rule: log surprises (accidents, emergent behavior, the most interesting part) in `runs/<slug>/surprises.md` before fixing them. If a discovery is better than the brief, pivot only if it reinforces the target feeling; log the pivot.
-- Reusable tech goes to main only when the smoke test passes, with a `SCAFFOLD_API.md` entry.
+- General-use code does not go to main during the build. When the prototype is complete (after the post mortem), put it in a pull request from a separate branch off main that contains only that code, a unit test and a `SCAFFOLD_API.md` entry, and open it only if `npm run check` passes. List what you proposed in the post mortem's "Reusable tech" line. Never put game code in main. Prefer extending an existing scaffold helper with an option over copying it into the prototype.
 
 ## Wrap-up (3:00) and pencils-down (3:30)
 - At 3:00: freeze scope. Remaining work: bots, one fix pass, manifest, feedback sheet, post mortem.

@@ -58,7 +58,16 @@ function isSteamDeck(env = {}, osRelease = '') {
   return env.SteamDeck === '1' || env.SteamOS === '1' || /^ID=["']?steamos["']?$/m.test(osRelease);
 }
 
+/**
+ * True when Steam started this process (Steam sets these for every game it launches, including Non-Steam shortcuts).
+ * Started any other way (Desktop Mode file manager, a terminal), Steam applies the Desktop layout, which turns the
+ * controller into a mouse and keyboard, and the Gamepad API sees no pad.
+ */
+function launchedBySteam(env = {}) {
+  return !!(env.SteamGameId || env.SteamAppId || env.SteamOverlayGameId || env.STEAM_COMPAT_APP_ID);
+}
+
 /** Injected into every page on the Deck: the controller is the only input, so a stray click must do nothing. */
 const NO_MOUSE_CSS = 'html,body,*{cursor:none !important;pointer-events:none !important;user-select:none !important}';
 
-module.exports = { resolveConfig, isAllowedNavigation, needsRevalidation, isSteamDeck, NO_MOUSE_CSS, DEFAULT_URL };
+module.exports = { resolveConfig, isAllowedNavigation, needsRevalidation, isSteamDeck, launchedBySteam, NO_MOUSE_CSS, DEFAULT_URL };

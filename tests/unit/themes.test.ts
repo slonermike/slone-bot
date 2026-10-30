@@ -11,7 +11,8 @@ const SEED = path.resolve(__dirname, '../../themes');
 // the real pool grows every night (agents add themes), so tests must not hard-code its size or next id
 const POOL_SIZE = JSON.parse(fs.readFileSync(path.join(SEED, 'pool.json'), 'utf8')).length as number;
 const FALLBACK_SIZE = JSON.parse(fs.readFileSync(path.join(SEED, 'fallback-pool.json'), 'utf8')).length as number;
-const maxId = Math.max(...JSON.parse(fs.readFileSync(path.join(SEED, 'pool.json'), 'utf8')).map((t: { id: string }) => Number(t.id.slice(1))));
+// ids are never reused: the script issues max(id in pool and fallback) + 1, and nights remove themes as they use them
+const maxId = Math.max(...[...JSON.parse(fs.readFileSync(path.join(SEED, 'pool.json'), 'utf8')), ...JSON.parse(fs.readFileSync(path.join(SEED, 'fallback-pool.json'), 'utf8'))].map((x: { id: string }) => Number(/\d+/.exec(x.id)?.[0] ?? 0)));
 const nextId = `t${String(maxId + 1).padStart(3, '0')}`;
 let dir: string;
 const pool = () => JSON.parse(fs.readFileSync(path.join(dir, 'pool.json'), 'utf8'));
