@@ -12,3 +12,5 @@ export { startPrototype, launcherUrl, WIDTH, HEIGHT } from './shell.ts';
 export type { Scaffold, ShellState } from './shell.ts';
 export { validateManifest } from './manifest.ts';
 export type { PrototypeManifest, AssetEntry } from './manifest.ts';
+export { newClockLock, clockLockStep } from './clocklock.ts';
+export type { ClockLock, ClockLockAction, ClockLockOptions } from './clocklock.ts';
