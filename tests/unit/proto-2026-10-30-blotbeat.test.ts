@@ -149,6 +149,28 @@ describe('sim rules', () => {
     expect(s.ink).toBeGreaterThanOrEqual(1);
     expect(s.misses).toBeLessThan(3);
   });
+  it('a clean set is tidy: a lost page returns, or a bonus is paid when the book is full', () => {
+    const play = (lose: boolean) => {
+      const { s, step } = freshSim(7);
+      if (lose) s.pages = s.pagesMax - 1;
+      const btn = ['y', 'b', 'a', 'x'] as const;
+      let guard = 0;
+      while (s.phase === 'play' && guard++ < 60 * 200) {
+        const n = s.notes.find((m) => m.state === 'live' && m.len === 0);
+        const input = blankInput();
+        if (n && Math.abs(n.t - s.setT) < 1 / 120) input.buttons[btn[n.lane]!] = { down: true, pressed: true, released: false, value: 1 };
+        step(input);
+      }
+      return s;
+    };
+    const full = play(false);
+    expect(full.phase).toBe('pick');
+    expect(full.tidySets).toBe(1);
+    expect(full.lastTidy).toBe('bonus');
+    const hurt = play(true);
+    expect(hurt.lastTidy).toBe('page');
+    expect(hurt.pages).toBe(hurt.pagesMax);
+  });
   it('balance knobs change the sim', () => {
     expect(BALANCE.length).toBeGreaterThanOrEqual(3);
     expect(BALANCE.length).toBeLessThanOrEqual(8);

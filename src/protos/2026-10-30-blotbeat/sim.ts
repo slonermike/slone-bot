@@ -176,6 +176,9 @@ export interface SimState {
   holdsDone: number;
   freeTaps: number;
   setsDone: number;
+  setMisses: number;
+  tidySets: number;
+  lastTidy: string;
   feverScore: number;
   stampLastSet: number;
 }
@@ -213,7 +216,7 @@ export function createSim() {
     s.laneDown = [false, false, false, false]; s.laneHold = [-1, -1, -1, -1];
     s.endT2 = 0;
     s.hits = s.perfects = s.goods = s.oks = s.misses = s.strays = s.stamps = s.spills = s.blots = 0;
-    s.notesTotal = 0; s.holdsDone = 0; s.freeTaps = 0; s.setsDone = 0; s.feverScore = 0; s.stampLastSet = 0;
+    s.notesTotal = 0; s.holdsDone = 0; s.freeTaps = 0; s.setsDone = 0; s.feverScore = 0; s.stampLastSet = 0; s.setMisses = 0; s.tidySets = 0; s.lastTidy = '';
     s.notes = [];
     startSet(0);
   }
@@ -227,6 +230,8 @@ export function createSim() {
     s.phase = 'play';
     s.ink = 0; s.inkBand = 0; s.feverT = 0; s.restUntil = -1; s.graceUntil = -1; s.strayInk = 0; s.strayAt = -9; s.stampLock = -1e9; s.dripAt = 0;
     s.stampLastSet = 0;
+    s.setMisses = 0;
+    s.lastTidy = '';
     s.laneHold = [-1, -1, -1, -1];
     const chart = makeChart(ctx.rng.fork(), s.cfg);
     s.notes = chart.map((c) => ({ id: nextId++, lane: c.lane, t: c.beat * s.beatDur, len: c.len * s.beatDur, state: 'live' as NoteState, pair: false }));
@@ -359,6 +364,7 @@ export function createSim() {
         emit({ type: 'free-tap', magnitude: 0.2, x: p.x, y: p.y, data: { lane } });
       } else {
         s.strays++;
+        s.setMisses++;
         s.strayAt = s.setT;
         breakCombo();
         s.strayInk += 1;
@@ -466,6 +472,7 @@ export function createSim() {
       if (jt() > n.t + WIN.ok * w) {
         n.state = 'missed';
         s.misses++;
+        s.setMisses++;
         const p = laneRing(n.lane);
         breakCombo();
         emit({ type: 'miss', magnitude: 0.5, x: p.x, y: p.y, data: { lane: n.lane, free: s.setT < s.graceUntil } });
@@ -477,6 +484,12 @@ export function createSim() {
     // set end
     if (s.setT > s.endT) {
       s.setsDone++;
+      if (s.setMisses <= 3) {
+        // clean play has its own reward: a lost page comes back, or a bonus if the book is already full
+        s.tidySets++;
+        if (s.pages < s.pagesMax) { s.pages++; s.lastTidy = 'page'; } else { s.score += 2500; s.lastTidy = 'bonus'; }
+        emit({ type: 'tidy', magnitude: 0.8, data: { reward: s.lastTidy, blots: s.setMisses } });
+      }
       emit({ type: 'set-end', magnitude: 0.7, data: { set: s.set } });
       if (s.set >= SETS.length - 1) {
         s.phase = 'won';

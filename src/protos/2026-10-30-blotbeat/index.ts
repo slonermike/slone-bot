@@ -95,6 +95,24 @@ export function createPrototype(): Prototype {
 
   /** Run `fn` after `ms` on the juice clock (a tween on a dummy target, so it never collides with tweens on real objects). */
   const later = (ms: number, fn: () => void) => tween({ v: 0 }, { v: 1 }, ms, ease.linear, { onComplete: fn });
+  /** A feedback pill: text on a small ink-outlined badge that pops, rises and fades (feedback is part of the sticker UI, not loose text). */
+  function badgePop(text: string, x: number, y: number, fill: number, color: number, size = 22, ms = 560, rise = 34): void {
+    const c = new Container();
+    const t = label(text, size, color, { weight: '900' });
+    const w = t.width + 28;
+    const h = size * 1.7;
+    const g = new Graphics();
+    g.roundRect(-w / 2 + 2, -h / 2 + 4, w, h, h / 2).fill(C.ink);
+    g.roundRect(-w / 2, -h / 2, w, h, h / 2).fill(fill).stroke({ width: 4, color: C.ink, join: 'round' });
+    c.addChild(g, t);
+    c.position.set(x, y);
+    c.scale.set(0.4);
+    world.addChild(c);
+    tween(c, { scale: 1 }, 130, ease.outBack);
+    // one tween owns the destroy; the fade finishes before it so nothing touches a destroyed badge
+    tween(c, { y: y - rise }, ms, ease.outCubic, { onComplete: () => c.destroy() });
+    later(ms * 0.5, () => { if (!c.destroyed) tween(c, { alpha: 0 }, ms * 0.4, ease.linear); });
+  }
   const D = () => LANE_DIR;
   const FRAME_DT = 1 / 60;
 
@@ -345,7 +363,7 @@ export function createPrototype(): Prototype {
 
   function buildHud(): void {
     // pages (top left)
-    const pl = label('PAGES', 18, C.tint, { anchor: [0, 0.5] });
+    const pl = label('PAGES', 20, C.tint, { anchor: [0, 0.5] });
     pl.position.set(40, 30);
     ui.addChild(pl);
     pageIcons = [];
@@ -372,7 +390,7 @@ export function createPrototype(): Prototype {
     scoreText = label('0', 40, C.white, { anchor: [1, 0.5] });
     scoreText.position.set(1236, 46);
     ui.addChild(scoreText);
-    const scl = label('SCORE', 18, C.tint, { anchor: [0, 0.5] });
+    const scl = label('SCORE', 20, C.tint, { anchor: [0, 0.5] });
     scl.position.set(968, 46);
     ui.addChild(scl);
     comboText = label('', 22, C.tint, { anchor: [1, 0.5] });
@@ -403,7 +421,7 @@ export function createPrototype(): Prototype {
     dropGs = [];
     const gap = Math.min(34, 460 / dropsMax);
     const x0 = 430 - ((dropsMax - 1) * gap) / 2 + 40;
-    const lab = label('INK', 18, C.tint, { anchor: [1, 0.5] });
+    const lab = label('INK', 20, C.tint, { anchor: [1, 0.5] });
     lab.position.set(x0 - 30, 742);
     dropsC.addChild(lab);
     for (let i = 0; i < dropsMax; i++) {
@@ -443,7 +461,7 @@ export function createPrototype(): Prototype {
       stampKey = key;
       stampC.removeChildren().forEach((c) => c.destroy());
       let plate: Container;
-      if (fever) plate = hintPlate([`FEVER x${bal('feverMult')}`], 26, C.lime), plate.children.length;
+      if (fever) plate = hintPlate([`FEVER x${bal('feverMult')}`], 26, C.lime);
       else if (locked) plate = hintPlate(['Ink drying...'], 22, C.board);
       else plate = hintPlate([{ key: glyph('rb') }, ready ? 'STAMP!' : `STAMP at ${st.cost}`], 24, ready ? C.lime : C.board);
       if (fever) { const t = plate.children[plate.children.length - 1] as ReturnType<typeof label>; t.style.fill = C.ink; }
@@ -603,7 +621,7 @@ export function createPrototype(): Prototype {
     feverG.visible = feverG.alpha > 0.02;
     latticeFever.visible = latticeFever.alpha > 0.02;
     latticeFever.alpha = chase(latticeFever.alpha, s.feverT > 0 ? 0.7 + 0.3 * Math.sin(time * 10) : 0, 0.25);
-    wellC.rotation = danger ? Math.sin(time * 30) * 0.03 : 0;
+    wellC.rotation = danger ? Math.sin(time * 30) * 0.03 : Math.sin(time * 1.6) * 0.012;
     if (s.inkBand >= 2) eyes.setMood('worried', 0.2); else if (s.feverT > 0) eyes.setMood('happy', 0.2);
     for (let l = 0; l < 4; l++) {
       const t = targetLabels[l]!;
@@ -687,6 +705,17 @@ export function createPrototype(): Prototype {
     const hint = hintPlate([{ key: glyph('a') }, 'Stick it on', { key: glyph('lb') }, { key: glyph('rb') }, 'Choose'], 24);
     hint.position.set(CX, 690);
     o.addChild(hint);
+    if (s.lastTidy) {
+      const tp = sticker(520, 56, C.white, 16);
+      const tl = label(s.lastTidy === 'page' ? 'TIDY SET! Three blots or fewer: a page is back' : 'TIDY SET! Three blots or fewer: bonus 2,500', 24, C.ink, { weight: '900' });
+      const tc = new Container();
+      tc.addChild(tp, tl);
+      tc.position.set(CX, 168);
+      tc.rotation = 0.02;
+      tc.scale.set(0.2);
+      o.addChild(tc);
+      tween(tc, { scale: 1 }, 320, ease.outBack, { delay: 250 });
+    }
     o.name = 'pick';
     (o as Container & { cards: Container[] }).cards = cards;
     ui.addChild(o);
@@ -807,7 +836,9 @@ export function createPrototype(): Prototype {
       streaks[lane]!.alpha = grade === 'perfect' ? 0.9 : 0.55;
       const g = targets[lane]!.children[0] as Graphics;
       flash(g as unknown as Container, 0xffffff, 120);
-      if (!auto) numberPop(world, grade.toUpperCase(), x + d.x * 72, y + d.y * 56 - 6, { size: grade === 'perfect' ? 28 : 22, color: grade === 'perfect' ? C.white : C.tint, stroke: C.ink, rise: 34, ms: 520, font: FONT });
+      const early = Number(e.data?.early ?? 0);
+      const tag = grade === 'perfect' ? '' : early > 0.03 ? ' (early)' : early < -0.03 ? ' (late)' : '';
+      if (!auto) badgePop(grade.toUpperCase() + tag, x + d.x * 96, y + d.y * 70 - 6, grade === 'perfect' ? C.white : grade === 'good' ? C.tint : C.line, grade === 'ok' ? C.white : C.ink, grade === 'perfect' ? 24 : 20);
     };
     if (delay > 0) tween({ v: 0 }, { v: 1 }, delay, ease.linear, { onComplete: fire }); else fire();
     wellSS.pop(0.1 + 0.1 * m, 'y');
@@ -848,11 +879,11 @@ export function createPrototype(): Prototype {
         play('holdDone', { pan: D()[lane]!.x * 0.3 });
         particles.emit('confetti', e.x ?? CX, e.y ?? CY, { count: 12, speed: 0.8 });
         ringPulse(e.x ?? CX, e.y ?? CY, 90, C.white, 400, 5);
-        numberPop(world, 'HELD', (e.x ?? CX) + D()[lane]!.x * 72, (e.y ?? CY) + D()[lane]!.y * 56, { size: 24, color: C.white, stroke: C.ink, ms: 520, font: FONT });
+        badgePop('HELD', (e.x ?? CX) + D()[lane]!.x * 96, (e.y ?? CY) + D()[lane]!.y * 70, C.white, C.ink, 22);
         shake(0.08);
         break;
       }
-      case 'hold-drop': play('holdDrop'); numberPop(world, 'DROPPED', e.x ?? CX, (e.y ?? CY) - 20, { size: 20, color: C.line, stroke: C.white, ms: 520, font: FONT }); break;
+      case 'hold-drop': play('holdDrop'); badgePop('DROPPED', e.x ?? CX, (e.y ?? CY) - 20, C.board, C.white, 20); break;
       case 'free-tap': {
         const lane = Number(dd.lane);
         play(`tap${lane}`, { volume: 0.25, pitch: 1, variation: 0.02, pan: D()[lane]!.x * 0.3 });
@@ -865,7 +896,7 @@ export function createPrototype(): Prototype {
         play('stray');
         shake(0.12);
         punch(targets[Number(dd.lane)]!, -0.2);
-        numberPop(world, 'STRAY', e.x ?? CX, (e.y ?? CY) - 24, { size: 20, color: C.line, stroke: C.white, ms: 420, font: FONT });
+        badgePop('STRAY', e.x ?? CX, (e.y ?? CY) - 28, C.board, C.white, 20);
         eyes.setMood('frown', 0.4);
         break;
       }
@@ -905,12 +936,12 @@ export function createPrototype(): Prototype {
         numberPop(world, `x${mult}`, CX, CY - 150, { size: 54, color: C.white, stroke: C.ink, ms: 700, rise: 40, font: FONT });
         break;
       }
-      case 'combo-break': numberPop(world, 'combo lost', CX, CY + 130, { size: 22, color: C.tint, stroke: C.ink, ms: 520, rise: 20, font: FONT }); break;
+      case 'combo-break': badgePop('combo lost', CX, CY + 140, C.board, C.tint, 22, 700, 16); break;
       case 'dry': play('dry'); break;
       case 'siphon': {
         play('glug', { pitch: 1.3 });
         particles.emit('sparks', e.x ?? CX, e.y ?? CY, { count: 14, color: C.lime, speed: 1.4 });
-        numberPop(world, 'SIPHON', (e.x ?? CX), (e.y ?? CY) - 40, { size: 24, color: C.lime, stroke: C.ink, ms: 700, font: FONT });
+        badgePop('SIPHON', e.x ?? CX, (e.y ?? CY) - 44, C.lime, C.ink, 22, 700);
         break;
       }
       case 'stamp': {
@@ -963,6 +994,11 @@ export function createPrototype(): Prototype {
         const left = Number(dd.pages);
         banner('PAGE RUINED', C.lime, C.ink, 1700, 196, left > 0 ? `${left} ${left === 1 ? 'page' : 'pages'} left. The ink is cleared.` : 'No pages left.');
         syncMusic();
+        break;
+      }
+      case 'tidy': {
+        play('holdDone', { pitch: 1.5 });
+        particles.emit('confetti', CX, CY - 30, { count: 36, speed: 1.6 });
         break;
       }
       case 'set-end': {
@@ -1059,7 +1095,7 @@ export function createPrototype(): Prototype {
       score: Math.round(s.score), hits: s.hits, perfects: s.perfects, misses: s.misses, strays: s.strays, stamps: s.stamps,
       spills: s.spills, blots: s.blots, maxCombo: s.maxCombo, setReached: s.set + 1,
       accuracy: s.notesTotal ? s.hits / s.notesTotal : 0, pagesLeft: s.pages, notesTotal: s.notesTotal, feverScore: Math.round(s.feverScore),
-      drips: s.drips, scoreOrProgress: Math.round(s.score) + s.set * 1000,
+      drips: s.drips, tidySets: s.tidySets, scoreOrProgress: Math.round(s.score) + s.set * 1000,
     }),
     getState() {
       const o: Record<string, number> = {

@@ -23,11 +23,11 @@ export function defineBlotSounds(): void {
   defineSound('stray', { wave: 'square', freq: 130, slide: -0.7, attack: 0.001, sustain: 0.03, decay: 0.12, lowpass: 900, transient: 0.2, volume: 0.35 });
   defineSound('splat', { wave: 'noise', freq: 600, slide: -1.6, attack: 0.001, sustain: 0.04, decay: 0.26, lowpass: 1100, transient: 0.4, volume: 0.55 });
   defineSound('glug', { wave: 'sine', freq: 160, slide: 1.8, attack: 0.003, sustain: 0.04, decay: 0.16, volume: 0.45 });
-  defineSound('stampBoom', { wave: 'sine', freq: 80, slide: -1.1, attack: 0.002, sustain: 0.12, decay: 0.55, transient: 0.6, volume: 0.95 });
-  defineSound('stampCrack', { wave: 'noise', freq: 900, slide: -0.8, attack: 0.001, sustain: 0.06, decay: 0.4, lowpass: 3600, volume: 0.6 });
+  defineSound('stampBoom', { wave: 'sine', freq: 80, slide: -1.1, attack: 0.002, sustain: 0.12, decay: 0.55, transient: 0.5, volume: 0.62 });
+  defineSound('stampCrack', { wave: 'noise', freq: 900, slide: -0.8, attack: 0.001, sustain: 0.06, decay: 0.4, lowpass: 3600, volume: 0.4 });
   defineSound('stampRise', { wave: 'saw', freq: 180, slide: 2.4, attack: 0.01, sustain: 0.12, decay: 0.3, lowpass: 3000, volume: 0.35 });
-  defineSound('spill', { wave: 'noise', freq: 700, slide: -0.9, attack: 0.002, sustain: 0.3, decay: 0.9, lowpass: 1300, transient: 0.5, volume: 0.8 });
-  defineSound('spillDrop', { wave: 'saw', freq: 340, slide: -1.6, attack: 0.002, sustain: 0.2, decay: 0.7, lowpass: 1400, volume: 0.45 });
+  defineSound('spill', { wave: 'noise', freq: 700, slide: -0.9, attack: 0.002, sustain: 0.3, decay: 0.9, lowpass: 1300, transient: 0.4, volume: 0.6 });
+  defineSound('spillDrop', { wave: 'saw', freq: 340, slide: -1.6, attack: 0.002, sustain: 0.2, decay: 0.7, lowpass: 1400, volume: 0.3 });
   defineSound('feverEnd', { wave: 'sine', freq: 700, slide: -1.4, attack: 0.002, sustain: 0.05, decay: 0.32, volume: 0.3 });
   defineSound('comboUp', { wave: 'sine', freq: 660, attack: 0.002, sustain: 0.05, decay: 0.3, volume: 0.3 });
   defineSound('holdDone', [{ wave: 'sine', freq: 1318, attack: 0.002, sustain: 0.1, decay: 0.45, volume: 0.35 }]);
