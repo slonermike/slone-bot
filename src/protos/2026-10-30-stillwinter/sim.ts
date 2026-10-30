@@ -165,7 +165,8 @@ export const ENEMY_BLURB: Record<EnemyKind, string> = {
   thaw: 'THE THAW',
 };
 
-export type Phase = 'play' | 'over' | 'won';
+/** dawning: the sun is up and every enemy still on the board breaks, one after another, before the win screen. */
+export type Phase = 'play' | 'dawning' | 'over' | 'won';
 
 export interface Sim {
   init(): void;
@@ -234,6 +235,8 @@ export function createSim(ctx: Ctx): Sim {
   let lastDelta: [number, number] | null = null;
   let frozenStretch = 0;
   let frontT = 14;
+  let victoryT = 0;
+  let victoryN = 0;
   const introSeen = new Set<EnemyKind>();
   let steps = 0;
   const tel = { thawed: 0, shatters: 0, maxChain: 0, kills: 0, placed: 0, heartsLost: 0, longestFrozen: 0, eaten: 0, snaps: 0, deniedPlace: 0, enemiesSeen: 0, firstPressure: 0, maxEnemies: 0, kindsSeen: 0, stuck: 0, fronts: 0, frontMelts: 0, faultShatters: 0 };
@@ -585,8 +588,11 @@ export function createSim(ctx: Ctx): Sim {
     if (tickT >= 0.25) { tickT -= 0.25; tickParity ^= 1; emit('tick', 0, 0, tickParity); }
     if (s.endless) s.polar += wdt;
     if (s.dawn >= s.dawnLen && !s.endless) {
-      s.phase = 'won';
-      emit('complete', path.beacon[0], path.beacon[1], 1, { hearts: s.hearts });
+      s.phase = 'dawning';
+      victoryT = 2.6; // the sun comes up and the beacon charges before it fires
+      victoryN = 0;
+      queue = [];
+      emit('dawn-break', path.beacon[0], path.beacon[1], 1, { enemies: s.enemies.length });
     }
   }
 
@@ -672,6 +678,24 @@ export function createSim(ctx: Ctx): Sim {
     steps++;
     s.realT += dt;
     handleInput(dt, input);
+    if (s.phase === 'dawning') {
+      // the win, made unmistakable: the sun is up and every enemy on the board breaks in turn, nearest the beacon first
+      victoryT -= dt;
+      if (victoryT <= 0) {
+        const next = [...s.enemies].filter((e) => e.alive).sort((a, b) => (b.flier ? b.s + 100 : b.s) - (a.flier ? a.s + 100 : a.s))[0];
+        if (next) {
+          next.alive = false;
+          s.enemies = s.enemies.filter((e) => e.alive);
+          emit('beacon-fire', next.x, next.y, 1, { n: victoryN });
+          emit('kill', next.x, next.y, next.kind === 'thaw' ? 1 : 0.6, { kind: next.kind, blast: true, thaw: 0, victory: true, n: victoryN++ });
+          victoryT = Math.max(0.16, 0.42 - 0.03 * victoryN);
+        } else {
+          s.phase = 'won';
+          emit('complete', path.beacon[0], path.beacon[1], 1, { hearts: s.hearts, cleared: victoryN });
+        }
+      }
+      return;
+    }
     if (s.phase === 'over' || s.phase === 'won') {
       if (input.buttons.a.pressed) init();
       else if (s.phase === 'won' && input.buttons.y.pressed) {

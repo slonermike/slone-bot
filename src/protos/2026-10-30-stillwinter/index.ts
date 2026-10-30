@@ -291,6 +291,9 @@ export function createPrototype(): Prototype {
   let rangeG!: Graphics;
   let beacon!: Container;
   let beaconCore!: Graphics;
+  let beaconHalo!: Graphics;
+  let gatherT = 0;
+  let charge = 0;
   let heartsC!: Container;
   let dim!: Graphics;
   let rim!: Graphics;
@@ -688,7 +691,9 @@ export function createPrototype(): Prototype {
       bs.poly([0, -120, 0, -4, 22, -20]).fill(C.frost).stroke({ width: 2, color: C.slate });
       beaconCore = new Graphics();
       beaconCore.poly(diamondPts(0, -62, 22, 40)).fill(C.orange).stroke({ width: 2, color: C.glow });
-      beacon.addChild(bs, beaconCore);
+      beaconHalo = new Graphics();
+      beaconHalo.position.set(0, -62);
+      beacon.addChild(beaconHalo, bs, beaconCore);
       heartsC = new Container();
       heartsC.position.set(0, -140);
       beacon.addChild(heartsC);
@@ -971,7 +976,7 @@ export function createPrototype(): Prototype {
         (v as unknown as { kick: number }).kick = Math.max(0, kk - dt * 6);
         v.spin.position.set(kk * vfxRange(-6, 6), -lift - kk * 5);
         v.shell.position.set(0, -lift + 4);
-        v.shell.alpha = chaseDt(v.shell.alpha, flowing ? 0 : 0.95, 0.12, dt);
+        v.shell.alpha = chaseDt(v.shell.alpha, flowing || s.phase === 'dawning' ? 0 : 0.95, 0.12, dt);
         v.shell.visible = v.shell.alpha > 0.02;
         if (v.trail) {
           if (flowing) v.trail.push(sx(x, y), sy(x, y) - lift);
@@ -1096,12 +1101,37 @@ export function createPrototype(): Prototype {
       for (const e of s.enemies) lead = Math.min(lead, e.flier ? Math.hypot(sim.path.beacon[0] - e.x, sim.path.beacon[1] - e.y) : sim.path.len - e.s);
       const danger = s.phase === 'play' ? Math.max(0, 1 - lead / 6) : 0;
       heartsC.scale.set(1 + danger * 0.16 * Math.abs(Math.sin(timeNow() * (6 + danger * 8))));
+      // --- the beacon powers up while the sun rises, then fires
+      charge = s.phase === 'dawning' ? Math.min(1, charge + dt / 2.4) : s.phase === 'won' ? 1 : 0;
+      beaconHalo.clear();
+      if (charge > 0) {
+        const pulse3 = 0.5 + 0.5 * Math.sin(timeNow() * (8 + charge * 18));
+        beaconHalo.circle(0, 0, 40 + charge * 90 + pulse3 * 14).fill({ color: C.glow, alpha: 0.18 + 0.25 * charge });
+        beaconHalo.circle(0, 0, 24 + charge * 50 + pulse3 * 8).fill({ color: 0xffffff, alpha: 0.25 + 0.4 * charge });
+        star(beaconHalo, 16, 60 + charge * 200, 20 + charge * 30, timeNow() * 1.2).fill({ color: C.orange, alpha: 0.25 * charge });
+        beaconCore.scale.set(1 + charge * 0.9);
+        if (s.phase === 'dawning' && charge < 1) {
+          gatherT -= dt;
+          if (gatherT <= 0) {
+            gatherT = 0.35 - 0.2 * charge;
+            const bxs = sx(sim.path.beacon[0], sim.path.beacon[1]);
+            const bys = sy(sim.path.beacon[0], sim.path.beacon[1]) - 62;
+            const g = new Graphics().ellipse(0, 0, 300, 150).stroke({ width: 4, color: C.glow, alpha: 0.8 });
+            g.position.set(bxs, bys);
+            g.alpha = 0;
+            fxLayer.addChild(g);
+            tween(g, { alpha: 1, 'scale.x': 0.1, 'scale.y': 0.1 }, 700, ease.inQuad, { onComplete: () => g.destroy() });
+            particles.emit('sparks', bxs + vfxRange(-120, 120), bys + vfxRange(-60, 160), { count: 4, color: C.glow, speed: 0.5, size: 1.0, angle: -Math.PI / 2, spread: 0.5 });
+          }
+          shake(0.04 + charge * 0.12);
+        }
+      }
       // --- beacon breath
       const bp = 0.5 + 0.5 * Math.sin(timeNow() * (flowing ? 5 : 1.6));
-      beaconCore.scale.set(0.92 + bp * 0.12);
+      if (charge <= 0) beaconCore.scale.set(0.92 + bp * 0.12);
       beaconCore.alpha = s.phase === 'over' ? 0.15 : 0.75 + bp * 0.25;
 
-      glowG.alpha = s.phase === 'won' ? 1 : Math.min(1, (s.dawn / s.dawnLen) * 1.1);
+      glowG.alpha = s.phase === 'won' || s.phase === 'dawning' ? 1 : Math.min(1, (s.dawn / s.dawnLen) * 1.1);
       windT -= dt;
       if (windT <= 0 && !flowing && s.phase === 'play') { windT = vfxRange(7, 13); play('sw-wind', { pan: vfxRange(-0.5, 0.5), volume: 0.5 }); }
       // --- ambience: frozen is cool and dim, flowing is warm-rimmed and alive
@@ -1216,17 +1246,17 @@ export function createPrototype(): Prototype {
       hintText.alpha = hintAlpha;
 
       // sunrise after winning
-      if (s.phase === 'won') {
+      if (s.phase === 'dawning' || s.phase === 'won') {
         sunrise = Math.min(1, sunrise + dt * 0.35);
         sunG.clear();
         sunG.circle(0, 0, 90 * (0.4 + sunrise * 0.6)).fill({ color: C.glow, alpha: 0.9 });
         star(sunG, 16, 190 * sunrise, 100 * sunrise).fill({ color: C.orange, alpha: 0.5 });
-        sunG.alpha = 0;
+        sunG.alpha = s.phase === 'dawning' ? sunrise : 0;
       }
 
       // music follows the game: frozen is a pad, flowing wakes the band, the hook rides the snap and the last stretch
       if (mset) {
-        const parts = partsFor({ dawn: f, flowing: s.thaw > 0, snapping: s.snapReady, over: s.phase !== 'play' });
+        const parts = partsFor({ dawn: f, flowing: s.thaw > 0, snapping: s.snapReady, over: s.phase === 'over' || s.phase === 'won' });
         const key = parts.join(',');
         if (key !== lastPartsKey) { lastPartsKey = key; music.setParts(parts, 0.5); }
       }
@@ -1234,10 +1264,10 @@ export function createPrototype(): Prototype {
       // end screens
       {
         const keep = new Set<unknown>([dim, rim, endC, bannerText, bannerSub, chainText]);
-        for (const c of uiLayer.children) if (!keep.has(c)) c.visible = s.phase === 'play';
+        for (const c of uiLayer.children) if (!keep.has(c)) c.visible = s.phase === 'play' || s.phase === 'dawning';
       }
       const wasEnd = endC.visible;
-      endC.visible = s.phase !== 'play';
+      endC.visible = s.phase === 'over' || s.phase === 'won';
       if (s.phase === 'won') {
         winT += dt;
         updateWin(dt);
@@ -1462,7 +1492,14 @@ export function createPrototype(): Prototype {
           particles.emit('debris', X, Y - 28, { count: 12 + Math.round(bigK * 24), color: C.ice, speed: 1.2, size: 1.0 });
           particles.emit('debris', X, Y - 28, { count: 6, color: C.mid, speed: 0.9, size: 1.1 });
           if (data.blast) particles.emit('sparks', X, Y - 28, { count: 12, color: C.orange, speed: 1.6, size: 0.9 });
-          numberPop(view.world as Container, `+${ENEMY[kind].ice}`, X, Y - 56, { color: C.ice, size: 26, rise: 30, ms: 650 });
+          if (!data.victory) numberPop(view.world as Container, `+${ENEMY[kind].ice}`, X, Y - 56, { color: C.ice, size: 26, rise: 30, ms: 650 });
+          else {
+            // the victory sweep: each enemy bursts in gold, the pitch climbing with every one
+            particles.emit('confetti', X, Y - 40, { count: 14, color: C.glow, speed: 1.4, size: 1.1 });
+            ring(X, Y, C.glow, 150, 500, 5);
+            play('sw-ice', { pitch: wholeTone(Number(data.n)), volume: 0.9 });
+            play('sw-unlock', { pitch: 1 + Number(data.n) * 0.06, volume: 0.35, pan });
+          }
           flyToClock(X, Y - 70, Number(data.thaw), vfxRange(0, 0.15));
           play('sw-kill', { pitch: 0.8 + bigK * 0.4, variation: 0.08, pan, volume: 0.6 + bigK * 0.4 });
           // the ice ping climbs in whole tones while kills chain, then falls back
@@ -1515,6 +1552,32 @@ export function createPrototype(): Prototype {
           flashDiamond(640, 420, C.ice, 1100, 500);
           ring(640, 420, C.orange, 560, 800, 9);
           break;
+        case 'dawn-break':
+          banner('DAWN', C.glow, 84, 'the sun rises: the beacon wakes');
+          charge = 0;
+          gatherT = 0;
+          sunrise = 0;
+          shake(0.5);
+          ring(640, 300, C.glow, 700, 900, 8);
+          play('sw-boss', { pitch: 1.5, volume: 0.8 });
+          particles.emit('sparks', 640, 200, { count: 40, color: C.glow, speed: 2, size: 1.1 });
+          break;
+        case 'beacon-fire': {
+          const bx0 = sx(sim.path.beacon[0], sim.path.beacon[1]);
+          const by0 = sy(sim.path.beacon[0], sim.path.beacon[1]) - 130;
+          const beam = new Graphics();
+          beam.moveTo(bx0, by0).lineTo(X, Y - 24).stroke({ width: 44, color: C.glow, alpha: 0.35, cap: 'round' });
+          beam.moveTo(bx0, by0).lineTo(X, Y - 24).stroke({ width: 18, color: C.orange, cap: 'round' });
+          beam.moveTo(bx0, by0).lineTo(X, Y - 24).stroke({ width: 7, color: 0xffffff, cap: 'round' });
+          fxLayer.addChild(beam);
+          tween(beam, { alpha: 0 }, 380, ease.outQuad, { onComplete: () => beam.destroy() });
+          flashDiamond(bx0, by0 + 60, 0xffffff, 220, 260);
+          punch(beaconCore, 0.5);
+          shake(0.5);
+          hitStop(3);
+          play('sw-snap', { pitch: 1 + Math.min(6, Number(data.n)) * 0.12, volume: 0.8, pan });
+          break;
+        }
         case 'faults': {
           faultC.removeChildren();
           for (const k of s.faults) {
