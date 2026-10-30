@@ -153,6 +153,14 @@ export function deltaToStick(dx: number, dy: number): { x: number; y: number } {
   return { x: sx / m, y: sy / m };
 }
 
+export const ENEMY_BLURB: Record<EnemyKind, string> = {
+  drift: 'DRIFTS walk the path',
+  ram: 'RAMS chew spires',
+  glider: 'GLIDERS are fast',
+  wisp: 'WISPS fly over everything',
+  thaw: 'THE THAW',
+};
+
 export type Phase = 'play' | 'over' | 'won';
 
 export interface Sim {
@@ -190,6 +198,11 @@ export interface SimState {
   flowing: boolean;
   unlockedSet: Set<Kind>;
   chain: number;
+  /** Fault-line cells (deep ice: a shatter on one releases double time). Revealed at 20% dawn. */
+  faults: number[];
+  faultsShown: boolean;
+  /** A warm front: a row (axis 0) or column (axis 1) that will melt its spires when `t` runs out. */
+  front: { axis: 0 | 1; idx: number; t: number; total: number } | null;
 }
 
 export function createSim(ctx: Ctx): Sim {
@@ -213,8 +226,10 @@ export function createSim(ctx: Ctx): Sim {
   let moveT = 0;
   let lastDelta: [number, number] | null = null;
   let frozenStretch = 0;
+  let frontT = 14;
+  const introSeen = new Set<EnemyKind>();
   let steps = 0;
-  const tel = { thawed: 0, shatters: 0, maxChain: 0, kills: 0, placed: 0, heartsLost: 0, longestFrozen: 0, eaten: 0, snaps: 0, deniedPlace: 0, enemiesSeen: 0, firstPressure: 0, maxEnemies: 0, kindsSeen: 0 };
+  const tel = { thawed: 0, shatters: 0, maxChain: 0, kills: 0, placed: 0, heartsLost: 0, longestFrozen: 0, eaten: 0, snaps: 0, deniedPlace: 0, enemiesSeen: 0, firstPressure: 0, maxEnemies: 0, kindsSeen: 0, fronts: 0, frontMelts: 0, faultShatters: 0 };
   const kindsSeen = new Set<EnemyKind>();
 
   const spireAt = (gx: number, gy: number): Spire | undefined => s.spires.find((p) => p.gx === gx && p.gy === gy);
@@ -245,9 +260,25 @@ export function createSim(ctx: Ctx): Sim {
       phase: 'play', map, cx: path.beacon[0], cy: path.beacon[1] - 2 < 0 ? path.beacon[1] + 2 : path.beacon[1] - 2,
       sel: 'spike', ice: bal('startIce', 10), thaw: 0, dawn: 0, dawnLen: bal('dawnLength', 90),
       hearts, maxHearts: hearts, snap: 0, snapReady: false, spires: [], enemies: [], flowT: 0, realT: 0, flowing: false,
-      unlockedSet: new Set<Kind>(['spike']), chain: 0,
+      unlockedSet: new Set<Kind>(['spike']), chain: 0, faults: [], faultsShown: false, front: null,
     };
+    frontT = 14;
+    introSeen.clear();
+    // fault lines: three quiet cells away from the path, picked now so the run is deterministic
+    const quiet: number[] = [];
+    for (let gy = 1; gy < N - 1; gy++) for (let gx = 1; gx < N - 1; gx++) if (!path.cells.has(cellKey(gx, gy)) && !(gx === path.beacon[0] && gy === path.beacon[1])) quiet.push(cellKey(gx, gy));
+    ctx.rng.shuffle(quiet);
+    s.faults = quiet.slice(0, 3);
     if (!canPlace(s.cx, s.cy)) { s.cx = 4; s.cy = 0; for (let y = 0; y < N && !canPlace(s.cx, s.cy); y++) s.cy = y; }
+    // debug/test hooks: ?dawn=0.5 starts that far along (unlocking what it should), ?ice=40 adds ice
+    const dawn0 = Number(ctx.params?.dawn ?? 0);
+    if (dawn0 > 0) {
+      s.dawn = dawn0 * s.dawnLen;
+      for (const k of KINDS) if (SPIRE[k].unlock <= dawn0) s.unlockedSet.add(k);
+      dawnStepSeen = Math.floor(dawn0 * 10);
+      s.sel = 'crystal';
+    }
+    if (ctx.params?.ice) s.ice = Number(ctx.params.ice);
     emit('run-start', s.cx, s.cy, 0.3, { map });
   }
 
@@ -288,7 +319,9 @@ export function createSim(ctx: Ctx): Sim {
     const depth = reason === 'chain' ? sp.depth : 0;
     s.ice += reason === 'snap' ? def.cost : refundOf(sp.kind);
     const base = reason === 'eaten' ? 1.5 : bal('thawPerShatter', 1.5) * (reason === 'snap' ? 0.5 : 1);
-    const gain = base * def.thawMul * (1 + 0.2 * depth);
+    const onFault = s.faultsShown && s.faults.includes(cellKey(sp.gx, sp.gy));
+    const gain = base * def.thawMul * (1 + 0.2 * depth) * (onFault ? 2 : 1);
+    if (onFault) tel.faultShatters++;
     const wasFrozen = s.thaw <= 0;
     addThaw(gain, sp.gx, sp.gy);
     tel.shatters++;
@@ -303,7 +336,7 @@ export function createSim(ctx: Ctx): Sim {
     if (reason !== 'eaten' && reason !== 'snap') {
       s.snap = Math.min(100, s.snap + (depth === 0 ? 2 : 12) * bal('snapGain', 1));
     }
-    emit('shatter', sp.gx, sp.gy, Math.min(1, 0.45 + 0.12 * depth + (def.thawMul > 1 ? 0.2 : 0)), { kind: sp.kind, depth, reason, thaw: gain, wasFrozen });
+    emit('shatter', sp.gx, sp.gy, Math.min(1, 0.45 + 0.12 * depth + (def.thawMul > 1 ? 0.2 : 0)), { kind: sp.kind, depth, reason, thaw: gain, wasFrozen, fault: onFault });
     if (reason !== 'snap') {
       for (const o of neighbours(sp)) {
         if (o.crack >= 0) continue;
@@ -334,6 +367,7 @@ export function createSim(ctx: Ctx): Sim {
     kindsSeen.add(kind);
     tel.kindsSeen = kindsSeen.size;
     emit('spawn', e.x, e.y, kind === 'thaw' ? 1 : 0.3, { kind });
+    if (!introSeen.has(kind) && kind !== 'drift' && kind !== 'thaw') { introSeen.add(kind); emit('new-enemy', e.x, e.y, 0.5, { kind }); }
   }
 
   function pickKind(f: number): EnemyKind {
@@ -468,6 +502,35 @@ export function createSim(ctx: Ctx): Sim {
     }
     const step10 = Math.floor(f * 10);
     if (step10 > dawnStepSeen) { dawnStepSeen = step10; emit('dawn-step', 0, 0, f, { step: step10 }); }
+    if (!s.faultsShown && f >= 0.2) { s.faultsShown = true; emit('faults', s.cx, s.cy, 0.6, { n: s.faults.length }); }
+    // warm fronts: a telegraphed line of warmth that melts the spires in it (and so also pays out time)
+    if (s.front) {
+      s.front.t -= wdt;
+      if (s.front.t <= 0) {
+        const fr = s.front;
+        s.front = null;
+        emit('front-hit', fr.axis === 0 ? 0 : fr.idx, fr.axis === 0 ? fr.idx : 0, 0.8, { axis: fr.axis, idx: fr.idx });
+        for (const sp of [...s.spires]) {
+          if ((fr.axis === 0 ? sp.gy : sp.gx) !== fr.idx) continue;
+          sp.hp -= 2;
+          tel.frontMelts++;
+          emit('melt', sp.gx, sp.gy, 0.5, { hp: sp.hp });
+          if (sp.hp <= 0) breakSpire(sp, 'eaten');
+        }
+      }
+    } else if (f >= 0.4 && f < 0.95) {
+      frontT -= wdt;
+      if (frontT <= 0) {
+        frontT = 22 - 8 * f;
+        const axis = (ctx.rng.chance(0.5) ? 0 : 1) as 0 | 1;
+        const lines: number[] = [];
+        for (let i = 0; i < N; i++) if (s.spires.some((p) => (axis === 0 ? p.gy : p.gx) === i)) lines.push(i);
+        const idx = lines.length ? ctx.rng.pick(lines) : ctx.rng.int(0, N - 1);
+        s.front = { axis, idx, t: 6, total: 6 };
+        tel.fronts++;
+        emit('front-warn', axis === 0 ? 0 : idx, axis === 0 ? idx : 0, 0.6, { axis, idx });
+      }
+    }
     // spawning
     reprieve = Math.max(0, reprieve - wdt);
     spawnT -= wdt;
@@ -613,6 +676,9 @@ export function createSim(ctx: Ctx): Sim {
       firstPressureSimSec: Math.round(tel.firstPressure * 10) / 10,
       longestFrozenSec: Math.round(tel.longestFrozen * 10) / 10,
       spiresEaten: tel.eaten,
+      fronts: tel.fronts,
+      frontMelts: tel.frontMelts,
+      faultShatters: tel.faultShatters,
       snaps: tel.snaps,
       deniedPlace: tel.deniedPlace,
       maxEnemies: tel.maxEnemies,

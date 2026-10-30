@@ -5,7 +5,7 @@ import { play, defineSound } from '../../audio/index.ts';
 import { music } from '../../audio/music.ts';
 import { tween, ease, shake, hitStop, flash, punch, Particles, numberPop, chaseDt } from '../../juice/index.ts';
 import type { Prototype, SimEvent, View, Ctx, InputState } from '../../core/types.ts';
-import { createSim, BALANCE, SPIRE, KINDS, N, ENEMY, type Kind, type EnemyKind, type Sim, type Spire, type Enemy } from './sim.ts';
+import { createSim, BALANCE, SPIRE, KINDS, N, ENEMY, ENEMY_BLURB, type Kind, type EnemyKind, type Sim, type Spire, type Enemy } from './sim.ts';
 import { bots } from './bots.ts';
 import { composeMusic, partsFor, type MusicSet } from './music.ts';
 
@@ -200,6 +200,12 @@ function defineSounds(): void {
   defineSound('sw-dawn-step', { wave: 'sine', freq: 1568, sustain: 0.02, decay: 0.5, volume: 0.2 });
   defineSound('sw-boss', { wave: 'saw', freq: 62, slide: -0.1, attack: 0.05, sustain: 0.5, decay: 1.0, lowpass: 420, volume: 0.6 });
   defineSound('sw-spawn', { wave: 'noise', freq: 2200, highpass: 1600, sustain: 0.02, decay: 0.12, volume: 0.1 });
+  defineSound('sw-warn', [
+    { wave: 'sine', freq: 196, slide: 0.4, attack: 0.02, sustain: 0.18, decay: 0.5, lowpass: 900, volume: 0.5 },
+    { wave: 'sine', freq: 220, slide: 0.4, attack: 0.02, sustain: 0.18, decay: 0.5, lowpass: 900, volume: 0.5 },
+  ]);
+  defineSound('sw-front', { wave: 'noise', freq: 700, lowpass: 2200, slide: 0.9, attack: 0.05, sustain: 0.25, decay: 0.7, volume: 0.5 });
+  defineSound('sw-melt', { wave: 'noise', freq: 1500, highpass: 900, slide: -1.2, sustain: 0.05, decay: 0.25, volume: 0.3 });
   defineSound('sw-gift', { wave: 'sine', freq: 700, slide: 0.8, sustain: 0.05, decay: 0.3, volume: 0.3 });
 }
 const wholeTone = (i: number, cap = 6): number => Math.pow(2, (Math.min(i, cap) * 2) / 12);
@@ -228,6 +234,9 @@ export function createPrototype(): Prototype {
   let twinkle: { g: Graphics; ph: number }[] = [];
   let snow: { g: Graphics; x: number; y: number; v: number; d: number }[] = [];
   let sunG!: Graphics;
+  let faultC!: Container;
+  let frontG!: Graphics;
+  let faultTex!: Texture;
 
   // hud
   let iceText!: Text;
@@ -426,6 +435,10 @@ export function createPrototype(): Prototype {
         }
       }
       world.addChild(board);
+      faultTex = ditherDiamond(TW, TH, C.ice, C.orange, 0.5);
+      faultC = new Container();
+      frontG = new Graphics();
+      world.addChild(faultC, frontG);
 
       chainG = new Graphics();
       rangeG = new Graphics();
@@ -558,7 +571,7 @@ export function createPrototype(): Prototype {
       endTitle = mk(78, C.ice);
       endTitle.anchor.set(0.5);
       endTitle.position.set(640, 330);
-      endSub = mk(30, C.frost, 'normal');
+      endSub = mk(32, C.ice, 'normal');
       endSub.anchor.set(0.5);
       endSub.position.set(640, 430);
       endC.addChild(overlayEnd, endTitle, endSub);
@@ -679,6 +692,20 @@ export function createPrototype(): Prototype {
         }
       }
 
+      // --- fault lines pulse; warm front telegraph
+      faultC.children.forEach((c, i) => { c.alpha = 0.55 + 0.3 * Math.sin(timeNow() * 3 + i); });
+      frontG.clear();
+      if (s.front && s.phase === 'play') {
+        const fr = s.front;
+        const urgency = 1 - fr.t / fr.total;
+        const pulse2 = 0.5 + 0.5 * Math.sin(timeNow() * (4 + urgency * 14));
+        for (let i = 0; i < N; i++) {
+          const cx = fr.axis === 0 ? i : fr.idx;
+          const cy = fr.axis === 0 ? fr.idx : i;
+          frontG.poly(diamondPts(sx(cx, cy), sy(cx, cy), TW * 0.96, TH * 0.96)).fill({ color: C.orange, alpha: 0.12 + 0.1 * urgency + 0.1 * pulse2 }).stroke({ width: 2 + urgency * 2, color: C.orange, alpha: 0.5 + 0.3 * pulse2 });
+        }
+      }
+
       // --- beacon breath
       const bp = 0.5 + 0.5 * Math.sin(timeNow() * (flowing ? 5 : 1.6));
       beaconCore.scale.set(0.92 + bp * 0.12);
@@ -770,9 +797,11 @@ export function createPrototype(): Prototype {
       }
 
       // end screens
+      const wasEnd = endC.visible;
       endC.visible = s.phase !== 'play';
+      if (endC.visible && !wasEnd) overlayEnd.alpha = 0;
       if (endC.visible) {
-        overlayEnd.alpha = s.phase === 'won' ? 0.25 : 0.55;
+        overlayEnd.alpha = Math.min(0.62, overlayEnd.alpha + dt * 0.8);
       }
     },
 
@@ -790,6 +819,7 @@ export function createPrototype(): Prototype {
           sunrise = 0;
           sunG.alpha = 0;
           endC.visible = false;
+          faultC.removeChildren();
           setBeaconHearts();
           lastPartsKey = '';
           unlockedSeen = 1;
@@ -845,6 +875,12 @@ export function createPrototype(): Prototype {
           play('sw-crunch', { pitch: 0.9 + big * 0.2, variation: 0.06, pan, volume: 0.6 + big * 0.4 });
           // time returning: a whoosh that climbs in equal whole tones with the chain, capped at an octave
           play('sw-thaw', { pitch: wholeTone(depth), pan, volume: eaten ? 0.5 : 0.8 });
+          if (data.fault) {
+            numberPop(view.world as Container, 'x2', X, Y - 120, { color: C.glow, size: 40, rise: 40, ms: 900 });
+            ring(X, Y, C.glow, 200, 650, 6);
+            particles.emit('confetti', X, Y - 40, { count: 20, color: C.glow, speed: 1.4, size: 1 });
+            play('sw-unlock', { pitch: 1.5, volume: 0.6, pan });
+          }
           if (data.wasFrozen) punch(view.world as Container, 0.02);
           break;
         }
@@ -948,6 +984,56 @@ export function createPrototype(): Prototype {
           flashDiamond(640, 420, C.ice, 1100, 500);
           ring(640, 420, C.orange, 560, 800, 9);
           break;
+        case 'faults': {
+          faultC.removeChildren();
+          for (const k of s.faults) {
+            const sp = new Sprite(faultTex);
+            sp.anchor.set(0.5);
+            const gx = k % N;
+            const gy = Math.floor(k / N);
+            sp.position.set(sx(gx, gy), sy(gx, gy));
+            faultC.addChild(sp);
+            particles.emit('sparks', sx(gx, gy), sy(gx, gy), { count: 10, color: C.orange, speed: 0.8, size: 0.8 });
+            ring(sx(gx, gy), sy(gx, gy), C.orange, 70, 600, 3);
+          }
+          banner('FAULT LINES: shatter on them for double time', C.orange, 32);
+          play('sw-unlock', { pitch: 0.75 });
+          break;
+        }
+        case 'front-warn':
+          banner('WARM FRONT: it melts what it crosses', C.orange, 34);
+          play('sw-warn');
+          shake(0.12);
+          break;
+        case 'front-hit': {
+          const axis = Number(data.axis);
+          const idx = Number(data.idx);
+          for (let i = 0; i < N; i++) {
+            const cx = axis === 0 ? i : idx;
+            const cy = axis === 0 ? idx : i;
+            const g = new Graphics().poly(diamondPts(0, 0, TW, TH)).fill(C.orange);
+            g.position.set(sx(cx, cy), sy(cx, cy));
+            g.alpha = 0;
+            fxLayer.addChild(g);
+            tween(g, { alpha: 0.7 }, 90, ease.outQuad, {
+              delay: i * 55,
+              onComplete: () => {
+                particles.emit('puff', sx(cx, cy), sy(cx, cy) - 10, { count: 5, color: C.glow, speed: 0.7, size: 1 });
+                tween(g, { alpha: 0 }, 400, ease.inQuad, { onComplete: () => g.destroy() });
+              },
+            });
+          }
+          shake(0.35);
+          play('sw-front');
+          break;
+        }
+        case 'melt':
+          particles.emit('puff', X, Y - 30, { count: 8, color: C.glow, speed: 0.7, size: 1.1 });
+          play('sw-melt', { pan, variation: 0.1 });
+          break;
+        case 'new-enemy':
+          banner(ENEMY_BLURB[data.kind as EnemyKind], C.frost, 34);
+          break;
         case 'dawn-step':
           play('sw-dawn-step', { pitch: wholeTone(Number(data.step) - 1, 12) });
           break;
@@ -960,7 +1046,7 @@ export function createPrototype(): Prototype {
           endTitle.style.fill = C.frost;
           endTitle.style.fontSize = 64;
           endSub.text = `${Math.round(Number(data.dawn) * 100)}% of the way to dawn      ${glyph('a')}: try again`;
-          overlayEnd.tint = C.night;
+          overlayEnd.clear().rect(0, 0, 1280, 800).fill(C.night);
           shake(0.9);
           particles.emit('debris', X, Y - 90, { count: 60, color: C.ice, speed: 2.4, size: 1.5 });
           if (mset) { music.release(1.2); music.stinger(mset.lose, { duck: 0.9 }); }
@@ -973,7 +1059,7 @@ export function createPrototype(): Prototype {
           endTitle.style.fill = C.glow;
           endTitle.style.fontSize = 96;
           endSub.text = `the beacon held      ${glyph('a')}: again`;
-          overlayEnd.tint = C.orange;
+          overlayEnd.clear().rect(0, 0, 1280, 800).fill(0x3d2210);
           shake(0.5);
           particles.emit('confetti', 640, 300, { count: 60, color: C.glow, speed: 1.6, size: 1.4 });
           particles.emit('sparks', 640, 300, { count: 60, color: C.orange, speed: 2, size: 1.2 });
