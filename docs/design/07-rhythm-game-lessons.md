@@ -1,0 +1,39 @@
+# 07 Rhythm and music-driven games: lessons (read when the build is driven by a song or by timing to audio)
+
+Unlike the Bible, this file is deliberately genre-specific: it is what the first rhythm build taught, from Slone's feedback and from the build's own bots, tests and screenshots. Read it when the rolled genre or atoms involve rhythm, music-driven play, or any timing against a soundtrack. Every item is **one data point** until another night repeats it. Source: `2026-10-30-blotbeat`.
+
+## 1. The chart is the song
+- Derive the notes from the song's own events (kick, snare, bass, melody each get a lane). Never generate a challenge and then play a loop "near" it: Slone's verdict on that version was "the music and the game seem completely detached", and he wants to "feel the exact same beat and the key rhythmic hits between the song and the inputs".
+- A song is plain data in this scaffold (`src/music`), so this is cheap: take one pass of the loop, map instruments to lanes, thin to a playable density, repeat the pass for each time through. Meters other than 4/4 work for free because the chart comes from bar data (a 6/8 set felt different at no extra cost).
+- Escalate by song and by which instruments join, not by random density: the player learns each song's riff, and repetition is the point of a loop.
+
+## 2. The hit is the song's sound (keysounds) over a ghost
+- When the player hits a note, play that instrument at that note's exact pitch (re-pitch one authored sound; set `variation: 0` so it stays in tune). Drums are plain sounds. Match the lead voice to the song's lead voice.
+- Turn the charted notes down to a quiet ghost in the backing (scale velocity, about 0.28) instead of deleting them. A hit completes the music; a miss leaves an audible hole; the song still holds together for a player who is struggling. Notes the chart thinned out stay at full strength.
+- Free taps (no note near) should play a pitch in the song's key, so button-mashing in a rest is a toy and not noise.
+- Keep the instruments the chart uses always audible in the layered parts; let pressure add other layers (arp, riff) and keep the hook (harmony) for the earned moment.
+
+## 3. One clock
+- Lock the game clock to the audio playhead (`music.elapsed`, seconds, unwrapped), not to a separate timer. Start the song on the first beat after a silent count-in, and each frame ease the small error out (about 25% per frame, at most 12 ms per frame) so there is no visible jump; after a pause or a long hitch (error over 0.2 s for more than 6 frames) jump to the music and clear the notes that went by without penalty. Do not lock while paused. See `syncStep` and its tests.
+- Expose a **timing offset** knob (about -120 to +120 ms) for output latency, and tag non-perfect hits "early" or "late" so the player knows which way to turn it.
+- Never use hit-stop in a rhythm game: freezing the sim slides every note off the music. Use shake, flash, rings and particles.
+- Capture mode steps virtual time far faster than the wall clock the audio runs on. Detect it (frame time diverging from `performance.now()`) and switch the lock off, or the sim is dragged back to the audio clock and sets never advance in captures.
+
+## 4. Density and the hand
+- Bound what is asked at once and per second, and test it: at most 2 notes starting together, at most about 3 in any one second (2 to 3 per second on average), a minimum gap per lane (about 0.25 to 0.45 s by instrument), and a check that wraps around the loop seam. Slone: "Make sure the number of notes from moment to moment aren't overwhelming."
+- Thin by instrument share, not by priority. Priority-first thinning let the drums crowd out the melody and then the other way round. What worked: a leaky bucket per instrument (a share of the per-second allowance), time-ordered selection, and ties resolved for the least-represented instrument so no lane is starved by a fixed order (a bass note that always lands with the kick and snare would never appear otherwise).
+- **One thumb on four face buttons:** neighbouring buttons (A+B, A+X) can be pressed together, opposite buttons (A+Y, B+X) cannot, and one cannot be held while its opposite is pressed. Doubles only on neighbouring lanes; a hold must not run through an opposite-lane press. Slone: "You can hit a and c or a and b at the same time but not x and b, and not a and y." Left stick flicks can also strike lanes (and the D-pad doubles as the stick), but the same hand-reach thinking applies.
+- Introduce note kinds gradually: taps, then holds, then a new instrument lane, then a meter change; say what is new in one anchored prompt at the start of the set.
+
+## 5. A soundtrack needs variety, not one loop at four speeds
+- "Super vanilla" was the verdict on one generated groove played at 100, 108, 116 and 126 BPM. Give each section its own song: a tempo spread of 40+ BPM (96 to 146 worked), a different tonic and mode (mixolydian, minor, dorian, lydian), a different feel (funk, rock, march, rush), different drum and bass styles, a different lead voice (pluck, square, flute), and at least one different meter. Compose stingers in the key of the section they follow.
+- The song set may break the one-key-per-game guideline when the sections are meant to feel different; keep each loop and its stingers in one key.
+
+## 6. How to test a rhythm build without ears
+- Unit-test the derivation: every chart note is a real event of the song; the ghost only lowers charted notes; density, simultaneity and thumb rules hold for every song; songs really differ; the same song gives the same chart; the clock lock holds a 0.5% slow clock, tolerates jitter and resyncs once after a pause.
+- Bots that matter: a greedy bot with timing jitter and slips (the skilled player), a sloppy bot (about 80% accurate), a novice (about 70%), a mash-every-lane bot and an only-uses-the-power-move bot. If the mash bot completes the run, make strays cost something and break the combo; if the power-move bot survives, the economy is a free pass.
+- Open screenshots of every set, the count-in, a hold approaching, doubles, the pressure state, win and loss, and a juice-off run for the bare core. In real play check that the song starts on the first beat and that hits fire the song's instruments (`audioLog`).
+- Headless software GL is fill-rate bound: one full-screen layer cost about 90 ms. Use the renderer's background colour instead of a full-screen rectangle and show big overlays only while they are active; real-hardware fps still has to be checked by a human.
+
+## 7. Failure that feeds a resource (found in this build, applies to any hit/miss economy)
+- If misses fill a resource the player can spend, make spending cost something (a lock after use, a halved gain while powered) or a bot that never plays can win by cashing in; give hoarding a price (a leak while the store is over half full) so "spend now or carry more" is a decision; give clean play its own reward (a lost page returns after a tidy stretch) so the skilled player has forward pressure too.
