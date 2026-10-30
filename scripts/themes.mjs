@@ -185,6 +185,21 @@ export function add({ dir = path.join(ROOT, 'themes'), today = todayUTC(), text,
   return { text: `added ${id}: ${text.trim()}` };
 }
 
+/** Human only: retire a theme from the pool (by id or exact text) to the graveyard, with a reason. Never callable by a nightly run. */
+export function remove({ dir = path.join(ROOT, 'themes'), today = todayUTC(), which, reason, env = process.env } = {}) {
+  if (env.NIGHT_RUN === '1') throw new ThemeError('remove is for the human only; refused under NIGHT_RUN=1.');
+  if (!which) throw new ThemeError('give a theme id or its exact text.');
+  if (!reason || !reason.trim()) throw new ThemeError('--reason is required.');
+  const { f, pool, graveyard } = load(dir);
+  const t = pool.find((x) => x.id === which || x.text === which);
+  if (!t) throw new ThemeError(`no theme in the pool with id or text "${which}".`);
+  t.reasons.push({ date: today, text: `removed by human: ${reason.trim()}` });
+  graveyard.push({ ...t, retired: today });
+  write(f.pool, pool.filter((x) => x !== t));
+  write(f.graveyard, graveyard);
+  return { text: `removed ${t.id}: ${t.text}` };
+}
+
 export function report({ dir = path.join(ROOT, 'themes'), env = process.env } = {}) {
   if (env.NIGHT_RUN === '1') throw new ThemeError('report is for the human only; refused under NIGHT_RUN=1.');
   const { pool, graveyard, state } = load(dir);
@@ -226,8 +241,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     if (cmd === 'roll') r = roll({ dir, n: a.n ? Number(a.n) : 3 });
     else if (cmd === 'resolve') r = resolve({ dir, pick: a.pick, rejects: a.reject });
     else if (cmd === 'add') r = add({ dir, text: a._[0], type: a.type, source: a.source ?? 'postmortem' });
+    else if (cmd === 'remove') r = remove({ dir, which: a._[0], reason: a.reason });
     else if (cmd === 'report') r = report({ dir });
-    else throw new ThemeError('usage: themes.mjs roll [--n 3] | resolve --pick <id> --reject <id>:"reason" ... | add "<text>" --type <type> --source postmortem | report');
+    else throw new ThemeError('usage: themes.mjs roll [--n 3] | resolve --pick <id> --reject <id>:"reason" ... | add "<text>" --type <type> --source postmortem | report | remove <id|text> --reason "why" (human only)');
     console.log(r.text);
   } catch (e) {
     if (e instanceof ThemeError) { console.error(`themes: ${e.message}`); process.exit(1); }
