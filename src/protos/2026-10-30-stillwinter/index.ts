@@ -4,7 +4,7 @@ import { glyph, getDevice } from '../../core/index.ts';
 import { play, defineSound } from '../../audio/index.ts';
 import { music } from '../../audio/music.ts';
 import { tween, ease, shake, hitStop, flash, punch, Particles, numberPop, chaseDt, vfxRange, Trail } from '../../juice/index.ts';
-import type { Prototype, SimEvent, View, Ctx, InputState } from '../../core/types.ts';
+import type { Prototype, SimEvent, View, Ctx, InputState, ButtonName } from '../../core/types.ts';
 import { createSim, BALANCE, SPIRE, KINDS, N, ENEMY, ENEMY_BLURB, pathAt, type Kind, type EnemyKind, type Sim, type Spire, type Enemy } from './sim.ts';
 import { bots } from './bots.ts';
 import { composeMusic, partsFor, type MusicSet } from './music.ts';
@@ -329,7 +329,11 @@ export function createPrototype(): Prototype {
   let nightText!: Text;
   let thawBar!: Graphics;
   let dawnBar!: Graphics;
-  let hintText!: Text;
+  let promptC!: Container;
+  let promptPanel!: Graphics;
+  let promptSub!: Text;
+  let promptChips: { cap: Graphics; glyph: Text; label: Text }[] = [];
+  let promptSig = '';
   let bannerText!: Text;
   let bannerSub!: Text;
   let snapG!: Graphics;
@@ -570,15 +574,23 @@ export function createPrototype(): Prototype {
     }
   }
 
-  function fmtHint(): string {
+  interface Prompt { chips: [ButtonName, string][]; sub?: string; warn?: boolean }
+  /** What the control strip should say right now: button chips for the next action, or a note. */
+  function currentPrompt(): Prompt | null {
     const t = sim.telemetry();
     const s = sim.s;
     const f = s.dawn / s.dawnLen;
-    if (t.shatters === 0) return `${glyph('x')}  break a spire: time only moves when something breaks`;
-    if (t.solid <= 1 && s.thaw < 5) return `last solid spire: place more while time runs`;
-    if (t.shatters < 4 && f < 0.1) return s.spires.some((p) => p.queued) && s.thaw <= 0 ? `${glyph('x')}  break a solid spire: queued ones set when the clock starts` : `${glyph('a')}  place a spire    ${glyph('b')}  next spire${getDevice() === 'gamepad' ? `    ${glyph('rt')}  to the lead enemy` : ''}`;
-    if (s.snap >= 25 && !s.snapReady && t.snaps === 0 && f < 0.6) return 'chains fill the COLD SNAP meter';
-    return '';
+    const pad = getDevice() === 'gamepad';
+    if (t.shatters === 0) return { chips: [['x', 'Break a spire']], sub: 'Time only moves when something breaks' };
+    if (t.solid <= 1 && s.thaw < 5) return { chips: [['a', 'Place more']], sub: 'Last solid spire: restock while time runs', warn: true };
+    if (t.shatters < 4 && f < 0.1) {
+      if (s.spires.some((p) => p.queued) && s.thaw <= 0) return { chips: [['x', 'Break a solid spire']], sub: 'Queued spires set when the clock starts' };
+      const chips: [ButtonName, string][] = [['a', 'Place'], ['b', 'Next spire']];
+      if (pad) chips.push(['rt', 'Jump to enemy']);
+      return { chips };
+    }
+    if (s.snap >= 25 && !s.snapReady && t.snaps === 0 && f < 0.6) return { chips: [], sub: 'Chains fill the Cold Snap meter' };
+    return null;
   }
 
   return {
@@ -769,10 +781,23 @@ export function createPrototype(): Prototype {
       ui.addChild(thawText, clockText);
 
       // hint + banner
-      hintText = mk(26, C.frost, 'normal');
-      hintText.anchor.set(0.5, 1);
-      hintText.position.set(640, 708);
-      ui.addChild(hintText);
+      // the control strip: a dark plate with key-cap chips, so prompts read as part of the interface
+      promptC = new Container();
+      promptPanel = new Graphics();
+      promptSub = mk(24, C.frost, 'normal');
+      promptSub.anchor.set(0.5);
+      promptC.addChild(promptPanel, promptSub);
+      for (let i = 0; i < 3; i++) {
+        const cap = new Graphics();
+        const g = mk(22, C.night);
+        g.anchor.set(0.5);
+        const l = mk(26, C.ice);
+        l.anchor.set(0, 0.5);
+        promptC.addChild(cap, g, l);
+        promptChips.push({ cap, glyph: g, label: l });
+      }
+      promptC.position.set(640, 664);
+      ui.addChild(promptC);
       bannerText = mk(46, C.ice);
       bannerText.anchor.set(0.5);
       bannerText.position.set(640, 118);
@@ -1240,10 +1265,47 @@ export function createPrototype(): Prototype {
       if (s.snapReady) snapText.alpha = 0.6 + 0.4 * Math.sin(snapPulse * 10);
 
       // hint
-      const hint = s.phase === 'play' ? fmtHint() : '';
-      hintText.text = hint;
-      hintAlpha = chaseDt(hintAlpha, hint ? 1 : 0, 0.05, dt);
-      hintText.alpha = hintAlpha;
+      const pr = s.phase === 'play' ? currentPrompt() : null;
+      hintAlpha = chaseDt(hintAlpha, pr ? 1 : 0, 0.12, dt);
+      promptC.alpha = hintAlpha;
+      promptC.visible = hintAlpha > 0.02;
+      promptC.position.set(640, 664 + (1 - hintAlpha) * 16);
+      if (pr) {
+        const sig = JSON.stringify([pr, getDevice()]);
+        if (sig !== promptSig) {
+          promptSig = sig;
+          // lay the chips out in a row, then size the plate around them
+          let w = 0;
+          const items = pr.chips.map(([btn, label], i) => {
+            const c = promptChips[i];
+            c.glyph.text = glyph(btn);
+            c.label.text = label;
+            const capW = Math.max(40, c.glyph.width + 24);
+            const item = { c, capW, w: capW + 10 + c.label.width };
+            w += item.w + (i ? 34 : 0);
+            return item;
+          });
+          promptChips.forEach((c, i) => { const on = i < items.length; c.cap.visible = c.glyph.visible = c.label.visible = on; });
+          promptSub.text = pr.sub ?? '';
+          const subW = pr.sub ? promptSub.width : 0;
+          const pw = Math.max(w, subW) + 56;
+          const ph = (items.length ? 56 : 0) + (pr.sub ? (items.length ? 44 : 50) : 0) + (items.length && pr.sub ? 0 : 0);
+          const top = -ph / 2;
+          promptPanel.clear().roundRect(-pw / 2, top, pw, ph, 18).fill({ color: C.night, alpha: 0.88 }).stroke({ width: 3, color: pr.warn ? C.orange : C.frost });
+          let x = -w / 2;
+          const rowY = items.length ? top + 28 : 0;
+          items.forEach((it, i) => {
+            if (i) x += 34;
+            it.c.cap.clear().roundRect(x, rowY - 18, it.capW, 36, 10).fill(C.ice).stroke({ width: 3, color: C.deep });
+            it.c.cap.roundRect(x + 3, rowY - 15, it.capW - 6, 6, 3).fill({ color: 0xffffff, alpha: 0.6 });
+            it.c.glyph.position.set(x + it.capW / 2, rowY + 1);
+            it.c.label.position.set(x + it.capW + 10, rowY);
+            x += it.w;
+          });
+          promptSub.position.set(0, items.length ? top + 56 + 20 : 0);
+          promptSub.style.fill = pr.warn ? C.glow : C.frost;
+        }
+      }
 
       // sunrise after winning
       if (s.phase === 'dawning' || s.phase === 'won') {
