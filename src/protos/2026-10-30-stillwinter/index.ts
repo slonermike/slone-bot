@@ -134,6 +134,7 @@ function drawSpire(g: Graphics, kind: Kind): Graphics {
     g.poly([4, -88, 4, -100, -2, -92, 10, -92]).fill(C.ice).stroke({ width: 2, color: C.slate });
     for (let i = 0; i < 3; i++) g.moveTo(10, -10 - i * 22).lineTo(18, -14 - i * 22).stroke({ width: 2, color: C.mid });
   }
+  drawEmitter(g, kind);
   return g;
 }
 
@@ -166,9 +167,56 @@ const UNLOCK_BLURB: Record<Kind, string> = {
   chime: 'rings out damage all around it',
   prism: 'its beam pierces everything in a line',
 };
+/** Where each tower's projectiles come from, in the spire's own coordinates (also where the muzzle flash plays). */
+const MUZZLE: Record<Kind, [number, number]> = {
+  spike: [0, -80],
+  crystal: [0, -62],
+  lantern: [0, -41],
+  chime: [0, -44],
+  prism: [4, -104],
+};
+/** The visible emitter on each tower: a dark socket with a bright core, so the source of the shot reads at a glance. */
+function drawEmitter(g: Graphics, kind: Kind): void {
+  const [mx, my] = MUZZLE[kind];
+  if (kind === 'lantern') return;
+  if (kind === 'chime') {
+    g.circle(mx, my, 10).fill(C.slate).stroke({ width: 2, color: C.night });
+    g.circle(mx, my, 5).fill(C.ice);
+    return;
+  }
+  const r = kind === 'prism' ? 8 : kind === 'crystal' ? 6 : 5;
+  g.circle(mx, my + (kind === 'spike' ? 6 : 0), r + 3).fill(C.slate).stroke({ width: 2, color: C.night });
+  g.circle(mx, my + (kind === 'spike' ? 6 : 0), r).fill(C.ice);
+  g.circle(mx, my + (kind === 'spike' ? 6 : 0), r / 2).fill(C.frost);
+}
+/** Where a spire's body is, so its damage cracks run down the middle of it: [x at top, y top, x at bottom, y bottom, half width]. */
+const BODY: Record<Kind, [number, number, number, number, number]> = {
+  spike: [0, -66, 0, -8, 8],
+  crystal: [0, -50, 0, -6, 7],
+  lantern: [0, -62, 0, -16, 9],
+  chime: [0, -64, 0, -30, 9],
+  prism: [4, -82, 8, -10, 7],
+};
+function drawCracks(g: Graphics, kind: Kind, lvl: number): void {
+  const [x0, y0, x1, y1, hw] = BODY[kind];
+  const steps = 3 + lvl * 2;
+  const reach = lvl === 1 ? 0.45 : lvl === 2 ? 0.75 : 1;
+  const pts: number[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const u = (i / steps) * reach;
+    pts.push(x0 + (x1 - x0) * u + (i % 2 ? hw : -hw) * 0.7 * (i === 0 ? 0 : 1), y0 + (y1 - y0) * u);
+  }
+  g.poly(pts, false).stroke({ width: 4, color: C.ice, join: 'round', cap: 'round' });
+  g.poly(pts, false).stroke({ width: 2, color: C.night, join: 'round', cap: 'round' });
+  if (lvl >= 3) {
+    const mx = pts[6];
+    const my = pts[7];
+    g.moveTo(mx, my).lineTo(mx + hw * 1.3, my + 8).lineTo(mx + hw * 0.6, my + 16).stroke({ width: 2, color: C.night, cap: 'round' });
+  }
+}
 const eyeY: Record<EnemyKind, number> = { drift: -2, ram: -2, glider: 0, wisp: -1, thaw: -4 };
 
-interface SpireView { c: Container; body: Graphics; q: Graphics; cracks: Graphics; lastHp: number; kind: Kind; drop: number }
+interface SpireView { c: Container; body: Graphics; muzzle: Graphics; fire: number; q: Graphics; cracks: Graphics; lastHp: number; kind: Kind; drop: number }
 interface EnemyView { c: Container; body: Graphics; eyes: Graphics; bar: Graphics; shadow: Graphics; shell: Graphics; trail: Trail | null; kind: EnemyKind; lastHit: number }
 
 // ---------------------------------------------------------------- sound
@@ -249,6 +297,8 @@ export function createPrototype(): Prototype {
   let sunG!: Graphics;
   let faultC!: Container;
   let etaG!: Graphics;
+  interface Bolt { g: Graphics; trail: Trail; t: number; dur: number; x0: number; y0: number; x1: number; y1: number }
+  let bolts: Bolt[] = [];
   let markG!: Graphics;
   interface Flyer { txt: Text; trail: Trail; t: number; dur: number; x0: number; y0: number; amount: number; size: number }
   let flyers: Flyer[] = [];
@@ -314,11 +364,12 @@ export function createPrototype(): Prototype {
       const q = new Graphics();
       q.poly(diamondPts(0, 0, TW * 0.8, TH * 0.8)).stroke({ width: 3, color: C.frost });
       q.poly(diamondPts(0, 0, TW * 0.55, TH * 0.55)).stroke({ width: 2, color: C.ice, alpha: 0.7 });
-      c.addChild(shadow, q, body, cracks);
+      const muzzle = new Graphics();
+      c.addChild(shadow, q, body, cracks, muzzle);
       c.position.set(sx(sp.gx, sp.gy), sy(sp.gx, sp.gy));
       c.zIndex = sp.gx + sp.gy;
       things.addChild(c);
-      v = { c, body, q, cracks, lastHp: sp.hp, kind: sp.kind, drop: 9 };
+      v = { c, body, muzzle, fire: 0, q, cracks, lastHp: sp.hp, kind: sp.kind, drop: 9 };
       spireViews.set(sp.id, v);
     }
     return v;
@@ -693,6 +744,18 @@ export function createPrototype(): Prototype {
       const flowing = s.thaw > 0 && s.phase === 'play';
       const flowK = Math.min(1, s.thaw / 0.35);
 
+      // --- bolts in flight: dark slate darts with an ice core, so they read on pale ice
+      for (let i = bolts.length - 1; i >= 0; i--) {
+        const b = bolts[i];
+        b.t += dt;
+        const p = Math.min(1, b.t / b.dur);
+        const x = b.x0 + (b.x1 - b.x0) * p;
+        const y = b.y0 + (b.y1 - b.y0) * p;
+        b.g.position.set(x, y);
+        b.trail.push(x, y);
+        b.trail.draw();
+        if (p >= 1) { b.trail.gfx.destroy(); b.g.destroy(); bolts.splice(i, 1); }
+      }
       // --- flying time numbers
       for (let i = flyers.length - 1; i >= 0; i--) {
         const f = flyers[i];
@@ -742,16 +805,24 @@ export function createPrototype(): Prototype {
         if ((v.cracks as unknown as { lvl?: number }).lvl !== lvl) {
           (v.cracks as unknown as { lvl?: number }).lvl = lvl;
           v.cracks.clear();
-          for (let i = 0; i < lvl; i++) {
-            v.cracks.moveTo(-8 + i * 7, -48 + i * 10).lineTo(-2 + i * 5, -30 + i * 10).lineTo(-9 + i * 8, -18 + i * 6).stroke({ width: 2.5, color: C.slate });
-          }
+          drawCracks(v.cracks, sp.kind, lvl);
         }
         v.drop += dt;
         const dk = Math.min(1, v.drop / 0.34);
         const fall = 1 - ease.outBounce(dk);
         v.body.y = -46 * fall;
         const sq = dk < 1 ? 1 + 0.25 * fall : 1;
-        v.body.scale.set(1 / sq + (sp.kind === 'lantern' && flowing ? 0.03 * Math.sin(timeNow() * 6) : 0), sq);
+        v.fire = Math.max(0, v.fire - dt * 6);
+        v.body.y += v.fire * 5;
+        v.muzzle.clear();
+        if (v.fire > 0.02 && !sp.queued) {
+          const [mx, my] = MUZZLE[sp.kind];
+          const k = v.fire;
+          star(v.muzzle, 8, 8 + 26 * k, 4, k * 2, mx, my + v.body.y).fill({ color: C.glow, alpha: Math.min(1, k * 1.4) });
+          star(v.muzzle, 4, 5 + 14 * k, 2, 0, mx, my + v.body.y).fill({ color: C.orange, alpha: Math.min(1, k * 1.4) });
+          v.muzzle.circle(mx, my + v.body.y, 4 + 8 * k).fill({ color: C.ice, alpha: k });
+        }
+        v.body.scale.set(1 / sq + (sp.kind === 'lantern' && flowing ? 0.03 * Math.sin(timeNow() * 6) : 0) + v.fire * 0.06, sq - v.fire * 0.07);
         const qp = 0.5 + 0.5 * Math.sin(timeNow() * 5 + sp.id);
         v.body.alpha = sp.queued ? 0.32 + 0.14 * qp : 1;
         v.cracks.alpha = v.body.alpha;
@@ -771,7 +842,9 @@ export function createPrototype(): Prototype {
         const lift = (e.kind === 'wisp' ? 38 : 20) + (flowing ? Math.sin(timeNow() * 5 + e.id) * 4 : 0);
         v.c.position.set(sx(x, y), sy(x, y));
         v.c.zIndex = x + y + 0.1;
-        v.spin.position.set(0, -lift);
+        const kk = (v as unknown as { kick?: number }).kick ?? 0;
+        (v as unknown as { kick: number }).kick = Math.max(0, kk - dt * 6);
+        v.spin.position.set(kk * vfxRange(-6, 6), -lift - kk * 5);
         v.shell.position.set(0, -lift + 4);
         v.shell.alpha = chaseDt(v.shell.alpha, flowing ? 0 : 0.95, 0.12, dt);
         v.shell.visible = v.shell.alpha > 0.02;
@@ -807,7 +880,7 @@ export function createPrototype(): Prototype {
           v.bar.rect(-w / 2, -lift - (e.kind === 'thaw' ? 78 : 32), w, 5).fill({ color: C.night, alpha: 0.7 });
           v.bar.rect(-w / 2, -lift - (e.kind === 'thaw' ? 78 : 32), (w * e.hp) / e.maxHp, 5).fill(C.ice);
         }
-        v.c.tint = e.hit > 0 ? 0xffffff : 0xffffff;
+        v.body.tint = e.hit > 0 ? C.orange : 0xffffff;
       }
       for (const [id, v] of enemyViews) if (!seen.has(id)) { v.trail?.gfx.destroy(); v.c.destroy({ children: true }); enemyViews.delete(id); }
 
@@ -1045,6 +1118,7 @@ export function createPrototype(): Prototype {
           for (const d of decals) d.g.destroy();
           decals = [];
       flyers = [];
+      bolts = [];
       pendingFly = 0;
       bumpers = [];
           beacon.alpha = 1;
@@ -1161,23 +1235,63 @@ export function createPrototype(): Prototype {
         case 'shot': {
           const tX = sx(Number(data.tx), Number(data.ty));
           const tY = sy(Number(data.tx), Number(data.ty));
-          const g = new Graphics();
           const prism = data.kind === 'prism';
-          g.moveTo(X, Y - 54).lineTo(tX, tY - 20).stroke({ width: prism ? 6 : 3, color: prism ? C.glow : C.ice, cap: 'round' });
-          fxLayer.addChild(g);
-          tween(g, { alpha: 0 }, prism ? 220 : 130, ease.outQuad, { onComplete: () => g.destroy() });
-          particles.emit('sparks', tX, tY - 20, { count: 3, color: C.ice, speed: 0.6, size: 0.6 });
+          const shooter = s.spires.find((p) => p.gx === x && p.gy === y);
+          const [mzx, mzy] = MUZZLE[(data.kind as Kind) ?? 'spike'];
+          if (shooter) spireView(shooter).fire = 1;
+          const oX = X + mzx;
+          const oY = Y + mzy;
+          const ang = Math.atan2(tY - 20 - oY, tX - oX);
+          if (prism) {
+            const g = new Graphics();
+            g.moveTo(oX, oY).lineTo(tX + Math.cos(ang) * 120, tY - 20 + Math.sin(ang) * 120).stroke({ width: 12, color: C.slate, cap: 'round' });
+            g.moveTo(oX, oY).lineTo(tX + Math.cos(ang) * 120, tY - 20 + Math.sin(ang) * 120).stroke({ width: 5, color: C.ice, cap: 'round' });
+            fxLayer.addChild(g);
+            tween(g, { alpha: 0 }, 260, ease.outQuad, { onComplete: () => g.destroy() });
+          } else {
+            const g = new Graphics();
+            g.poly([14, 0, 0, -6, -10, 0, 0, 6]).fill(C.slate).stroke({ width: 2, color: C.night });
+            g.poly([8, 0, 0, -3, -4, 0, 0, 3]).fill(C.ice);
+            g.rotation = ang;
+            fxLayer.addChild(g);
+            const trail = new Trail(fxLayer, { color: C.slate, width: 7, length: 6, alpha: 0.7 });
+            bolts.push({ g, trail, t: 0, dur: 0.07, x0: oX, y0: oY, x1: tX, y1: tY - 20 });
+          }
           play('sw-shot', { pitch: prism ? 0.7 : 1, variation: 0.08, pan, volume: 0.8 });
           break;
         }
         case 'pulse':
+          {
+            const ch = s.spires.find((p) => p.gx === x && p.gy === y);
+            if (ch) spireView(ch).fire = 1;
+          }
           ring(X, Y - 10, C.frost, Number(data.r) * TW * 0.5, 460, 4);
           play('sw-pulse', { pan, volume: 0.6 });
           break;
-        case 'hit':
-          particles.emit('sparks', X, Y - 24, { count: 4, color: C.ice, speed: 0.6, size: 0.6 });
-          play('hit', { pitch: 1.6, volume: 0.25, variation: 0.1, pan });
+        case 'hit': {
+          // a big tell: the enemy flares orange and jolts, a dark star bursts on it, and the damage shows
+          let near: EnemyView | null = null;
+          let nd = 1.2;
+          for (const en of s.enemies) {
+            const d = Math.hypot(en.x - x, en.y - y);
+            const ev = enemyViews.get(en.id);
+            if (ev && d < nd) { nd = d; near = ev; }
+          }
+          if (near) { punch(near.c, 0.4); (near as unknown as { kick: number }).kick = 1; }
+          const star7 = new Graphics();
+          star(star7, 8, 34, 10).fill({ color: C.slate, alpha: 0.9 });
+          star(star7, 8, 20, 6, Math.PI / 8).fill(C.orange);
+          star7.position.set(X, Y - 26);
+          star7.rotation = vfxRange(0, 1);
+          fxLayer.addChild(star7);
+          tween(star7, { alpha: 0, scale: 1.7 }, 220, ease.outQuad, { onComplete: () => star7.destroy() });
+          particles.emit('sparks', X, Y - 26, { count: 8, color: C.orange, speed: 1.1, size: 0.9 });
+          particles.emit('debris', X, Y - 26, { count: 6, color: C.slate, speed: 0.9, size: 1.0 });
+          numberPop(view.world as Container, `-${Math.max(1, Math.round((m - 0.2) * 10))}`, X + vfxRange(-14, 14), Y - 58, { color: C.night, size: 26, rise: 26, ms: 520 });
+          hitStop(1);
+          play('hit', { pitch: 1.3, volume: 0.45, variation: 0.1, pan });
           break;
+        }
         case 'kill': {
           const kind = data.kind as EnemyKind;
           const bigK = kind === 'thaw' ? 1 : kind === 'ram' ? 0.6 : 0.3;

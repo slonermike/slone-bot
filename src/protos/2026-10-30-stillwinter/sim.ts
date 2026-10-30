@@ -308,7 +308,7 @@ export function createSim(ctx: Ctx): Sim {
   function damage(e: Enemy, d: number, blast: boolean): void {
     if (!e.alive) return;
     e.hp -= d;
-    e.hit = 0.12;
+    e.hit = 0.2;
     if (e.hp <= 0) {
       e.alive = false;
       s.ice += ENEMY[e.kind].ice;
