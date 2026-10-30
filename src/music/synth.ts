@@ -45,6 +45,11 @@ export class SongPlayer {
     return this.playing ? this.song : null;
   }
 
+  /** Seconds since the first beat began (negative until it starts, never wrapped; null when stopped). A game can lock its own clock to this. */
+  get elapsed(): number | null {
+    return this.playing ? this.ctx.currentTime - this.startTime : null;
+  }
+
   /** Position in the song, in beats (for the playhead; wraps for a loop). */
   get beat(): number {
     if (!this.playing || !this.song) return 0;

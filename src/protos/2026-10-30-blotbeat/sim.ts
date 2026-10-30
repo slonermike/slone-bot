@@ -1,9 +1,10 @@
 // Blot Beat sim: PURE. No Pixi, DOM, audio or Math.random. A rhythm game on four lanes where every miss drops an
 // ink blot; ink is both the danger (too much spills the page) and the fuel (spend it on a STAMP that starts a fever).
 import type { Ctx, InputState, SimEvent } from '../../core/types.ts';
-import type { Rng } from '../../core/rng.ts';
 import type { BalanceSpec } from '../../core/types.ts';
 import { laneRing } from './geometry.ts';
+import { SET_DEFS, barBeats, chartFor, loopSeconds, songFor } from './music.ts';
+import type { Kind } from './chart.ts';
 
 export const BALANCE: BalanceSpec[] = [
   { id: 'window', label: 'Hit window (wider = easier)', min: 0.6, max: 1.6, step: 0.05, default: 1 },
@@ -15,13 +16,9 @@ export const BALANCE: BalanceSpec[] = [
   { id: 'approach', label: 'Note travel time (longer = more warning)', min: 0.8, max: 1.8, step: 0.05, default: 1.25, unit: 's' },
 ];
 
-export const SETS = [
-  { name: 'Doodle', bpm: 100, bars: 22, level: 0, holds: 0, doubles: 0 },
-  { name: 'Sketch', bpm: 108, bars: 24, level: 1, holds: 0.55, doubles: 0 },
-  { name: 'Scrawl', bpm: 116, bars: 26, level: 2, holds: 0.5, doubles: 0.5 },
-  { name: 'Finale', bpm: 126, bars: 30, level: 3, holds: 0.5, doubles: 0.7 },
-] as const;
-export type SetCfg = (typeof SETS)[number] | { name: string; bpm: number; bars: number; level: number; holds: number; doubles: number };
+/** The four sets, one per song (tempo, key and feel live in music.ts). */
+export const SETS = SET_DEFS.map((d) => ({ name: d.name, info: d.info, reps: d.reps }));
+export type SetCfg = (typeof SETS)[number];
 
 export const STICKERS = [
   { id: 'nib', name: 'Wide Nib', text: 'Hit windows 25% wider' },
@@ -49,75 +46,13 @@ export interface Note {
   state: NoteState;
   /** Another note strikes at the same moment (a double). */
   pair: boolean;
-}
-
-export interface ChartNote {
-  lane: number;
-  /** In beats from the first downbeat. */
-  beat: number;
-  /** Hold length in beats. */
-  len: number;
+  /** Which instrument of the song this note is, and its MIDI pitch (the sound the player makes by hitting it). */
+  kind: Kind;
+  midi: number;
 }
 
 const WIN = { perfect: 0.07, good: 0.13, ok: 0.19 };
 const BASE = { perfect: 100, good: 70, ok: 40 };
-const RHYTHMS: number[][][] = [
-  [[0, 2, 4, 6], [0, 4], [0, 2, 4], [0, 4, 6]],
-  [[0, 2, 3, 4, 6], [0, 3, 4, 6], [0, 2, 4, 5, 6], [0, 2, 4, 6, 7]],
-  [[0, 1, 2, 4, 6], [0, 2, 3, 4, 5, 6], [0, 3, 4, 7], [0, 2, 4, 6, 7]],
-  [[0, 1, 2, 3, 4, 6], [0, 2, 3, 4, 6, 7], [0, 1, 3, 4, 5, 7], [0, 2, 4, 5, 6, 7]],
-];
-
-/** A chart for one set: phrases of four bars (A B A B'), lanes follow a motif per bar type, so it is learnable. Pure. */
-export function makeChart(rng: Rng, cfg: SetCfg): ChartNote[] {
-  const out: ChartNote[] = [];
-  const bank = RHYTHMS[cfg.level]!;
-  const playable = cfg.bars - 1; // last bar is silence
-  let lane = rng.int(0, 3);
-  const nextLane = (l: number) => (l + rng.pick([1, 3, 2, 1, 3])) % 4;
-  for (let phrase = 0; phrase * 4 < playable; phrase++) {
-    const A = rng.pick(bank);
-    const B = rng.pick(bank);
-    const laneA: number[] = [];
-    const laneB: number[] = [];
-    for (let i = 0; i < A.length; i++) { lane = nextLane(lane); laneA.push(lane); }
-    for (let i = 0; i < B.length; i++) { lane = nextLane(lane); laneB.push(lane); }
-    const tweak = rng.int(0, B.length - 1);
-    for (let k = 0; k < 4; k++) {
-      const bar = phrase * 4 + k;
-      if (bar >= playable) break;
-      const useA = k % 2 === 0;
-      const slots = useA ? A : B;
-      const lanes = useA ? laneA : laneB;
-      slots.forEach((slot, i) => {
-        if (k === 3 && i === tweak && slot !== 0) return; // the answer bar drops one note: statement/answer
-        out.push({ lane: lanes[i]!, beat: bar * 4 + slot / 2, len: 0 });
-      });
-    }
-  }
-  out.sort((a, b) => a.beat - b.beat || a.lane - b.lane);
-  // holds: a note on a strong slot with room before the next note becomes a hold
-  if (cfg.holds > 0) {
-    for (let i = 0; i < out.length; i++) {
-      const n = out[i]!;
-      const next = out.slice(i + 1).find((m) => m.beat > n.beat + 1e-6);
-      const gap = (next ? next.beat : cfg.bars * 4) - n.beat;
-      const onStrong = Math.abs(n.beat % 2) < 1e-6;
-      if (onStrong && gap >= 1.5 && rng.chance(cfg.holds * 0.5)) n.len = Math.min(2, gap - 0.5);
-    }
-  }
-  // doubles: a partner on the opposite lane on some bar downbeats
-  if (cfg.doubles > 0) {
-    const extra: ChartNote[] = [];
-    for (const n of out) {
-      if (n.beat % 4 === 0 && n.len === 0 && rng.chance(cfg.doubles)) extra.push({ lane: (n.lane + 2) % 4, beat: n.beat, len: 0 });
-    }
-    out.push(...extra);
-    out.sort((a, b) => a.beat - b.beat || a.lane - b.lane);
-  }
-  return out;
-}
-
 export interface Stats {
   windowMul: number;
   inkMax: number;
@@ -132,6 +67,8 @@ export interface SimState {
   set: number;
   cfg: SetCfg;
   beatDur: number;
+  /** Beats in a bar of this song (the count-in length). */
+  barBeats: number;
   setT: number;
   lastBeat: number;
   notes: Note[];
@@ -224,8 +161,9 @@ export function createSim() {
   function startSet(i: number) {
     s.set = i;
     s.cfg = SETS[i]!;
-    s.beatDur = 60 / s.cfg.bpm;
-    s.setT = -4 * s.beatDur;
+    s.beatDur = 60 / songFor(i).tempo;
+    s.barBeats = barBeats(i);
+    s.setT = -s.barBeats * s.beatDur;
     s.lastBeat = -5;
     s.phase = 'play';
     s.ink = 0; s.inkBand = 0; s.feverT = 0; s.restUntil = -1; s.graceUntil = -1; s.strayInk = 0; s.strayAt = -9; s.stampLock = -1e9; s.dripAt = 0;
@@ -233,12 +171,17 @@ export function createSim() {
     s.setMisses = 0;
     s.lastTidy = '';
     s.laneHold = [-1, -1, -1, -1];
-    const chart = makeChart(ctx.rng.fork(), s.cfg);
-    s.notes = chart.map((c) => ({ id: nextId++, lane: c.lane, t: c.beat * s.beatDur, len: c.len * s.beatDur, state: 'live' as NoteState, pair: false }));
+    // the chart IS the song: one pass of the loop's playable notes, repeated for each time through
+    const pass = chartFor(i);
+    const L = loopSeconds(i);
+    s.notes = [];
+    for (let r = 0; r < s.cfg.reps; r++) {
+      for (const c of pass) s.notes.push({ id: nextId++, lane: c.lane, t: r * L + c.t, len: c.len, state: 'live' as NoteState, pair: false, kind: c.kind, midi: c.midi });
+    }
     for (const n of s.notes) n.pair = s.notes.some((m) => m !== n && Math.abs(m.t - n.t) < 1e-6);
     s.notesTotal += s.notes.length;
-    s.endT = s.cfg.bars * 4 * s.beatDur;
-    emit({ type: 'set-start', magnitude: 0.6, data: { set: i, bpm: s.cfg.bpm } });
+    s.endT = s.cfg.reps * L + 1.2;
+    emit({ type: 'set-start', magnitude: 0.6, data: { set: i, bpm: songFor(i).tempo } });
   }
 
   function multNow(): number {
@@ -334,7 +277,7 @@ export function createSim() {
         s.hits++;
         const p = laneRing(n.lane);
         const pts = award(BASE.good, p.x, p.y);
-        emit({ type: 'hit', magnitude: 0.6, x: p.x, y: p.y, data: { lane: n.lane, grade: 'good', points: pts, auto: true, order: k++, combo: s.combo } });
+        emit({ type: 'hit', magnitude: 0.6, x: p.x, y: p.y, data: { lane: n.lane, grade: 'good', points: pts, auto: true, order: k++, combo: s.combo, kind: n.kind, midi: n.midi, len: n.len } });
       }
     }
   }
@@ -390,7 +333,7 @@ export function createSim() {
       s.perfectRun = 0;
       if (s.ink > 0) { s.ink = Math.max(0, s.ink - 0.5); emit({ type: 'dry', magnitude: 0.4, x: p.x, y: p.y, data: { ink: s.ink } }); setBand(); }
     }
-    emit({ type: best.len > 0 ? 'hold-start' : 'hit', magnitude: grade === 'perfect' ? 0.8 : grade === 'good' ? 0.55 : 0.35, x: p.x, y: p.y, data: { lane, grade, points: pts, early, combo: s.combo, mult: s.mult, auto: false } });
+    emit({ type: best.len > 0 ? 'hold-start' : 'hit', magnitude: grade === 'perfect' ? 0.8 : grade === 'good' ? 0.55 : 0.35, x: p.x, y: p.y, data: { lane, grade, points: pts, early, combo: s.combo, mult: s.mult, auto: false, kind: best.kind, midi: best.midi, len: best.len } });
   }
 
   function stickLane(input: InputState): number {
@@ -415,7 +358,7 @@ export function createSim() {
     const beatIdx = Math.floor(s.setT / s.beatDur);
     if (beatIdx !== s.lastBeat) {
       s.lastBeat = beatIdx;
-      emit({ type: 'beat', magnitude: beatIdx % 4 === 0 ? 0.8 : 0.4, data: { beat: beatIdx, countIn: s.setT < 0 } });
+      emit({ type: 'beat', magnitude: beatIdx % s.barBeats === 0 ? 0.8 : 0.4, data: { beat: beatIdx, countIn: s.setT < 0, bar: s.barBeats } });
     }
     // fever ticks down
     if (s.feverT > 0) {
@@ -550,6 +493,16 @@ export function createSim() {
       if (Math.abs(s.score - s.displayScore) < 0.5) s.displayScore = s.score;
     },
     drain(): SimEvent[] { const e = out; out = []; return e; },
+    /** Lock the clock to the audio playhead: shift sim time a little (render-side only; bots never call it, so runs stay deterministic). */
+    nudge(seconds: number) { if (s.phase === 'play') s.setT += seconds; },
+    /** After a pause or a hitch the music has moved on: jump to where it is, clearing notes that went by (no penalty). */
+    resync(toSeconds: number) {
+      if (s.phase !== 'play') return;
+      s.setT = toSeconds;
+      for (const n of s.notes) if ((n.state === 'live' || n.state === 'holding') && n.t + n.len < toSeconds - 0.1) n.state = 'cleared';
+      s.laneHold = [-1, -1, -1, -1];
+      s.graceUntil = Math.max(s.graceUntil, toSeconds + 0.4);
+    },
     stats,
   };
 }

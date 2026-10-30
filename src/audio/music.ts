@@ -48,6 +48,11 @@ class MusicDirector {
     return { songId: this.song?.id ?? null, parts: this.parts, paused: this.paused, stingers: this.stingers };
   }
 
+  /** Seconds of the looping song played so far (never wrapped; negative just before it starts; null if no loop is audible). For locking a game's clock to the music. */
+  get elapsed(): number | null {
+    return this.enabled() ? this.loop?.elapsed ?? null : null;
+  }
+
   private players(): { loop: SongPlayer; sting: SongPlayer } | null {
     const ctx = audio.context;
     const out = audio.bus('music');

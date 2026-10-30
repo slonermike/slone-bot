@@ -1,41 +1,87 @@
-// Blot Beat's own music: one tonic and mode (D dorian) for the four set loops and the stingers. The loops share a
-// seed (same hook, faster each set); the parts follow the ink and the set, and the hook (lead) is held for the fever.
+// Blot Beat's music: four different songs, one per set, each with its own tempo, key, mode, meter and feel, and a
+// chart DERIVED from each song (chart.ts): kick, snare, bass and melody are the lanes, so the inputs are the rhythm
+// you hear. Stingers are composed in the key of the set they follow. Everything here is pure data (no audio calls).
 import { composeSong, composeStinger } from '../../music/compose.ts';
+import type { ComposeOptions } from '../../music/compose.ts';
 import type { Inst, Song } from '../../music/types.ts';
+import { backingSong, chartFromSong, loopSecondsOf } from './chart.ts';
+import type { ChartCfg, SongNote } from './chart.ts';
 
-const KEY = { mode: 'dorian', root: 50 } as const;
-export const SET_BPM = [100, 108, 116, 126] as const;
+export interface SetDef {
+  name: string;
+  /** Shown under the set name. */
+  info: string;
+  spec: Pick<ComposeOptions, 'mode' | 'root' | 'seed' | 'bpm' | 'meter' | 'feel' | 'name' | 'description' | 'style' | 'mood'>;
+  chart: ChartCfg;
+  /** Times through the loop in this set. */
+  reps: number;
+}
+
+export const SET_DEFS: SetDef[] = [
+  {
+    name: 'Doodle', info: '96 BPM, D mixolydian, funk',
+    spec: { name: 'Doodle Funk', description: 'Bouncy funk in D mixolydian: syncopated bass, plucky hook.', style: 'cheeky funk groove', mood: 'playful', mode: 'mixolydian', root: 50, seed: 5, bpm: 96, meter: '4/4',
+      feel: { drums: 'funk', bass: 'sync', bassVoice: 'saw', leadVoice: 'pluck', arp: 0.4, sync: 0.5, density: 0.6, harmony: true } },
+    chart: { kinds: ['kick', 'snare', 'lead'], holds: false, maxPerSec: 2, minGap: { kick: 0.42, snare: 0.42, lead: 0.3, bass: 0.5 }, maxSimul: 2 }, reps: 3,
+  },
+  {
+    name: 'Sketch', info: '118 BPM, A minor, driving rock',
+    spec: { name: 'Sketch Drive', description: 'Driving minor rock: galloping saw bass, square lead.', style: 'driving rock chase', mood: 'tense', mode: 'minor', root: 57, seed: 9, bpm: 118, meter: '4/4',
+      feel: { drums: 'rock', bass: 'gallop', bassVoice: 'saw', leadVoice: 'square', arp: 0.6, arpStep: 0.5, sync: 0.3, density: 0.7, harmony: true } },
+    chart: { kinds: ['kick', 'snare', 'lead', 'bass'], holds: true, maxPerSec: 2.4, minGap: { kick: 0.4, snare: 0.4, lead: 0.28, bass: 0.45 }, maxSimul: 2 }, reps: 3,
+  },
+  {
+    name: 'Scrawl', info: '132 BPM, E dorian, swaying 6/8',
+    spec: { name: 'Scrawl Waltz', description: 'A swaying 6/8 march in E dorian with a deep sub bass and a flute hook.', style: 'folk march in six', mood: 'wistful', mode: 'dorian', root: 52, seed: 14, bpm: 132, meter: '6/8',
+      feel: { drums: 'march', bass: 'groups', bassVoice: 'sub', leadVoice: 'flute', arp: 0.3, sync: 0.2, density: 0.5, harmony: true } },
+    chart: { kinds: ['kick', 'snare', 'lead', 'bass'], holds: true, maxPerSec: 2.7, minGap: { kick: 0.38, snare: 0.38, lead: 0.26, bass: 0.45 }, maxSimul: 2 }, reps: 5,
+  },
+  {
+    name: 'Finale', info: '146 BPM, G lydian, soaring',
+    spec: { name: 'Finale Rush', description: 'A fast, bright lydian rush with eighth-note saw bass and a square lead.', style: 'bright arcade rush', mood: 'triumphant', mode: 'lydian', root: 55, seed: 21, bpm: 146, meter: '4/4',
+      feel: { drums: 'four', bass: 'eighths', bassVoice: 'saw', leadVoice: 'square', arp: 0.7, arpStep: 0.5, sync: 0.4, density: 0.8, harmony: true } },
+    chart: { kinds: ['kick', 'snare', 'lead', 'bass'], holds: true, maxPerSec: 2.9, minGap: { kick: 0.36, snare: 0.36, lead: 0.25, bass: 0.4 }, maxSimul: 2 }, reps: 4,
+  },
+];
 
 export type MusicParts = Inst[];
 
-/** Which parts are audible: the set adds layers, ink raises tension, the hook (lead and harmony) is the fever's reward. */
+/** Which parts are audible. The charted instruments are always on (they carry the ghost the player completes); ink adds
+ *  tension layers, and the harmony joins for the fever, the earned moment. */
 export function partsFor(set: number, inkBand: number, fever: boolean, calm = false): MusicParts {
   if (calm) return ['pad', 'bass'];
-  const parts: MusicParts = ['pad', 'bass'];
-  if (set >= 1 || inkBand >= 1) parts.push('drums');
-  if (set >= 2 || inkBand >= 2) parts.push('arp');
+  const parts: MusicParts = ['pad', 'bass', 'drums', 'lead'];
+  if (set >= 1 || inkBand >= 2) parts.push('arp');
   if (inkBand >= 3) parts.push('riff');
-  if (fever) { parts.push('lead'); if (set >= 1) parts.push('harmony'); }
+  if (fever) parts.push('harmony');
   return parts;
 }
 
-let loops: Song[] | null = null;
-let stingers: { win: Song; lose: Song; pick: Song } | null = null;
+const songs: (Song | undefined)[] = [];
+const charts: (SongNote[] | undefined)[] = [];
+const backings: (Song | undefined)[] = [];
 
-export function setLoops(): Song[] {
-  loops ??= SET_BPM.map((bpm) => composeSong({
-    ...KEY, seed: 21, name: 'Blot Beat', description: 'A jaunty dorian groove with a plucky hook; faster each set.',
-    style: 'cheeky funk-pop groove', mood: 'playful', form: 'loop', layout: 'groove-8', meter: '4/4', bpm,
-    feel: { drums: 'funk', bass: 'sync', bassVoice: 'saw', leadVoice: 'square', arpVoice: 'pluck', arp: 0.5, arpStep: 1, sync: 0.45, density: 0.6, harmony: true },
-  }));
-  return loops;
+export function songFor(set: number): Song {
+  return (songs[set] ??= composeSong({ ...SET_DEFS[set]!.spec, form: 'loop', layout: 'groove-8' }));
 }
+export function loopSeconds(set: number): number { return loopSecondsOf(songFor(set)); }
+export function chartFor(set: number): SongNote[] {
+  return (charts[set] ??= chartFromSong(songFor(set), SET_DEFS[set]!.chart, loopSeconds(set)));
+}
+/** What actually plays under the set: the song with the charted notes at a quiet ghost. */
+export function backingFor(set: number): Song {
+  return (backings[set] ??= backingSong(songFor(set), chartFor(set)));
+}
+/** Beats in the count-in: one bar of the song. */
+export function barBeats(set: number): number { return Math.round(songFor(set).bars[0]!.beats); }
 
-export function gameStingers() {
-  stingers ??= {
-    win: composeStinger({ ...KEY, seed: 31, name: 'Signed', description: 'The page is signed.', style: 'triumphant flourish', mood: 'triumphant', form: 'oneshot', event: 'win', bpm: 126 }),
-    lose: composeStinger({ ...KEY, seed: 32, name: 'Ruined', description: 'Out of pages.', style: 'comic sag', mood: 'melancholy', form: 'oneshot', event: 'lose', bpm: 96 }),
-    pick: composeStinger({ ...KEY, seed: 33, name: 'Pick', description: 'A set ends; pick a sticker.', style: 'bright sparkle', mood: 'playful', form: 'oneshot', event: 'powerup', bpm: 132, bars: 2 }),
-  };
-  return stingers;
+const stingers: Record<string, Song> = {};
+export function stingerFor(kind: 'win' | 'lose' | 'pick', set: number): Song {
+  const k = `${kind}${set}`;
+  const d = SET_DEFS[set]!.spec;
+  return (stingers[k] ??= composeStinger({
+    mode: d.mode, root: d.root, seed: d.seed + 100 + (kind === 'win' ? 1 : kind === 'lose' ? 2 : 3),
+    name: `${d.name} ${kind}`, description: `${kind} stinger in the key of ${d.name}.`, style: d.style, mood: kind === 'lose' ? 'melancholy' : d.mood,
+    form: 'oneshot', event: kind === 'pick' ? 'powerup' : kind, bpm: typeof d.bpm === 'number' ? d.bpm : 120, bars: kind === 'pick' ? 2 : undefined,
+  }));
 }

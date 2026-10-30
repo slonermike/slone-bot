@@ -87,6 +87,13 @@ Run this on every build before wrap-up. For each item, mark: yes, no, n/a, or un
 - [ ] Parts enter with the game's pressure (pad, then bass, then drums, then arp), and the hook is held back for an earned moment, so the music tells you how the game is going.
 - [ ] The music thins out when pressure resets, ducks under stingers, and is quieter while paused.
 
+## D3. Audio and action are one thing (v8)
+- [ ] Every action the game demands lines up with an audible event in the track (the challenge is derived from the music). [bot: unit-test the derivation]
+- [ ] The player's action plays the track's own sound, and a failure leaves an audible hole (the track keeps a quiet ghost of it). [Slone]
+- [ ] Game timing is locked to the audio playhead (no drift over a long section) and a latency offset is exposed. [bot]
+- [ ] Combinations of simultaneous inputs are physically comfortable (neighbouring buttons only), and the amount asked at once and per second is capped. [bot: unit-test the generator]
+- [ ] Sections differ in tempo, key, meter and instrumentation; no single loop reused at different speeds. [Slone]
+
 ## I. Core first sanity check
 - [ ] The bare core (juice off) is still interesting for at least 30 seconds of play. State how you judged this (bot variance, decision rate, your own reading of the loop). Never use juice to rescue a flat core.
 

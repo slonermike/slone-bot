@@ -10,16 +10,18 @@ import { BALANCE, SETS, STICKERS, createSim } from './sim.ts';
 import type { Note } from './sim.ts';
 import { CX, CY, HH, HW, LANE_BUTTON, LANE_DIR, RING_RX, RING_RY, lanePoint, laneRing, laneStart } from './geometry.ts';
 import { C, FONT, chip, drop, hintPlate, label, sheet, sticker, stickerIcon } from './ui.ts';
-import { defineBlotSounds, LANE_MIDI } from './sounds.ts';
-import { gameStingers, partsFor, setLoops } from './music.ts';
+import { defineBlotSounds, pitchFor } from './sounds.ts';
+import { SET_DEFS, backingFor, partsFor, stingerFor } from './music.ts';
+import { LANE_KIND, LANE_LABEL } from './chart.ts';
+import { syncStep } from './sync.ts';
 export { bots } from './bots.ts';
 
 const PHASE = { play: 0, pick: 1, won: 2, lost: 3 } as const;
 const HINTS: Record<number, Parameters<typeof hintPlate>[0]> = {
-  0: ['Strike a lane as its note reaches the ring:', { key: 'Y' }, { key: 'B' }, { key: 'A' }, { key: 'X' }],
-  1: ['Long notes: press, then keep holding to the tail'],
-  2: ['Two notes at once: strike both lanes together'],
-  3: ['Finale: everything, faster. Spend your ink wisely'],
+  0: ['Every note is part of the song. Play it:', { key: 'A' }, 'kick', { key: 'Y' }, 'snare', { key: 'B' }, 'melody'],
+  1: [{ key: 'X' }, 'bass joins. Long notes: press, then hold to the tail'],
+  2: ['Six-eight: the beat sways in threes. Hold the bass'],
+  3: ['Finale: the whole band. Play it all'],
 };
 
 interface NoteView { g: Graphics; ribbon: Graphics | null; fading: boolean; }
@@ -55,6 +57,7 @@ export function createPrototype(): Prototype {
   // hud
   let pageIcons: Graphics[] = [];
   let setText!: ReturnType<typeof label>;
+  let infoText!: ReturnType<typeof label>;
   let railG!: Graphics;
   let scoreText!: ReturnType<typeof label>;
   let comboText!: ReturnType<typeof label>;
@@ -82,6 +85,10 @@ export function createPrototype(): Prototype {
   let seenStampReady = false;
   let lastPages = -1;
   let introFor = -1;
+  let musicSet = -1;
+  const syncState = { bigFrames: 0 };
+  let clockBase = NaN;
+  let virtualClock = false;
   let pagesKey = '';
   let railKey = -1;
   let scoreShown = -1;
@@ -95,6 +102,24 @@ export function createPrototype(): Prototype {
 
   /** Run `fn` after `ms` on the juice clock (a tween on a dummy target, so it never collides with tweens on real objects). */
   const later = (ms: number, fn: () => void) => tween({ v: 0 }, { v: 1 }, ms, ease.linear, { onComplete: fn });
+  /** The sound of the song's own instrument, at the song's own pitch: hitting a note completes the music. */
+  function playKind(kind: string, midi: number, volume: number, pan: number): void {
+    if (kind === 'kick') play('kick', { volume, pan, variation: 0 });
+    else if (kind === 'snare') { play('snare', { volume, pan, variation: 0.02 }); play('snareBody', { volume: volume * 0.8, pan, variation: 0.02 }); }
+    else if (kind === 'bass') play('bassHit', { volume, pan, pitch: pitchFor(midi, 45), variation: 0 });
+    else {
+      const v = SET_DEFS[s.set]!.spec.feel?.leadVoice;
+      play(v === 'square' ? 'leadSquare' : v === 'flute' ? 'leadFlute' : 'leadPluck', { volume, pan, pitch: pitchFor(midi, 69), variation: 0 });
+    }
+  }
+  /** A pitch from the set's own key for free taps (the toy): pentatonic on the song's tonic. */
+  function freeMidi(kind: string): number {
+    const d = SET_DEFS[s.set]!.spec;
+    const minor = d.mode === 'minor' || d.mode === 'dorian' || d.mode === 'phrygian';
+    const deg = (minor ? [0, 3, 5, 7, 10] : [0, 2, 4, 7, 9])[ctx.vfxRng.int(0, 4)]!;
+    return (d.root ?? 50) + (kind === 'bass' ? -12 : 24) + deg;
+  }
+
   /** A feedback pill: text on a small ink-outlined badge that pops, rises and fades (feedback is part of the sticker UI, not loose text). */
   function badgePop(text: string, x: number, y: number, fill: number, color: number, size = 22, ms = 560, rise = 34): void {
     const c = new Container();
@@ -153,7 +178,7 @@ export function createPrototype(): Prototype {
   function showHint(parts: Parameters<typeof hintPlate>[0], ms = 4200): void {
     hintC?.destroy();
     const h = hintPlate(parts, 24);
-    h.position.set(CX, 132);
+    h.position.set(CX, 146);
     h.alpha = 0;
     ui.addChild(h);
     hintC = h;
@@ -226,6 +251,7 @@ export function createPrototype(): Prototype {
     bannerC?.destroy(); bannerC = null;
     wellLevel = 0;
     introFor = -1;
+    musicSet = -1;
     geyserT = 0;
     lastPages = -1;
     lastStickers = 0;
@@ -318,6 +344,10 @@ export function createPrototype(): Prototype {
       boardC.addChild(c);
       targets.push(c);
       targetLabels.push(t);
+      const lb = label(LANE_LABEL[l]!, 20, C.tint, { stroke: C.ink, sw: 5, weight: '900' });
+      const dir = LANE_DIR[l]!;
+      lb.position.set(p.x + dir.x * 104, p.y + dir.y * 46);
+      boardC.addChild(lb);
     }
 
     splatC = new Container();
@@ -375,11 +405,14 @@ export function createPrototype(): Prototype {
       pageIcons.push(g);
     }
     // set badge (top centre) with a progress rail
-    const sb = sticker(360, 58, C.tint, 16);
-    sb.position.set(CX, 44);
+    const sb = sticker(400, 76, C.tint, 16);
+    sb.position.set(CX, 48);
     ui.addChild(sb);
     setText = label('', 28, C.ink, { weight: '900' });
-    setText.position.set(CX, 42);
+    setText.position.set(CX, 36);
+    infoText = label('', 20, C.board, { weight: '800' });
+    infoText.position.set(CX, 62);
+    ui.addChild(infoText);
     ui.addChild(setText);
     railG = new Graphics();
     ui.addChild(railG);
@@ -499,7 +532,7 @@ export function createPrototype(): Prototype {
     lastPages = s.pages;
     const cfg = s.cfg;
     const t = `SET ${s.set + 1}/${SETS.length}  ${cfg.name.toUpperCase()}`;
-    if (t !== lastLabels.s) { lastLabels.s = t; setText.text = t; }
+    if (t !== lastLabels.s) { lastLabels.s = t; setText.text = t; infoText.text = cfg.info.toUpperCase(); }
     // rail
     const total = s.endT + 4 * s.beatDur;
     const prog = Math.max(0, Math.min(1, (s.setT + 4 * s.beatDur) / total));
@@ -509,10 +542,10 @@ export function createPrototype(): Prototype {
 
   function drawRail(prog: number): void {
     railG.clear();
-    railG.moveTo(CX - 150, 84).lineTo(CX + 150, 84).stroke({ width: 8, color: C.ink, cap: 'round' });
-    railG.moveTo(CX - 150, 84).lineTo(CX + 150, 84).stroke({ width: 2, color: C.line });
-    railG.moveTo(CX - 150, 84).lineTo(CX - 150 + 300 * prog, 84).stroke({ width: 4, color: C.white, cap: 'round' });
-    railG.circle(CX - 150 + 300 * prog, 84, 7).fill(C.white).stroke({ width: 4, color: C.ink });
+    railG.moveTo(CX - 150, 96).lineTo(CX + 150, 96).stroke({ width: 8, color: C.ink, cap: 'round' });
+    railG.moveTo(CX - 150, 96).lineTo(CX + 150, 96).stroke({ width: 2, color: C.line });
+    railG.moveTo(CX - 150, 96).lineTo(CX - 150 + 300 * prog, 96).stroke({ width: 4, color: C.white, cap: 'round' });
+    railG.circle(CX - 150 + 300 * prog, 96, 7).fill(C.white).stroke({ width: 4, color: C.ink });
   }
 
   function updateScore(): void {
@@ -827,9 +860,7 @@ export function createPrototype(): Prototype {
     const col = grade === 'perfect' ? C.white : C.tint;
     const delay = auto ? 120 + Number(e.data?.order ?? 0) * 28 : 0;
     const fire = () => {
-      play(`tap${lane}`, { pitch: 1, volume: auto ? 0.5 : 0.55 + 0.3 * m, variation: 0.01, pan: d.x * 0.35 });
-      if (grade === 'perfect') play('spark', { pitch: 2 ** ((LANE_MIDI[lane]! - 69) / 12), volume: 0.7 });
-      else if (grade === 'ok') play('ok');
+      playKind(String(e.data?.kind ?? LANE_KIND[lane]), Number(e.data?.midi ?? 60), (auto ? 0.55 : grade === 'perfect' ? 0.9 : grade === 'good' ? 0.75 : 0.6), d.x * 0.35);
       spark(x, y, lane, col, grade === 'perfect' ? 14 : 8, 1 + m);
       ringPulse(x, y, 60 + m * 40, col, 340, grade === 'perfect' ? 5 : 3);
       punch(targets[lane]!, 0.3 + m * 0.2);
@@ -853,13 +884,13 @@ export function createPrototype(): Prototype {
       case 'beat': {
         pulse = Math.max(pulse, Number(e.magnitude ?? 0.4));
         if (dd.countIn) {
-          play(Number(dd.beat) % 4 === 0 ? 'tickHi' : 'tickLo');
-          numberPop(world, String(Number(dd.beat) + 5), CX, CY - 150, { size: 72, color: C.white, stroke: C.ink, ms: Math.max(300, s.beatDur * 900), rise: 10, font: FONT });
+          play(Number(dd.beat) % Number(dd.bar) === 0 ? 'tickHi' : 'tickLo');
+          numberPop(world, String(Number(dd.beat) + Number(dd.bar) + 1), CX, CY - 150, { size: 72, color: C.white, stroke: C.ink, ms: Math.max(300, s.beatDur * 900), rise: 10, font: FONT });
         }
         else if (s.inkBand >= 3) play('warn', { volume: 0.6 });
         wellSS.pop(0.08, 'y');
-        if (!dd.countIn || Number(dd.beat) >= -3) {
-          const down = Number(dd.beat) % 4 === 0;
+        {
+          const down = Number(dd.beat) % Number(dd.bar) === 0;
           const br = new Graphics().ellipse(0, 0, RING_RX, RING_RY).stroke({ width: down ? 4 : 2, color: down ? C.white : C.tint, alpha: down ? 0.7 : 0.45 });
           br.position.set(CX, CY);
           br.scale.set(1.7);
@@ -871,7 +902,7 @@ export function createPrototype(): Prototype {
       case 'hit': laneHit(e, String(dd.grade), Boolean(dd.auto)); break;
       case 'hold-start': {
         laneHit(e, String(dd.grade), false);
-        play('holdHum', { pitch: 2 ** ((LANE_MIDI[Number(dd.lane)]! - 69) / 12) * 0.5, pan: D()[Number(dd.lane)]!.x * 0.3 });
+        play('holdHum', { pitch: pitchFor(Number(dd.midi ?? 60), 69), volume: 0.7, variation: 0, pan: D()[Number(dd.lane)]!.x * 0.3 });
         break;
       }
       case 'hold-done': {
@@ -886,7 +917,7 @@ export function createPrototype(): Prototype {
       case 'hold-drop': play('holdDrop'); badgePop('DROPPED', e.x ?? CX, (e.y ?? CY) - 20, C.board, C.white, 20); break;
       case 'free-tap': {
         const lane = Number(dd.lane);
-        play(`tap${lane}`, { volume: 0.25, pitch: 1, variation: 0.02, pan: D()[lane]!.x * 0.3 });
+        playKind(LANE_KIND[lane]!, freeMidi(LANE_KIND[lane]!), 0.3, D()[lane]!.x * 0.3);
         punch(targets[lane]!, 0.2);
         ringPulse(e.x ?? CX, e.y ?? CY, 46, C.line, 260, 3);
         wellSS.pop(0.06, 'y');
@@ -1008,7 +1039,7 @@ export function createPrototype(): Prototype {
       }
       case 'pick-open': {
         music.setParts(partsFor(s.set, 0, false, true), 0.5);
-        music.stinger(gameStingers().pick, { duck: 0.4 });
+        music.stinger(stingerFor('pick', s.set), { duck: 0.4 });
         buildPick();
         play('stick');
         break;
@@ -1022,7 +1053,7 @@ export function createPrototype(): Prototype {
       }
       case 'win': {
         music.setParts(['pad', 'bass'], 0.3);
-        music.stinger(gameStingers().win, { duck: 0.3 });
+        music.stinger(stingerFor('win', s.set), { duck: 0.3 });
         play('stampBoom'); shake(0.7);
         for (let i = 0; i < 4; i++) tween({ v: 0 }, { v: 1 }, i * 260, ease.linear, { onComplete: () => particles.emit('confetti', CX + (i - 1.5) * 220, CY - 60, { count: 50, speed: 2 }) });
         eyes.setMood('happy', 4);
@@ -1036,7 +1067,7 @@ export function createPrototype(): Prototype {
       }
       case 'gameover': {
         music.release(1.2);
-        music.stinger(gameStingers().lose, { duck: 0.3 });
+        music.stinger(stingerFor('lose', s.set), { duck: 0.3 });
         break;
       }
       case 'again': {
@@ -1072,8 +1103,25 @@ export function createPrototype(): Prototype {
       const tNow = (s.phase === 'play' ? s.setT - (1 - alpha) * FRAME_DT : s.setT) - bal('offset') / 1000;
       if (introFor !== s.set && s.phase === 'play') {
         introFor = s.set;
-        music.play(setLoops()[s.set]!, partsFor(s.set, 0, false));
         bannerIntro(s.set);
+      }
+      // captures step virtual time much faster than the wall clock the audio runs on; locking to the audio there would drag the sim back
+      const wallMs = performance.now();
+      if (Number.isNaN(clockBase)) clockBase = wallMs - view.frame.time * 1000;
+      else if (Math.abs(wallMs - (view.frame.time * 1000 + clockBase)) > 400) virtualClock = true;
+      if (s.phase === 'play') {
+        // the music starts on the song's first beat (the count-in is silent ticks), and from then on the game's clock follows the audio playhead
+        if (musicSet !== s.set && s.setT >= -0.14) {
+          musicSet = s.set;
+          syncState.bigFrames = 0;
+          music.play(backingFor(s.set), partsFor(s.set, s.inkBand, s.feverT > 0));
+        }
+        const el = music.elapsed;
+        if (el !== null && !virtualClock && musicSet === s.set && s.setT > 0.3 && !music.state.paused && music.state.songId === backingFor(s.set).id) {
+          const act = syncStep(el - s.setT, syncState);
+          if (act.resync) sim.resync(el); // after a pause or a hitch: jump to where the music is
+          else if (act.nudge !== 0) sim.nudge(act.nudge);
+        }
       }
       drawNotes(tNow);
       updateHud();

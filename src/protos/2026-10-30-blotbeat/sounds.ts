@@ -2,22 +2,22 @@
 // so tapping the lanes plays notes in the key of the music.
 import { defineSound } from '../../audio/index.ts';
 
-/** MIDI note per lane: south D4, west F4, north A4, east C5 (lane 0 = north). */
-export const LANE_MIDI = [69, 72, 62, 65] as const;
 export const midiHz = (m: number) => 440 * 2 ** ((m - 69) / 12);
+/** Playback-rate ratio that turns a sound authored at `baseMidi` into `midi`. */
+export const pitchFor = (midi: number, baseMidi: number) => 2 ** ((midi - baseMidi) / 12);
 
 let done = false;
 export function defineBlotSounds(): void {
   if (done) return;
   done = true;
-  LANE_MIDI.forEach((m, i) => {
-    const f = midiHz(m);
-    defineSound(`tap${i}`, [
-      { wave: 'triangle', freq: f, attack: 0.002, sustain: 0.05, decay: 0.24, transient: 0.3, lowpass: 5200, volume: 0.55 },
-      { wave: 'triangle', freq: f * 1.003, attack: 0.002, sustain: 0.05, decay: 0.24, transient: 0.3, lowpass: 5000, volume: 0.55 },
-    ]);
-  });
-  defineSound('spark', { wave: 'sine', freq: 1760, slide: 0.25, attack: 0.001, sustain: 0.02, decay: 0.22, volume: 0.2 });
+  // the player's hits ARE the song's instruments: drums as they are, pitched voices authored at one note and re-pitched to the song's own note
+  defineSound('kick', { wave: 'sine', freq: 130, slide: -2.4, attack: 0.001, sustain: 0.04, decay: 0.28, transient: 0.5, volume: 0.8 });
+  defineSound('snare', { wave: 'noise', freq: 1800, slide: -0.3, attack: 0.001, sustain: 0.03, decay: 0.17, highpass: 900, transient: 0.4, volume: 0.5 });
+  defineSound('snareBody', { wave: 'triangle', freq: 190, slide: -1, attack: 0.001, sustain: 0.02, decay: 0.12, volume: 0.4 });
+  defineSound('bassHit', { wave: 'saw', freq: midiHz(45), attack: 0.004, sustain: 0.1, decay: 0.3, lowpass: 700, transient: 0.2, volume: 0.55 });
+  defineSound('leadPluck', { wave: 'triangle', freq: 440, attack: 0.002, sustain: 0.03, decay: 0.3, lowpass: 4200, transient: 0.25, volume: 0.5 });
+  defineSound('leadSquare', { wave: 'square', freq: 440, duty: 0.5, attack: 0.003, sustain: 0.08, decay: 0.22, lowpass: 2600, volume: 0.3 });
+  defineSound('leadFlute', { wave: 'sine', freq: 440, vibratoDepth: 0.15, vibratoSpeed: 5, attack: 0.03, sustain: 0.12, decay: 0.26, volume: 0.5 });
   defineSound('ok', { wave: 'square', freq: 300, attack: 0.001, sustain: 0.02, decay: 0.08, lowpass: 1800, volume: 0.18 });
   defineSound('free', { wave: 'noise', freq: 800, attack: 0.001, sustain: 0.005, decay: 0.05, highpass: 1800, volume: 0.12 });
   defineSound('stray', { wave: 'square', freq: 130, slide: -0.7, attack: 0.001, sustain: 0.03, decay: 0.12, lowpass: 900, transient: 0.2, volume: 0.35 });

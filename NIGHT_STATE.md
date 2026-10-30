@@ -20,4 +20,5 @@ notes: one line per checkpoint
 - 0:45 phase=feel juice, audio, music, ui passes done; perf measured in software GL only
 - 1:08 phase=test check green: typecheck, secrets, 178+ tests, smoke 22/22; full-run browser captures clean (win, spills, loss); bots on 5 seeds
 - 1:08 phase=done Blot Beat shipped on proto/2026-10-30-blotbeat; 4 rounds + 1 step-back; check green; fps only measured in software GL
+- 9:18 round 5: Slone: music detached and vanilla; thumb and density feedback | chart was random phrases beside an unrelated loop; opposite-lane doubles unplayable with one thumb | charts derived from four distinct songs (kick/snare/bass/melody lanes), ghost backing + keysounded hits, clock locked to audio playhead, bounded density and neighbour-only simultaneity, all tested
 ```

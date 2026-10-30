@@ -2,7 +2,7 @@
 
 Design principles for making prototypes Slone will like. Nightly runs read and follow this file but never edit it. It changes when Slone gives feedback in chat (the chat agent updates it directly as the first step, see `CONSTITUTION.md` section 15) or runs an assessment of `pending-lessons.md`. **Every lesson here is written to apply to any kind of game**: principles in genre-neutral terms, no prototype names, no vocabulary that implies a genre (see `CONSTITUTION.md` section 15). Keep it that way in every edit.
 
-Version: 7 (seeded from six GMTK sources and Slone's taste; feedback incorporated from the `_demo` prototype and from a first nightly prototype, 2026-10-29. One data point per lesson so far; see the revision log at the end).
+Version: 8 (seeded from six GMTK sources and Slone's taste; feedback incorporated from the `_demo` prototype and from a first nightly prototype, 2026-10-29. One data point per lesson so far; see the revision log at the end).
 
 ## 1. What a prototype is for
 A prototype answers one question quickly. The big three questions: Is it fun? Is it viable? Will people like it? Our nightly prototypes mostly ask "is it fun and what does it feel like?" Slone is the only playtester, so every build must make his feedback easy and specific.
@@ -59,6 +59,13 @@ A prototype answers one question quickly. The big three questions: Is it fun? Is
 - **Projectiles and hits are the loudest thing on screen.** Shots are large, high contrast against both light and dark ground, with a trail and particles and enough flight time to see; every shooter has a visible emitter that animates when it fires; a hit has a big tell (flash, jolt, burst, damage number). Damage-state marks must line up with the art they sit on. (v7, one data point.)
 - **Unit types differ in job, and look, animate and behave to say so.** Each type has one obvious thing (turret, bomb, clock, healer, heavy gun); its shape language, idle animation and behaviour all state that job, so it is obvious after a little play. A helping effect (healing) visibly travels from source to target and lands when it arrives. (v7, one data point.)
 
+## 7b. Audio and action are one thing (v8)
+- **When a game has a soundtrack, what it asks of the player is the soundtrack's own events.** Derive the challenge from the music (every demanded action lines up with something the player can hear in the track), never the other way round. A track that merely plays near an independently generated challenge reads as two unrelated systems. (v8, one data point: `2026-10-30-blotbeat`.)
+- **The player's action should be the track's sound.** Play the exact sound the track would have made, so success completes the music and failure leaves an audible hole; the track keeps a quiet ghost of what the player is responsible for so it still holds together. (v8, one data point.)
+- **One clock.** Keep the game's timing locked to the audio playhead, not to a separate timer that drifts; offer a latency offset. (v8, one data point.)
+- **Design simultaneous inputs for the hand.** One thumb covers a diamond of four controls: neighbouring controls can be pressed together, opposite ones cannot (and one cannot be held while its opposite is pressed). Never demand an impossible combination, and cap how much is asked at once and per second so the screen is never overwhelming. (v8, one data point: Slone, mid-session.)
+- **Variety is a feature of the soundtrack too:** change tempo, key, meter and instrumentation between sections instead of looping one song at different speeds; the generic loop is the weakest option. (v8, one data point.)
+
 ## 7. Game feel essentials
 See `01-feel-checklist.md`. The headline rules: respond to every input right away (in real-time play, within one frame), give the main interaction personality, make sound a first-class part of the loop, and where the game has feedback events, stack small effects and scale them with the size of the event. Items that assume an avatar, a camera, real-time input or collisions apply only to games that have them.
 
@@ -92,6 +99,7 @@ A game can have plenty of activity (motion, numbers, events, effects, systems) a
 - **Test:** show a new player ten seconds of play with no text. Could they say what the goal is, what they control, and whether the last action was good? If not, fix clarity before polishing feel.
 
 ## Revision log
+- v8, 2026-10-30: from Slone's play of `2026-10-30-blotbeat`: "the music and the game seem completely detached" and "super vanilla". Audio and action are one thing: derive the challenge from the track, play the player's action as the track's own sound, one clock, varied tracks (7b). All one data point.
 - v7, 2026-10-30: from Slone's later rounds on `2026-10-30-stillwinter`: designed UI instead of loose text, currency near its use and unlike meters apart (shape as well as numbers), win and lose as designed events with plainly named modes, loud projectiles and hits, unit types with distinct jobs (7a). All one data point.
 - v4, 2026-10-30: from Slone's first play of `2026-10-30-stillwinter`: show the rule through nonverbal cause and effect, running out of the engine resource as a fail state with a queued guard, flipped genres (6). Selection lists must show their bumper glyphs (feel checklist). All one data point.
 - v6, 2026-10-30: iteration is the method (4). Prompted by nightly agents declaring themselves done after about 20 minutes instead of looping play, note, change, and stepping back.
