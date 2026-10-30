@@ -152,3 +152,9 @@ Entry template is in `docs/design/04-feedback-and-postmortem.md` section 5.
 - Lesson: When controls are spatial (a diamond of four lanes), the keyboard mapping must be spatial too (arrow keys), with arrow glyphs in the prompts; reading each arrow as its own lane also allows neighbouring doubles.   Status: one data point (in `07-rhythm-game-lessons.md`)
 - Evidence: Slone: "The game doesn't work on keyboard because the directions don't map to the keys we assign. We could use up/down/left/right instead, when on a keyboard. Arrow glyphs on the ui prompts would work well." The face-button fallback keys (Space, X, C, V) are not spatial.
 - Proposed scaffold change (Slone decides): the keyboard fallback could also set the D-pad buttons from the arrow keys, so prototypes can read four independent directions on a keyboard without touching the stick.
+
+## 2026-10-30 2026-10-30-blotbeat (difficulty ramp and links)
+- Lesson: A level that changes several difficulty dimensions at once (a lane, a new note kind and double the density) reads as a cliff; change one dimension per step and test the ramp.   Status: one data point (in `07-rhythm-game-lessons.md`)
+- Evidence: Slone: "the second level is a huge leap in difficulty. Make it have less difficult note patterns." Set 2 had gone from 1.5 to 2.8 notes per second, 3 to 4 lanes and introduced holds.
+- Lesson: Things that must be done together should be visibly tied on screen.   Status: one data point
+- Evidence: Slone: "When two notes are simultaneous, link them together visually somehow."
