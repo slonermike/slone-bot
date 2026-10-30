@@ -478,8 +478,16 @@ export function createPrototype(): Prototype {
   // ---------------------------------------------------------------- notes
   function makeNoteView(n: Note): NoteView {
     const g = new Graphics();
-    g.poly([0, -25, 42, 0, 0, 25, -42, 0]).fill(n.len > 0 ? C.tint : C.white).stroke({ width: 9, color: C.ink, join: 'round' });
-    g.poly([0, -11, 19, 0, 0, 11, -19, 0]).stroke({ width: 2.5, color: C.line });
+    if (n.pair) {
+      // doubles wear a second outline and a solid core so they read as "two at once"
+      g.poly([0, -34, 58, 0, 0, 34, -58, 0]).fill(C.ink);
+      g.poly([0, -28, 50, 0, 0, 28, -50, 0]).stroke({ width: 3, color: C.white });
+      g.poly([0, -20, 34, 0, 0, 20, -34, 0]).fill(C.white).stroke({ width: 8, color: C.ink, join: 'round' });
+      g.poly([0, -8, 14, 0, 0, 8, -14, 0]).fill(C.line);
+    } else {
+      g.poly([0, -25, 42, 0, 0, 25, -42, 0]).fill(n.len > 0 ? C.tint : C.white).stroke({ width: 9, color: C.ink, join: 'round' });
+      g.poly([0, -11, 19, 0, 0, 11, -19, 0]).stroke({ width: 2.5, color: C.line });
+    }
     noteC.addChild(g);
     let ribbon: Graphics | null = null;
     if (n.len > 0) { ribbon = new Graphics(); noteC.addChildAt(ribbon, 0); }
@@ -489,7 +497,6 @@ export function createPrototype(): Prototype {
   function drawNotes(tNow: number): void {
     const ap = bal('approach');
     linkG.clear();
-    let prev: { t: number; x: number; y: number } | null = null;
     for (const n of s.notes) {
       const v0 = noteViews.get(n.id);
       const alive = n.state === 'live' || n.state === 'holding';
@@ -521,17 +528,12 @@ export function createPrototype(): Prototype {
         const pt = Math.max(0, 1 - (n.t + n.len - tNow) / ap);
         const a = lanePoint(n.lane, pt);
         v.ribbon.clear();
-        const wdt = 34 * (0.4 + 0.7 * Math.min(1, (p + pt) / 2));
+        const wdt = 26 * (0.45 + 0.7 * Math.min(1, (p + pt) / 2));
         v.ribbon.moveTo(a.x, a.y).lineTo(pos.x, pos.y).stroke({ width: wdt + 12, color: C.ink, cap: 'round' });
         v.ribbon.moveTo(a.x, a.y).lineTo(pos.x, pos.y).stroke({ width: wdt, color: holding ? C.white : C.tint, cap: 'round' });
         v.ribbon.moveTo(a.x, a.y).lineTo(pos.x, pos.y).stroke({ width: 3, color: C.line });
         v.ribbon.alpha = holding ? 0.8 + 0.2 * Math.sin(time * 30) : 1;
       }
-      if (alive && !v.fading && prev && Math.abs(prev.t - n.t) < 1e-6 && n.len === 0) {
-        linkG.moveTo(prev.x, prev.y).lineTo(pos.x, pos.y).stroke({ width: 5, color: C.ink });
-        linkG.moveTo(prev.x, prev.y).lineTo(pos.x, pos.y).stroke({ width: 1.5, color: C.white });
-      }
-      prev = alive && n.len === 0 ? { t: n.t, x: pos.x, y: pos.y } : null;
     }
   }
 
@@ -856,11 +858,11 @@ export function createPrototype(): Prototype {
         burstSplats();
         particles.emit('debris', CX, CY, { count: 60, color: C.lime, speed: 2.4, size: 1.3 });
         particles.emit('puff', CX, CY, { count: 20, color: C.lime, speed: 1.6, size: 1.6 });
-        const flood = new Graphics().ellipse(0, 0, HW * 0.95, HH * 0.95).fill({ color: C.lime, alpha: 0.65 });
+        const flood = new Graphics().poly([0, -HH, HW, 0, 0, HH, -HW, 0]).fill({ color: C.lime, alpha: 0.55 }).stroke({ width: 10, color: C.ink, join: 'round' });
         flood.position.set(CX, CY);
         flood.scale.set(0.1);
         fxC.addChild(flood);
-        tween(flood, { scale: 1.1 }, 380, ease.outCubic);
+        tween(flood, { scale: 1.02 }, 380, ease.outCubic);
         tween(flood, { alpha: 0 }, 700, ease.inQuad, { delay: 380, onComplete: () => flood.destroy() });
         wellSS.pop(0.6, 'x');
         eyes.setMood('frown', 2);
@@ -933,7 +935,7 @@ export function createPrototype(): Prototype {
       unsubDevice = onDeviceChange(() => { stampKey = ''; });
     },
     render(alpha: number) {
-      const tNow = s.phase === 'play' ? s.setT - (1 - alpha) * FRAME_DT : s.setT;
+      const tNow = (s.phase === 'play' ? s.setT - (1 - alpha) * FRAME_DT : s.setT) - bal('offset') / 1000;
       if (introFor !== s.set && s.phase === 'play') {
         introFor = s.set;
         music.play(setLoops()[s.set]!, partsFor(s.set, 0, false));

@@ -1,11 +1,11 @@
 // Shared board geometry (pure): the faux-isometric diamond tabletop. Four lanes run from the diamond's corners
 // into a ring at the centre. Lane 0 = north (Y), 1 = east (B), 2 = south (A), 3 = west (X).
 export const CX = 640;
-export const CY = 440;
-export const HW = 470; // half width of the diamond
-export const HH = 235; // half height (2:1, isometric feel)
-export const RING_RX = 150;
-export const RING_RY = 75;
+export const CY = 436;
+export const HW = 520; // half width of the diamond
+export const HH = 262; // half height (2:1, isometric feel)
+export const RING_RX = 140;
+export const RING_RY = 58;
 
 export const LANE_DIR: ReadonlyArray<{ x: number; y: number }> = [
   { x: 0, y: -1 },

@@ -11,6 +11,7 @@ export const BALANCE: BalanceSpec[] = [
   { id: 'stampCost', label: 'Blots needed to stamp', min: 1, max: 6, step: 1, default: 3 },
   { id: 'feverMult', label: 'Fever score multiplier', min: 1, max: 4, step: 0.5, default: 2, unit: 'x' },
   { id: 'pages', label: 'Pages (lives, next run)', min: 1, max: 6, step: 1, default: 3 },
+  { id: 'offset', label: 'Timing offset (+ = notes judged later, if hits feel early)', min: -120, max: 120, step: 10, default: 0, unit: 'ms' },
   { id: 'approach', label: 'Note travel time (longer = more warning)', min: 0.8, max: 1.8, step: 0.05, default: 1.25, unit: 's' },
 ];
 
@@ -45,6 +46,8 @@ export interface Note {
   /** Hold length in seconds (0 = tap). */
   len: number;
   state: NoteState;
+  /** Another note strikes at the same moment (a double). */
+  pair: boolean;
 }
 
 export interface ChartNote {
@@ -222,7 +225,8 @@ export function createSim() {
     s.stampLastSet = 0;
     s.laneHold = [-1, -1, -1, -1];
     const chart = makeChart(ctx.rng.fork(), s.cfg);
-    s.notes = chart.map((c) => ({ id: nextId++, lane: c.lane, t: c.beat * s.beatDur, len: c.len * s.beatDur, state: 'live' as NoteState }));
+    s.notes = chart.map((c) => ({ id: nextId++, lane: c.lane, t: c.beat * s.beatDur, len: c.len * s.beatDur, state: 'live' as NoteState, pair: false }));
+    for (const n of s.notes) n.pair = s.notes.some((m) => m !== n && Math.abs(m.t - n.t) < 1e-6);
     s.notesTotal += s.notes.length;
     s.endT = s.cfg.bars * 4 * s.beatDur;
     emit({ type: 'set-start', magnitude: 0.6, data: { set: i, bpm: s.cfg.bpm } });
@@ -325,6 +329,9 @@ export function createSim() {
     }
   }
 
+  /** The judging clock: the sim clock shifted by the player's timing offset (for audio or display latency). */
+  const jt = () => s.setT - bal('offset') / 1000;
+
   function judge(lane: number) {
     const st = stats();
     const w = st.windowMul * (s.feverT > 0 ? 1.4 : 1);
@@ -332,13 +339,13 @@ export function createSim() {
     let bestD = Infinity;
     for (const n of s.notes) {
       if (n.lane !== lane || n.state !== 'live') continue;
-      const d = Math.abs(n.t - s.setT);
+      const d = Math.abs(n.t - jt());
       if (d <= WIN.ok * w && d < bestD) { best = n; bestD = d; }
     }
     const p = laneRing(lane);
     if (!best) {
       // a press with nothing to hit: free tapping is a toy; mashing while notes are close costs a little
-      const near = s.notes.some((n) => n.state === 'live' && Math.abs(n.t - s.setT) < 0.5);
+      const near = s.notes.some((n) => n.state === 'live' && Math.abs(n.t - jt()) < 0.5);
       if (s.setT < s.restUntil || s.setT < 0 || !near) {
         s.freeTaps++;
         emit({ type: 'free-tap', magnitude: 0.3, x: p.x, y: p.y, data: { lane } });
@@ -356,7 +363,7 @@ export function createSim() {
       return;
     }
     const grade: Grade = bestD <= WIN.perfect * w ? 'perfect' : bestD <= WIN.good * w ? 'good' : 'ok';
-    const early = best.t - s.setT;
+    const early = best.t - jt();
     s.hits++;
     if (grade === 'perfect') { s.perfects++; s.perfectRun++; } else if (grade === 'good') { s.goods++; s.perfectRun = 0; } else { s.oks++; s.perfectRun = 0; }
     if (grade !== 'ok') addCombo();
@@ -412,14 +419,14 @@ export function createSim() {
       if (!n) { s.laneHold[l] = -1; continue; }
       const end = n.t + n.len;
       const p = laneRing(l);
-      if (s.setT >= end - 0.06) {
+      if (jt() >= end - 0.06) {
         n.state = 'hit';
         s.laneHold[l] = -1;
         s.holdsDone++;
         addCombo();
         const pts = award(60, p.x, p.y);
         emit({ type: 'hold-done', magnitude: 0.6, x: p.x, y: p.y, data: { lane: l, points: pts } });
-      } else if (!s.laneDown[l] && s.setT < end - 0.2) {
+      } else if (!s.laneDown[l] && jt() < end - 0.2) {
         n.state = 'dropped';
         s.laneHold[l] = -1;
         breakCombo();
@@ -434,7 +441,7 @@ export function createSim() {
     for (const n of s.notes) {
       if (n.state !== 'live') continue;
       if (s.setT < s.restUntil && n.t < s.restUntil) { n.state = 'cleared'; continue; }
-      if (s.setT > n.t + WIN.ok * w) {
+      if (jt() > n.t + WIN.ok * w) {
         n.state = 'missed';
         s.misses++;
         const p = laneRing(n.lane);
