@@ -110,6 +110,7 @@ function drawSpire(g: Graphics, kind: Kind): Graphics {
     g.poly([17, -26, 24, 5, 30, 0]).fill(C.mid).stroke(line);
     for (let i = 0; i < 4; i++) g.moveTo(3, -14 - i * 12).lineTo(14 - i * 3, -8 - i * 12).stroke({ width: 2, color: C.mid });
   } else if (kind === 'crystal') {
+    // a brittle cluster with a hot core: it is a bomb, not a gun
     const shard = (x: number, h: number, w: number): void => {
       g.poly([x, -h, x - w, -h * 0.55, x - w, 2, x, 9]).fill(0xdcebf7).stroke(line);
       g.poly([x, -h, x, 9, x + w, 2, x + w, -h * 0.55]).fill(C.frost).stroke(line);
@@ -117,19 +118,27 @@ function drawSpire(g: Graphics, kind: Kind): Graphics {
     shard(-14, 40, 9);
     shard(13, 32, 9);
     shard(0, 56, 11);
-  } else if (kind === 'lantern') {
-    g.poly([-6, 4, 0, 10, 6, 4, 4, -10, -4, -10]).fill(C.deep).stroke(line);
-    g.poly([0, -70, -19, -40, 0, -12]).fill(0xdcebf7).stroke(line);
-    g.poly([0, -70, 0, -12, 19, -40]).fill(C.frost).stroke(line);
-    g.poly(diamondPts(0, -41, 15, 26)).fill(C.orange).stroke({ width: 2, color: C.glow });
-    star(g, 4, 31, 5, 0).fill({ color: C.glow, alpha: 0.0 });
-  } else if (kind === 'chime') {
-    g.rect(-3, -34, 6, 38).fill(C.deep).stroke(line);
-        const st = new Graphics();
-    star(st, 8, 30, 12, Math.PI / 8).fill(C.ice).stroke(line);
-    st.position.set(0, -44);
-    g.addChild(st);
-    g.circle(0, -44, 6).fill(C.frost).stroke({ width: 2, color: C.slate });
+    g.poly(diamondPts(0, -28, 12, 20)).fill(C.slate).stroke({ width: 2, color: C.night });
+    g.poly(diamondPts(0, -28, 6, 11)).fill(C.glow);
+  } else if (kind === 'hourglass') {
+    // an hourglass: the shape says time, the orange sand is the clock bank
+    g.moveTo(-16, -77).lineTo(-16, -9).moveTo(16, -77).lineTo(16, -9).stroke({ width: 4, color: C.deep });
+    g.poly([-15, -71, 15, -71, 0, -43]).fill({ color: C.ice, alpha: 0.95 }).stroke(line);
+    g.poly([0, -43, 15, -15, -15, -15]).fill({ color: C.frost, alpha: 0.95 }).stroke(line);
+    g.poly([-10, -69, 10, -69, 0, -52]).fill(C.orange);
+    g.poly([-12, -15, 12, -15, 0, -29]).fill(C.orange);
+    g.roundRect(-20, -79, 40, 8, 3).fill(C.deep).stroke(line);
+    g.roundRect(-20, -15, 40, 8, 3).fill(C.deep).stroke(line);
+  } else if (kind === 'mender') {
+    // a plus with a heart in it: it heals
+    g.poly([-7, 4, 0, 11, 7, 4, 4, -20, -4, -20]).fill(C.deep).stroke(line);
+    const plus = [-10, -84, 10, -84, 10, -64, 30, -64, 30, -44, 10, -44, 10, -24, -10, -24, -10, -44, -30, -44, -30, -64, -10, -64];
+    g.poly(plus).fill(0xdcebf7).stroke(line);
+    g.poly([0, -84, 10, -84, 10, -64, 30, -64, 30, -44, 10, -44, 10, -24, 0, -24]).fill(C.frost).stroke({ width: 2, color: C.slate });
+    g.circle(-5, -57, 7).fill(C.orange);
+    g.circle(5, -57, 7).fill(C.orange);
+    g.poly([-12, -54, 12, -54, 0, -38]).fill(C.orange);
+    g.moveTo(-12, -58).lineTo(0, -38).lineTo(12, -58).stroke({ width: 2, color: C.glow, alpha: 0.9 });
   } else {
     g.poly([-10, 0, 8, 9, 22, 0, 4, -88]).fill(C.frost).stroke(line);
     g.poly([-10, 0, 8, 9, 8, -60, 4, -88]).fill(0xdcebf7).stroke(line);
@@ -163,30 +172,25 @@ function drawEnemy(g: Graphics, kind: EnemyKind): Graphics {
 }
 
 const UNLOCK_BLURB: Record<Kind, string> = {
-  spike: 'shoots while time flows',
-  crystal: 'brittle: it cracks every neighbour. Chains pay out more time',
-  lantern: 'shatter it for two and a half times the time',
-  chime: 'rings out damage all around it',
-  prism: 'its beam pierces everything in a line',
+  spike: 'a rapid turret: darts the lead enemy',
+  crystal: 'a bomb: break it for a big blast that cracks its neighbours',
+  hourglass: 'a clock: break it for two and a half times the time',
+  mender: 'a healer: sends health to hurt spires around it',
+  prism: 'slow and heavy: one beam through the whole line',
 };
 /** Where each tower's projectiles come from, in the spire's own coordinates (also where the muzzle flash plays). */
 const MUZZLE: Record<Kind, [number, number]> = {
   spike: [0, -80],
   crystal: [0, -62],
-  lantern: [0, -41],
-  chime: [0, -44],
+  hourglass: [0, -41],
+  mender: [0, -54],
   prism: [4, -104],
 };
 /** The visible emitter on each tower: a dark socket with a bright core, so the source of the shot reads at a glance. */
 function drawEmitter(g: Graphics, kind: Kind): void {
   const [mx, my] = MUZZLE[kind];
-  if (kind === 'lantern') return;
-  if (kind === 'chime') {
-    g.circle(mx, my, 10).fill(C.slate).stroke({ width: 2, color: C.night });
-    g.circle(mx, my, 5).fill(C.ice);
-    return;
-  }
-  const r = kind === 'prism' ? 8 : kind === 'crystal' ? 6 : 5;
+  if (kind === 'hourglass' || kind === 'crystal' || kind === 'mender') return;
+  const r = kind === 'prism' ? 8 : 5;
   g.circle(mx, my + (kind === 'spike' ? 6 : 0), r + 3).fill(C.slate).stroke({ width: 2, color: C.night });
   g.circle(mx, my + (kind === 'spike' ? 6 : 0), r).fill(C.ice);
   g.circle(mx, my + (kind === 'spike' ? 6 : 0), r / 2).fill(C.frost);
@@ -195,8 +199,8 @@ function drawEmitter(g: Graphics, kind: Kind): void {
 const BODY: Record<Kind, [number, number, number, number, number]> = {
   spike: [0, -66, 0, -8, 8],
   crystal: [0, -50, 0, -6, 7],
-  lantern: [0, -62, 0, -16, 9],
-  chime: [0, -64, 0, -30, 9],
+  hourglass: [0, -66, 0, -20, 8],
+  mender: [0, -78, 0, -30, 8],
   prism: [4, -82, 8, -10, 7],
 };
 function drawCracks(g: Graphics, kind: Kind, lvl: number): void {
@@ -218,12 +222,12 @@ function drawCracks(g: Graphics, kind: Kind, lvl: number): void {
 }
 const eyeY: Record<EnemyKind, number> = { drift: -2, ram: -2, glider: 0, wisp: -1, thaw: -4 };
 
-interface SpireView { c: Container; body: Graphics; muzzle: Graphics; fire: number; q: Graphics; cracks: Graphics; lastHp: number; kind: Kind; drop: number }
+interface SpireView { c: Container; body: Graphics; muzzle: Graphics; fx: Graphics; heal: number; fire: number; q: Graphics; cracks: Graphics; lastHp: number; kind: Kind; drop: number }
 interface EnemyView { c: Container; body: Graphics; eyes: Graphics; bar: Graphics; shadow: Graphics; shell: Graphics; trail: Trail | null; kind: EnemyKind; lastHit: number }
 
 // ---------------------------------------------------------------- sound
 let soundsDefined = false;
-export const SOUND_NAMES = ['sw-place', 'sw-place-thud', 'sw-deny', 'sw-select', 'sw-move', 'sw-glass', 'sw-crunch', 'sw-thaw', 'sw-crack', 'sw-tick', 'sw-tock', 'sw-freeze', 'sw-shot', 'sw-pulse', 'sw-kill', 'sw-ice', 'sw-eaten', 'sw-heart', 'sw-heart-low', 'sw-unlock', 'sw-snap-ready', 'sw-snap', 'sw-dawn-step', 'sw-boss', 'sw-spawn', 'sw-warn', 'sw-front', 'sw-melt', 'sw-wind', 'sw-solid', 'sw-gift'];
+export const SOUND_NAMES = ['sw-place', 'sw-place-thud', 'sw-deny', 'sw-select', 'sw-move', 'sw-glass', 'sw-crunch', 'sw-thaw', 'sw-crack', 'sw-tick', 'sw-tock', 'sw-freeze', 'sw-shot', 'sw-pulse', 'sw-kill', 'sw-ice', 'sw-eaten', 'sw-heart', 'sw-heart-low', 'sw-unlock', 'sw-snap-ready', 'sw-snap', 'sw-dawn-step', 'sw-boss', 'sw-spawn', 'sw-warn', 'sw-front', 'sw-melt', 'sw-wind', 'sw-heal-send', 'sw-heal', 'sw-solid', 'sw-gift'];
 export function defineSounds(): void {
   if (soundsDefined) return;
   soundsDefined = true;
@@ -269,6 +273,11 @@ export function defineSounds(): void {
     { wave: 'triangle', freq: 330, slide: 0.5, sustain: 0.02, decay: 0.18, transient: 0.3, volume: 0.4 },
     { wave: 'triangle', freq: 392, slide: 0.5, sustain: 0.02, decay: 0.18, transient: 0.3, volume: 0.4 },
   ]);
+  defineSound('sw-heal-send', { wave: 'sine', freq: 520, slide: 0.9, attack: 0.01, sustain: 0.04, decay: 0.2, volume: 0.28 });
+  defineSound('sw-heal', [
+    { wave: 'sine', freq: 784, slide: 0.35, sustain: 0.04, decay: 0.35, vibratoDepth: 0.01, vibratoSpeed: 12, volume: 0.35 },
+    { wave: 'sine', freq: 988, slide: 0.35, sustain: 0.04, decay: 0.35, vibratoDepth: 0.01, vibratoSpeed: 12, volume: 0.35 },
+  ]);
   defineSound('sw-gift', { wave: 'sine', freq: 700, slide: 0.8, sustain: 0.05, decay: 0.3, volume: 0.3 });
 }
 const wholeTone = (i: number, cap = 6): number => Math.pow(2, (Math.min(i, cap) * 2) / 12);
@@ -304,6 +313,7 @@ export function createPrototype(): Prototype {
   let etaG!: Graphics;
   interface Bolt { g: Graphics; trail: Trail; t: number; dur: number; x0: number; y0: number; x1: number; y1: number }
   let bolts: Bolt[] = [];
+  let healOrbs: Bolt[] = [];
   let markG!: Graphics;
   interface Flyer { txt: Text; trail: Trail; t: number; dur: number; x0: number; y0: number; amount: number; size: number }
   let flyers: Flyer[] = [];
@@ -357,6 +367,15 @@ export function createPrototype(): Prototype {
   let cards: { plate: Graphics; cap: Graphics; glyph: Text; title: Text; sub: Text }[] = [];
   let cardsSig = '';
   let overT = 0;
+  let loseC!: Container;
+  let loseSun!: Graphics;
+  let loseTitle!: Text;
+  let loseReason!: Text;
+  let losePanel!: Graphics;
+  let loseBar!: Graphics;
+  let loseRows: { label: Text; value: Text }[] = [];
+  let loseWhy = 'dark';
+  let loseFlags = 0;
   let winT = 0;
   let winFlags = 0;
   let winConfetti = 0;
@@ -390,11 +409,12 @@ export function createPrototype(): Prototype {
       q.poly(diamondPts(0, 0, TW * 0.8, TH * 0.8)).stroke({ width: 3, color: C.frost });
       q.poly(diamondPts(0, 0, TW * 0.55, TH * 0.55)).stroke({ width: 2, color: C.ice, alpha: 0.7 });
       const muzzle = new Graphics();
-      c.addChild(shadow, q, body, cracks, muzzle);
+      const fx = new Graphics();
+      c.addChild(shadow, q, body, cracks, fx, muzzle);
       c.position.set(sx(sp.gx, sp.gy), sy(sp.gx, sp.gy));
       c.zIndex = sp.gx + sp.gy;
       things.addChild(c);
-      v = { c, body, muzzle, fire: 0, q, cracks, lastHp: sp.hp, kind: sp.kind, drop: 9 };
+      v = { c, body, muzzle, fx, heal: 0, fire: 0, q, cracks, lastHp: sp.hp, kind: sp.kind, drop: 9 };
       spireViews.set(sp.id, v);
     }
     return v;
@@ -535,6 +555,60 @@ export function createPrototype(): Prototype {
     });
     cardsC.alpha = alpha;
     cardsC.position.set(640, 716 + (1 - alpha) * 20);
+  }
+
+  function updateLose(): void {
+    const s = sim.s;
+    const tl = sim.telemetry();
+    loseC.visible = true;
+    // a dead sun: grey rays that do not turn, an ember that fades out
+    const k = Math.min(1, overT / 1.2);
+    loseSun.clear();
+    star(loseSun, 24, 360 * k, 130 * k, 0).fill({ color: C.deep, alpha: 0.35 });
+    loseSun.circle(0, 0, 100 * k).fill({ color: C.slate, alpha: 0.9 }).stroke({ width: 6, color: C.deep });
+    loseSun.moveTo(-40, -70).lineTo(-8, -20).lineTo(-30, 10).lineTo(6, 62).stroke({ width: 5, color: C.night, join: 'round' });
+    loseSun.circle(0, 0, 14 * Math.max(0, 1 - overT / 2.5) + 2).fill({ color: C.orange, alpha: Math.max(0.15, 1 - overT / 2.5) });
+    loseTitle.text = loseWhy === 'stuck' ? 'NOTHING LEFT TO BREAK' : 'THE BEACON WENT DARK';
+    loseTitle.style.fontSize = loseWhy === 'stuck' ? 66 : 70;
+    const ts = overT < 0.5 ? 0 : ease.outBack(Math.min(1, (overT - 0.5) / 0.5));
+    loseTitle.scale.set(Math.max(0.01, 1.8 - 0.8 * ts));
+    loseTitle.alpha = Math.min(1, Math.max(0, (overT - 0.5) / 0.2));
+    loseReason.text = loseWhy === 'stuck' ? 'The clock only runs when something breaks, and nothing solid was left.' : 'Every heart is gone.';
+    loseReason.alpha = Math.min(1, Math.max(0, (overT - 1.0) / 0.3));
+    const pk = Math.min(1, Math.max(0, (overT - 1.2) / 0.3));
+    losePanel.alpha = pk;
+    // how far toward dawn: a bar with a sun at the end
+    loseBar.clear();
+    const f = Math.min(1, s.dawn / s.dawnLen);
+    const fill = f * ease.outCubic(Math.min(1, Math.max(0, (overT - 1.6) / 0.9)));
+    const bx0 = 550;
+    const bw0 = 246;
+    if (!s.endless) {
+      loseBar.roundRect(bx0, 396, bw0, 16, 8).fill({ color: C.slate, alpha: pk }).stroke({ width: 2, color: C.deep });
+      if (fill > 0) loseBar.roundRect(bx0 + 2, 398, Math.max(12, (bw0 - 4) * fill), 12, 6).fill({ color: C.orange, alpha: pk });
+      star(loseBar, 8, 15, 7, 0, 818 - 8, 404).fill({ color: f >= 1 ? C.glow : C.deep, alpha: pk });
+    }
+    const rows: [string, string][] = [
+      [s.endless ? 'Endless Night' : 'Dawn reached', s.endless ? `${Math.floor(s.polar / 60)}:${String(Math.floor(s.polar % 60)).padStart(2, '0')}` : ''],
+      ['Enemies broken', String(tl.kills)],
+      ['Best chain', `${tl.maxChain}x`],
+      ['Hearts lost', `${tl.heartsLost}`],
+    ];
+    rows.forEach(([label, val], i) => {
+      const r = loseRows[i];
+      const start = 1.5 + i * 0.35;
+      r.label.text = i === 0 && !s.endless ? 'Dawn' : label;
+      r.value.text = val;
+      r.label.alpha = r.value.alpha = overT >= start ? 1 : 0;
+      if (i === 0 && !s.endless) r.value.alpha = 0;
+      if (overT >= start && !(loseFlags & (1 << i))) {
+        loseFlags |= 1 << i;
+        play('sw-ice', { pitch: 0.75 + i * 0.06, volume: 0.45 });
+        punch(r.value, 0.18);
+      }
+    });
+    // (the bar row sits in the first slot when the run was a normal night)
+    showCards([['a', 'Try again', 'Same night, fresh start']], Math.min(1, Math.max(0, (overT - 2.6) / 0.4)), overT);
   }
 
   function updateWin(dt: number): void {
@@ -930,6 +1004,31 @@ export function createPrototype(): Prototype {
       endC.addChild(cardsC);
       winC.visible = false;
       endC.addChild(winC);
+      // the loss screen mirrors the dawn screen in cold colours: a dead sun, a title, the reason, a tally
+      loseC = new Container();
+      loseSun = new Graphics();
+      loseSun.position.set(640, 230);
+      loseTitle = new Text({ text: '', style: { fontFamily: FONT, fontSize: 76, fill: C.ice, fontWeight: 'bold', letterSpacing: 6, stroke: { color: C.night, width: 10 }, align: 'center' } });
+      loseTitle.anchor.set(0.5);
+      loseTitle.position.set(640, 236);
+      loseReason = mk(30, C.frost, 'normal');
+      loseReason.anchor.set(0.5);
+      loseReason.position.set(640, 318);
+      losePanel = new Graphics().roundRect(430, 372, 420, 282, 20).fill({ color: C.night, alpha: 0.86 }).stroke({ width: 4, color: C.frost });
+      loseBar = new Graphics();
+      loseC.addChild(loseSun, loseTitle, loseReason, losePanel, loseBar);
+      for (let i = 0; i < 4; i++) {
+        const label = mk(28, C.frost, 'normal');
+        label.anchor.set(0, 0.5);
+        label.position.set(462, i === 0 ? 410 : 482 + (i - 1) * 46);
+        const value = mk(34, C.ice);
+        value.anchor.set(1, 0.5);
+        value.position.set(818, i === 0 ? 410 : 482 + (i - 1) * 46);
+        loseC.addChild(label, value);
+        loseRows.push({ label, value });
+      }
+      loseC.visible = false;
+      endC.addChild(loseC);
       endC.visible = false;
       ui.addChild(endC);
 
@@ -958,6 +1057,19 @@ export function createPrototype(): Prototype {
         b.trail.draw();
         particles.emit('sparks', x, y, { count: 2, color: i % 2 ? C.glow : C.night, speed: 0.25, size: 0.9 });
         if (p >= 1) { b.trail.gfx.destroy(); b.g.destroy(); bolts.splice(i, 1); }
+      }
+      // --- health on its way from a Mender: plus-shaped orbs arcing to the hurt spire
+      for (let i = healOrbs.length - 1; i >= 0; i--) {
+        const b = healOrbs[i];
+        b.t += dt;
+        const p = Math.min(1, b.t / b.dur);
+        const x = b.x0 + (b.x1 - b.x0) * p;
+        const y = b.y0 + (b.y1 - b.y0) * p - Math.sin(p * Math.PI) * 46;
+        b.g.position.set(x, y);
+        b.g.scale.set(0.9 + 0.25 * Math.sin(p * Math.PI));
+        b.trail.push(x, y);
+        b.trail.draw();
+        if (p >= 1) { b.trail.gfx.destroy(); b.g.destroy(); healOrbs.splice(i, 1); }
       }
       // --- flying time numbers
       for (let i = flyers.length - 1; i >= 0; i--) {
@@ -1025,13 +1137,65 @@ export function createPrototype(): Prototype {
           star(v.muzzle, 4, 5 + 14 * k, 2, 0, mx, my + v.body.y).fill({ color: C.orange, alpha: Math.min(1, k * 1.4) });
           v.muzzle.circle(mx, my + v.body.y, 4 + 8 * k).fill({ color: C.ice, alpha: k });
         }
-        v.body.scale.set(1 / sq + (sp.kind === 'lantern' && flowing ? 0.03 * Math.sin(timeNow() * 6) : 0) + v.fire * 0.06, sq - v.fire * 0.07);
+        // each tower's idle animation says what it is: a charging lens, a primed bomb, falling sand, a heartbeat
+        v.fx.clear();
+        v.heal = Math.max(0, v.heal - dt * 3);
+        if (!sp.queued) {
+          const tt = timeNow() + sp.id;
+          const def = SPIRE[sp.kind];
+          let near = 99;
+          for (const en of s.enemies) near = Math.min(near, Math.hypot(en.x - sp.gx, en.y - sp.gy));
+          if (sp.kind === 'prism') {
+            const ready = 1 - Math.max(0, Math.min(1, sp.cd / def.cd));
+            const [mx, my] = MUZZLE.prism;
+            const live = near < def.range + 1 || ready < 1;
+            if (live) {
+              v.fx.circle(mx, my + v.body.y, 6 + ready * 16).stroke({ width: 3, color: C.glow, alpha: 0.25 + 0.65 * ready });
+              v.fx.circle(mx, my + v.body.y, 3 + ready * 5).fill({ color: ready > 0.98 ? 0xffffff : C.glow, alpha: 0.4 + 0.6 * ready });
+              if (flowing && ready > 0.98) star(v.fx, 4, 22 + 4 * Math.sin(tt * 20), 3, tt * 3, mx, my + v.body.y).fill({ color: C.glow, alpha: 0.9 });
+            }
+          } else if (sp.kind === 'crystal') {
+            const primed = near < 3 && s.phase === 'play';
+            const beat = 0.5 + 0.5 * Math.sin(tt * (primed ? 22 : 3));
+            v.fx.circle(0, -28 + v.body.y, 8 + beat * (primed ? 9 : 3)).fill({ color: primed ? C.orange : C.glow, alpha: primed ? 0.55 : 0.25 });
+            v.fx.poly(diamondPts(0, -28 + v.body.y, 8 + beat * 4, 14 + beat * 6)).fill({ color: primed ? 0xffffff : C.glow, alpha: 0.9 });
+            if (primed) {
+              for (let k = 0; k < 3; k++) {
+                const a2 = tt * 9 + k * 2.1;
+                v.fx.moveTo(Math.cos(a2) * 8, -28 + Math.sin(a2) * 12).lineTo(Math.cos(a2) * 20, -28 + Math.sin(a2) * 26).stroke({ width: 2, color: C.glow });
+              }
+              v.c.x = sx(sp.gx, sp.gy) + Math.sin(tt * 70) * 1.4;
+            }
+          } else if (sp.kind === 'hourglass') {
+            // sand falls only while time flows; frozen, the stream stops mid-air
+            const run = flowing ? (tt * 2.2) % 1 : 0.3;
+            v.fx.moveTo(0, -43 + v.body.y).lineTo(0, -29 + v.body.y).stroke({ width: 3, color: C.orange, alpha: flowing ? 1 : 0.5 });
+            for (let k = 0; k < 3; k++) {
+              const gy2 = -43 + ((run + k / 3) % 1) * 14;
+              v.fx.circle(0, gy2 + v.body.y, 2).fill(C.glow);
+            }
+            if (flowing && Math.floor(tt * 2) % 2 === 0) v.fx.circle(0, -26 + v.body.y, 4 + 2 * Math.sin(tt * 12)).fill({ color: C.glow, alpha: 0.5 });
+          } else if (sp.kind === 'mender') {
+            const beat = Math.max(0, Math.sin(tt * 3.2)) ** 6;
+            v.fx.circle(0, -52 + v.body.y, 13 + beat * 9 + v.fire * 12).fill({ color: C.orange, alpha: 0.2 + 0.25 * beat + 0.3 * v.fire });
+            for (let k = 0; k < 2; k++) {
+              const ph = (tt * 0.5 + k * 0.5) % 1;
+              const py2 = -86 - ph * 30 + v.body.y;
+              const a3 = (1 - ph) * 0.9;
+              v.fx.poly([-2.5, py2 - 8, 2.5, py2 - 8, 2.5, py2 - 2.5, 8, py2 - 2.5, 8, py2 + 2.5, 2.5, py2 + 2.5, 2.5, py2 + 8, -2.5, py2 + 8, -2.5, py2 + 2.5, -8, py2 + 2.5, -8, py2 - 2.5, -2.5, py2 - 2.5]).fill({ color: C.orange, alpha: a3 });
+            }
+          } else if (sp.kind === 'spike') {
+            if (near < def.range) star(v.fx, 4, 10 + 4 * Math.sin(tt * 14), 2, 0, 0, -80 + v.body.y).fill({ color: 0xffffff, alpha: 0.9 });
+          }
+        }
+        if (v.heal > 0.02) v.fx.circle(0, -44 + v.body.y, 22 + (1 - v.heal) * 26).stroke({ width: 4, color: C.orange, alpha: v.heal });
+        v.body.scale.set(1 / sq + (sp.kind === 'hourglass' && flowing ? 0.03 * Math.sin(timeNow() * 6) : 0) + v.fire * 0.06, sq - v.fire * 0.07);
         const qp = 0.5 + 0.5 * Math.sin(timeNow() * 5 + sp.id);
         v.body.alpha = sp.queued ? 0.32 + 0.14 * qp : 1;
         v.cracks.alpha = v.body.alpha;
         v.q.visible = sp.queued;
         v.q.alpha = 0.5 + 0.4 * qp;
-        v.body.tint = sp.crack >= 0 ? (Math.floor(timeNow() * 30) % 2 ? C.orange : C.glow) : 0xffffff;
+        v.body.tint = v.heal > 0.45 ? C.glow : sp.crack >= 0 ? (Math.floor(timeNow() * 30) % 2 ? C.orange : C.glow) : 0xffffff;
       }
       for (const [id, v] of spireViews) if (!live.has(id)) { v.c.destroy({ children: true }); spireViews.delete(id); }
 
@@ -1380,8 +1544,12 @@ export function createPrototype(): Prototype {
       endC.visible = s.phase === 'over' || s.phase === 'won';
       if (s.phase === 'over') {
         overT += dt;
-        showCards([['a', 'Try again', 'Same night, fresh start']], Math.min(1, Math.max(0, (overT - 1.0) / 0.4)), overT);
-      } else if (s.phase !== 'won') overT = 0;
+        updateLose();
+      } else {
+        overT = 0;
+        loseFlags = 0;
+        loseC.visible = false;
+      }
       if (s.phase === 'won') {
         winT += dt;
         updateWin(dt);
@@ -1411,6 +1579,7 @@ export function createPrototype(): Prototype {
           sunG.alpha = 0;
           endC.visible = false;
           winC.visible = false;
+          loseC.visible = false;
           for (const f of flyers) { f.trail.gfx.destroy(); f.txt.destroy(); }
           flyers = [];
           pendingFly = 0;
@@ -1419,6 +1588,7 @@ export function createPrototype(): Prototype {
           decals = [];
       flyers = [];
       bolts = [];
+      healOrbs = [];
       pendingFly = 0;
       bumpers = [];
           beacon.alpha = 1;
@@ -1480,12 +1650,12 @@ export function createPrototype(): Prototype {
           particles.emit('debris', X, Y - 30, { count: 22 + depth * 4, color: C.ice, speed: 1.2 + big * 0.5, size: 1.1 });
           particles.emit('debris', X, Y - 30, { count: 10, color: C.frost, speed: 1.0, size: 1.4 });
           particles.emit('sparks', X, Y - 34, { count: 14 + depth * 3, color: C.orange, speed: 1.4, size: 0.9 });
-          ring(X, Y, C.orange, 140 + depth * 18 + (kind === 'lantern' ? 60 : 0), 520, 5);
+          ring(X, Y, C.orange, 140 + depth * 18 + (kind === 'hourglass' ? 60 : 0), 520, 5);
           ring(X, Y, C.ice, 90, 360, 3);
-          scorch(x, y, 30 + depth * 4 + (kind === 'lantern' ? 14 : 0));
+          scorch(x, y, 30 + depth * 4 + (kind === 'hourglass' ? 14 : 0));
           flashDiamond(X, Y - 20, C.ice, 160 + depth * 20, 240);
           flyToClock(X, Y - 50, Number(data.thaw), 0.05);
-          play('sw-glass', { pitch: 1 + (kind === 'chime' ? 0.2 : 0), pan, volume: 0.7 + big * 0.3 });
+          play('sw-glass', { pitch: 1 + (kind === 'mender' ? 0.2 : 0), pan, volume: 0.7 + big * 0.3 });
           if (melted) { play('sw-melt', { pan }); numberPop(view.world as Container, 'melted', X, Y - 40, { color: C.glow, size: 24, rise: 24, ms: 700 }); }
           if (eaten) { play('sw-eaten', { pan }); numberPop(view.world as Container, 'eaten', X, Y - 40, { color: C.frost, size: 24, rise: 24, ms: 700 }); }
           play('sw-crunch', { pitch: 0.9 + big * 0.2, variation: 0.06, pan, volume: 0.6 + big * 0.4 });
@@ -1562,6 +1732,29 @@ export function createPrototype(): Prototype {
             bolts.push({ g, trail, t: 0, dur: 0.15, x0: oX, y0: oY, x1: tX, y1: tY - 20 });
           }
           play('sw-shot', { pitch: prism ? 0.7 : 1, variation: 0.08, pan, volume: 0.8 });
+          break;
+        }
+        case 'heal': {
+          const healer = s.spires.find((p) => p.gx === x && p.gy === y);
+          if (healer) spireView(healer).fire = 1;
+          const hx = sx(Number(data.tx), Number(data.ty));
+          const hy = sy(Number(data.tx), Number(data.ty));
+          const g = new Graphics();
+          g.poly([-3.5, -11, 3.5, -11, 3.5, -3.5, 11, -3.5, 11, 3.5, 3.5, 3.5, 3.5, 11, -3.5, 11, -3.5, 3.5, -11, 3.5, -11, -3.5, -3.5, -3.5]).fill(C.orange).stroke({ width: 3, color: C.night, join: 'round' });
+          g.circle(0, 0, 3).fill(0xffffff);
+          fxLayer.addChild(g);
+          const trail = new Trail(fxLayer, { color: C.glow, width: 9, length: 14, alpha: 0.7 });
+          healOrbs.push({ g, trail, t: 0, dur: 0.32, x0: X, y0: Y - 54, x1: hx, y1: hy - 46 });
+          play('sw-heal-send', { pan, variation: 0.05 });
+          break;
+        }
+        case 'heal-land': {
+          const tgt = s.spires.find((p) => p.gx === x && p.gy === y);
+          if (tgt) spireView(tgt).heal = 1;
+          ring(X, Y - 30, C.orange, 70, 450, 4);
+          particles.emit('sparks', X, Y - 40, { count: 8, color: C.orange, speed: 0.9, size: 0.9, angle: -Math.PI / 2, spread: 0.9 });
+          numberPop(view.world as Container, '+1', X, Y - 84, { color: C.orange, size: 26, rise: 30, ms: 700 });
+          play('sw-heal', { pan, variation: 0.04 });
           break;
         }
         case 'pulse':
@@ -1760,10 +1953,11 @@ export function createPrototype(): Prototype {
           play('sw-gift');
           break;
         case 'gameover': {
-          endTitle.text = data.reason === 'stuck' ? 'NOTHING LEFT TO BREAK' : 'THE BEACON WENT DARK';
-          endTitle.style.fill = C.frost;
-          endTitle.style.fontSize = 64;
-          { const tl = sim.telemetry(); const pn = s.endless ? `held ${Math.floor(s.polar / 60)}:${String(Math.floor(s.polar % 60)).padStart(2, '0')} into the Endless Night` : `${Math.round(Number(data.dawn) * 100)}% of the way to dawn`; endSub.text = `${pn}  ·  ${tl.kills} kills  ·  best chain ${tl.maxChain}`; overT = 0; }
+          endTitle.text = '';
+          endSub.text = '';
+          loseWhy = data.reason === 'stuck' ? 'stuck' : 'dark';
+          overT = 0;
+          loseFlags = 0;
           overlayEnd.clear().rect(0, 0, 1280, 800).fill(C.night);
           shake(0.9);
           particles.emit('debris', X, Y - 90, { count: 60, color: C.ice, speed: 2.4, size: 1.5 });

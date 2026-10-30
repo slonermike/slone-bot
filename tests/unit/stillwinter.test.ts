@@ -284,3 +284,26 @@ describe('genre roll script', () => {
     expect(run('x').match(/candidates: (.*)/)![1].split(', ').length).toBe(5);
   });
 });
+
+describe('Stillwinter towers have distinct jobs', () => {
+  it('a Mender sends health to a hurt spire in range, and it arrives later', () => {
+    const sim = fresh();
+    sim.s.spires = [];
+    const mk = (kind: 'spike' | 'mender', gx: number, gy: number, hp: number) =>
+      sim.s.spires.push({ id: 100 + gx, kind, gx, gy, hp, cd: 0, crack: -1, depth: 0, age: 0, queued: false, settle: Infinity });
+    mk('mender', 1, 1, SPIRE.mender.hp);
+    mk('spike', 2, 1, 1);
+    sim.s.thaw = 10;
+    run(sim, 0.1);
+    expect(sim.s.orbs.length).toBe(1); // sent, not yet landed
+    expect(sim.s.spires[1].hp).toBe(1);
+    run(sim, 0.6);
+    expect(sim.s.spires[1].hp).toBeGreaterThan(1);
+  });
+
+  it('crystals no longer shoot; prisms hit hard and slow', () => {
+    expect(SPIRE.crystal.dmg).toBe(0);
+    expect(SPIRE.prism.dmg).toBeGreaterThan(SPIRE.spike.dmg * 2);
+    expect(SPIRE.prism.cd).toBeGreaterThan(SPIRE.spike.cd * 2);
+  });
+});

@@ -6,8 +6,8 @@ import type { BalanceSpec, Ctx, InputState, SimEvent } from '../../core/types.ts
 export const N = 9;
 export const THAW_CAP = 20;
 
-export type Kind = 'spike' | 'crystal' | 'lantern' | 'chime' | 'prism';
-export const KINDS: Kind[] = ['spike', 'crystal', 'lantern', 'chime', 'prism'];
+export type Kind = 'spike' | 'crystal' | 'hourglass' | 'mender' | 'prism';
+export const KINDS: Kind[] = ['spike', 'crystal', 'hourglass', 'mender', 'prism'];
 export type EnemyKind = 'drift' | 'ram' | 'glider' | 'wisp' | 'thaw';
 
 export interface SpireDef {
@@ -22,13 +22,16 @@ export interface SpireDef {
   thawMul: number;
   blast: number;
   label: string;
+  /** Hit points restored per heal pulse (Mender only). */
+  heal?: number;
 }
 export const SPIRE: Record<Kind, SpireDef> = {
-  spike: { cost: 3, hp: 4, range: 3.4, cd: 0.7, dmg: 1, unlock: 0, thawMul: 1, blast: 1.8, label: 'Spike' },
-  crystal: { cost: 2, hp: 2, range: 2.4, cd: 1.1, dmg: 1, unlock: 0.1, thawMul: 1, blast: 2.2, label: 'Crystal' },
-  lantern: { cost: 4, hp: 3, range: 0, cd: 0, dmg: 0, unlock: 0.28, thawMul: 2.5, blast: 1.2, label: 'Lantern' },
-  chime: { cost: 5, hp: 4, range: 2.3, cd: 2.2, dmg: 2, unlock: 0.48, thawMul: 1, blast: 2.0, label: 'Chime' },
-  prism: { cost: 6, hp: 4, range: 4.6, cd: 1.3, dmg: 2, unlock: 0.68, thawMul: 1, blast: 1.8, label: 'Prism' },
+  // five roles, five behaviours: a rapid turret, a bomb, a clock, a healer, a heavy piercing gun
+  spike: { cost: 3, hp: 4, range: 3.2, cd: 0.55, dmg: 1, unlock: 0, thawMul: 1, blast: 1.8, label: 'Spike' },
+  crystal: { cost: 2, hp: 2, range: 0, cd: 0, dmg: 0, unlock: 0.1, thawMul: 1, blast: 2.4, label: 'Crystal' },
+  hourglass: { cost: 4, hp: 3, range: 0, cd: 0, dmg: 0, unlock: 0.28, thawMul: 2.5, blast: 1.2, label: 'Hourglass' },
+  mender: { cost: 5, hp: 4, range: 2.8, cd: 1.1, dmg: 0, unlock: 0.48, thawMul: 1, blast: 1.2, label: 'Mender', heal: 1 },
+  prism: { cost: 6, hp: 4, range: 4.8, cd: 2.0, dmg: 4, unlock: 0.68, thawMul: 1, blast: 1.8, label: 'Prism' },
 };
 export const refundOf = (k: Kind): number => Math.floor(SPIRE[k].cost / 2);
 
@@ -211,6 +214,8 @@ export interface SimState {
   /** After dawn, the player can keep going into the Endless Night: no end but the beacon going dark. */
   endless: boolean;
   polar: number;
+  /** Health on its way from a Mender to a hurt spire. */
+  orbs: { to: number; t: number; amount: number }[];
 }
 
 export function createSim(ctx: Ctx): Sim {
@@ -269,7 +274,7 @@ export function createSim(ctx: Ctx): Sim {
       phase: 'play', map, cx: path.beacon[0], cy: path.beacon[1] - 2 < 0 ? path.beacon[1] + 2 : path.beacon[1] - 2,
       sel: 'spike', ice: bal('startIce', 10), thaw: 0, dawn: 0, dawnLen: bal('dawnLength', 90),
       hearts, maxHearts: hearts, snap: 0, snapReady: false, spires: [], enemies: [], flowT: 0, realT: 0, flowing: false,
-      unlockedSet: new Set<Kind>(['spike']), chain: 0, faults: [], faultsShown: false, front: null, endless: false, polar: 0,
+      unlockedSet: new Set<Kind>(['spike']), chain: 0, faults: [], faultsShown: false, front: null, endless: false, polar: 0, orbs: [],
     };
     nextBoss = 0.88;
     frontT = 14;
@@ -296,6 +301,21 @@ export function createSim(ctx: Ctx): Sim {
       s.sel = 'crystal';
     }
     if (ctx.params?.ice) s.ice = Number(ctx.params.ice);
+    if (ctx.params?.kit) {
+      // test hook: one of every tower, solid, with a hurt spike beside the mender
+      s.spires = [];
+      const spots = cells().filter((c) => c.gx > 0 && c.gy > 0 && c.gx < N - 1 && c.gy < N - 1).sort((a, b) => b.c - a.c);
+      const picks: Kind[] = ['spike', 'crystal', 'hourglass', 'mender', 'prism', 'spike'];
+      const used: { gx: number; gy: number }[] = [];
+      for (const k of picks) {
+        const c = spots.find((q) => !used.some((u) => Math.max(Math.abs(u.gx - q.gx), Math.abs(u.gy - q.gy)) < (k === 'spike' && used.length === 5 ? 1 : 2)) && !used.includes(q));
+        if (!c) continue;
+        used.push(c);
+        s.spires.push({ id: nextId++, kind: k, gx: c.gx, gy: c.gy, hp: k === 'spike' && used.length === 6 ? 1 : SPIRE[k].hp, cd: 0.3, crack: -1, depth: 0, age: 0, queued: false, settle: Infinity });
+      }
+      s.thaw = 14;
+      for (const k of KINDS) s.unlockedSet.add(k);
+    }
     emit('run-start', s.cx, s.cy, 0.3, { map });
   }
 
@@ -352,7 +372,7 @@ export function createSim(ctx: Ctx): Sim {
     if (reason === 'eaten') tel.eaten++;
     tel.maxChain = Math.max(tel.maxChain, depth + 1);
     s.chain = depth + 1;
-    const dmg = reason === 'snap' ? 7 : (sp.kind === 'crystal' || sp.kind === 'prism' ? 2 : 1) + depth;
+    const dmg = reason === 'snap' ? 7 : (sp.kind === 'crystal' ? 3 : 1) + depth;
     for (const e of s.enemies) {
       if (!e.alive) continue;
       if (Math.hypot(e.x - sp.gx, e.y - sp.gy) <= def.blast + (reason === 'snap' ? 0.8 : 0)) damage(e, dmg, true);
@@ -475,17 +495,28 @@ export function createSim(ctx: Ctx): Sim {
       if (sp.queued) continue;
       const def = SPIRE[sp.kind];
       sp.age += wdt;
+      if (sp.kind === 'mender') {
+        // send health to the most hurt friendly spire in range
+        sp.cd -= wdt;
+        if (sp.cd > 0) continue;
+        let hurt: Spire | null = null;
+        let worst = 1;
+        for (const o of s.spires) {
+          if (o === sp || o.queued) continue;
+          if (Math.hypot(o.gx - sp.gx, o.gy - sp.gy) > def.range) continue;
+          const ratio = o.hp / SPIRE[o.kind].hp;
+          const inbound = s.orbs.filter((b2) => b2.to === o.id).length;
+          if (ratio < worst && o.hp + inbound * (def.heal ?? 1) < SPIRE[o.kind].hp) { worst = ratio; hurt = o; }
+        }
+        if (!hurt) { sp.cd = 0.2; continue; }
+        sp.cd = def.cd;
+        s.orbs.push({ to: hurt.id, t: 0.32, amount: def.heal ?? 1 });
+        emit('heal', sp.gx, sp.gy, 0.4, { tx: hurt.gx, ty: hurt.gy });
+        continue;
+      }
       if (def.dmg === 0) continue;
       sp.cd -= wdt;
       if (sp.cd > 0) continue;
-      if (sp.kind === 'chime') {
-        const inR = s.enemies.filter((e) => e.alive && Math.hypot(e.x - sp.gx, e.y - sp.gy) <= def.range);
-        if (!inR.length) continue;
-        sp.cd = def.cd;
-        emit('pulse', sp.gx, sp.gy, 0.5, { r: def.range });
-        for (const e of inR) damage(e, def.dmg, false);
-        continue;
-      }
       let target: Enemy | null = null;
       let best = -1;
       for (const e of s.enemies) {
@@ -582,6 +613,17 @@ export function createSim(ctx: Ctx): Sim {
     moveEnemies(wdt);
     if (s.phase !== 'play') return;
     fireSpires(wdt);
+    for (let k = s.orbs.length - 1; k >= 0; k--) {
+      const o = s.orbs[k];
+      o.t -= wdt;
+      if (o.t > 0) continue;
+      s.orbs.splice(k, 1);
+      const to = s.spires.find((p) => p.id === o.to);
+      if (to) {
+        to.hp = Math.min(SPIRE[to.kind].hp, to.hp + o.amount);
+        emit('heal-land', to.gx, to.gy, 0.4, { hp: to.hp });
+      }
+    }
     s.enemies = s.enemies.filter((e) => e.alive);
     tel.maxEnemies = Math.max(tel.maxEnemies, s.enemies.length);
     tickT += wdt;
@@ -886,8 +928,8 @@ export function createSim(ctx: Ctx): Sim {
       return opts[attackers % opts.length];
     };
     const solid = s.spires.filter((p) => !p.queued && p.crack < 0);
-    const fuelKind: Kind = kinds.includes('lantern') && s.ice >= SPIRE.lantern.cost ? 'lantern' : kinds.includes('crystal') && s.ice >= SPIRE.crystal.cost ? 'crystal' : 'spike';
-    const reserve = s.spires.filter((p) => p.kind === 'lantern' || p.kind === 'crystal').length;
+    const fuelKind: Kind = kinds.includes('hourglass') && s.ice >= SPIRE.hourglass.cost ? 'hourglass' : kinds.includes('crystal') && s.ice >= SPIRE.crystal.cost ? 'crystal' : 'spike';
+    const reserve = s.spires.filter((p) => p.kind === 'hourglass' || p.kind === 'crystal').length;
     const stock = (): boolean => {
       if (s.ice < SPIRE[fuelKind].cost) return false;
       const quiet = free.filter((c) => !s.spires.some((p) => Math.max(Math.abs(p.gx - c.gx), Math.abs(p.gy - c.gy)) === 1)).sort((a, b) => a.c - b.c)[0];
@@ -897,7 +939,7 @@ export function createSim(ctx: Ctx): Sim {
     };
     if (s.thaw < 0.5) {
       // make time: shatter a solid fuel spire, else the least useful solid spire
-      const fuel = solid.find((p) => p.kind === 'lantern') ?? solid.find((p) => p.kind === 'crystal');
+      const fuel = solid.find((p) => p.kind === 'hourglass') ?? solid.find((p) => p.kind === 'crystal');
       if (fuel) { base.act = 2; base.tx = fuel.gx; base.ty = fuel.gy; return base; }
       const weakest = [...solid].sort((a, b) => coverage(a.gx, a.gy, 3.4) - coverage(b.gx, b.gy, 3.4))[0];
       if (weakest) { base.act = 2; base.tx = weakest.gx; base.ty = weakest.gy; return base; }

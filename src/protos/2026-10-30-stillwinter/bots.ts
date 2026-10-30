@@ -1,7 +1,7 @@
 import { deltaToStick } from './sim.ts';
 import type { Bot, BotInput, ButtonName } from '../../core/types.ts';
 
-const KIND_ORDER = ['spike', 'crystal', 'lantern', 'chime', 'prism'];
+const KIND_ORDER = ['spike', 'crystal', 'hourglass', 'mender', 'prism'];
 const n = (o: Record<string, unknown>, k: string): number => Number(o[k] ?? 0);
 
 /** Walk the cursor toward (tx,ty) one cell at a time; returns the stick vector, or null when there. */
