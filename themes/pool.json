@@ -22,8 +22,13 @@
     "text": "You are the weather, not the character",
     "type": "system",
     "source": "seed",
-    "strikes": 0,
-    "reasons": [],
+    "strikes": 1,
+    "reasons": [
+      {
+        "date": "2026-10-30",
+        "text": "Pure weather-god play drifts from the place-build atom; indirect control would need AI-heavy agents to read well."
+      }
+    ],
     "used": null
   },
   {
@@ -153,15 +158,6 @@
     "used": null
   },
   {
-    "id": "t018",
-    "text": "Time only moves when something breaks",
-    "type": "constraint",
-    "source": "seed",
-    "strikes": 0,
-    "reasons": [],
-    "used": null
-  },
-  {
     "id": "t019",
     "text": "Rebuild better after the flood",
     "type": "feeling",
@@ -175,8 +171,13 @@
     "text": "A toy box with a countdown",
     "type": "world",
     "source": "seed",
-    "strikes": 0,
-    "reasons": [],
+    "strikes": 1,
+    "reasons": [
+      {
+        "date": "2026-10-30",
+        "text": "A countdown toy box is mostly a skin on a timer; the picked constraint generates more mechanics with place-and-build."
+      }
+    ],
     "used": null
   }
 ]

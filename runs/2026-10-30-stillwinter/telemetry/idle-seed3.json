@@ -1,0 +1,64 @@
+{
+  "night": "2026-10-30-stillwinter",
+  "seed": 3,
+  "bot": "idle",
+  "mode": "content",
+  "simSeconds": 120,
+  "wallMs": 75,
+  "timescale": 20,
+  "outcome": "timeout",
+  "metrics": {
+    "runLength": 120,
+    "deaths": 0,
+    "firstPressureSimSec": 0,
+    "restartDelaySimSec": 0,
+    "mainVerbCount": 0,
+    "decisionsPerMinute": 0,
+    "idleSurvivalSec": 0,
+    "scoreOrProgress": 0,
+    "variance": 0,
+    "dawnPct": 0,
+    "thawedSeconds": 0,
+    "shatters": 0,
+    "maxChain": 0,
+    "kills": 0,
+    "placed": 0,
+    "heartsLost": 0,
+    "hearts": 5,
+    "longestFrozenSec": 120,
+    "spiresEaten": 0,
+    "snaps": 0,
+    "deniedPlace": 0,
+    "maxEnemies": 0,
+    "enemyKindsSeen": 0,
+    "ice": 10,
+    "won": 0
+  },
+  "perf": {
+    "avgFrameMs": 0,
+    "p95FrameMs": 0,
+    "fps": 0,
+    "particleMax": 0,
+    "effectsOn": false
+  },
+  "feel": {
+    "inputToVisualMs": 0,
+    "inputToAudioMs": 0,
+    "eventsFired": {
+      "run-start": 1
+    },
+    "shakePeak": 0,
+    "hitStopFrames": 0
+  },
+  "errors": [],
+  "balance": {
+    "thawPerShatter": 3,
+    "enemySpeed": 1,
+    "spawnRate": 1,
+    "dawnLength": 90,
+    "startIce": 10,
+    "hearts": 5,
+    "killThaw": 0.15,
+    "snapGain": 1
+  }
+}
