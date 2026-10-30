@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Theme pool access. The ONLY sanctioned way for a nightly run to touch themes/*.json.
 // Spec: docs/tech/07-themes-script.md.  Commands: roll | resolve | add | report
+import { runKey } from './run-key.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,8 +36,9 @@ function load(dir) {
   return { f, pool: read(f.pool, []), graveyard: read(f.graveyard, []), state };
 }
 
+/** The run's key (its start stamp), not the calendar date: several runs a day each get their own roll. THEMES_TODAY overrides (tests). */
 export function todayUTC() {
-  return process.env.THEMES_TODAY || new Date().toISOString().slice(0, 10);
+  return process.env.THEMES_TODAY || runKey();
 }
 
 // ---------- seeded shuffle ----------
@@ -71,16 +73,18 @@ export function citesTheme(r) {
 
 // ---------- commands ----------
 export function roll({ dir = path.join(ROOT, 'themes'), today = todayUTC(), n = 3 } = {}) {
-  const { f, pool, state } = load(dir);
-  if (state.lastRollDate === today) throw new ThemeError(`already rolled tonight (${today}). One roll per night.`);
+  const { f, pool, graveyard, state } = load(dir);
+  if (state.lastRollDate === today) throw new ThemeError(`already rolled for this run (${today}). One roll per run.`);
   let source = pool;
   const notes = [];
   if (pool.length < n) {
-    const fb = read(f.fallback, []);
-    if (fb.length < n) throw new ThemeError('theme pool and fallback pool are both too small to roll');
-    notes.push(`WARNING: pool has ${pool.length} themes (< ${n}). Falling back to fallback-pool.json.`);
+    // Never bring back a theme that was already built or retired: refill only with fallback themes that are new.
+    const spent = [...state.used, ...graveyard];
+    const fb = read(f.fallback, []).filter((t) => !pool.some((p) => p.id === t.id) && !spent.some((u) => u.id === t.id || similarity(u.text, t.text) >= 0.7));
+    if (pool.length + fb.length < n) throw new ThemeError('theme pool and unused fallback themes are both too small to roll. Add themes (human: `themes.mjs add --source human`).');
+    notes.push(`WARNING: pool has ${pool.length} themes (< ${n}). Refilling from the unused fallback themes.`);
     state.events.push({ date: today, event: 'fallback-pool-used', poolSize: pool.length });
-    source = structuredClone(fb);
+    source = [...pool, ...structuredClone(fb)];
     write(f.pool, source);
   } else if (pool.length < MIN_POOL) {
     notes.push(`WARNING: theme pool has only ${pool.length} themes (minimum ${MIN_POOL}).`);
@@ -111,7 +115,7 @@ export function roll({ dir = path.join(ROOT, 'themes'), today = todayUTC(), n = 
 
 export function resolve({ dir = path.join(ROOT, 'themes'), today = todayUTC(), pick, rejects = [] } = {}) {
   const { f, pool, graveyard, state } = load(dir);
-  if (state.lastResolveDate === today) throw new ThemeError(`already resolved tonight (${today}). One resolve per night.`);
+  if (state.lastResolveDate === today) throw new ThemeError(`already resolved for this run (${today}). One resolve per run.`);
   const last = state.rollHistory[state.rollHistory.length - 1];
   if (!last || last.date !== today || state.lastRollDate !== today) throw new ThemeError('roll first: no roll recorded for tonight.');
   if (!last.ids.includes(pick)) throw new ThemeError(`pick "${pick}" is not one of tonight's rolled ids.`);
@@ -181,6 +185,35 @@ export function add({ dir = path.join(ROOT, 'themes'), today = todayUTC(), text,
   return { text: `added ${id}: ${text.trim()}` };
 }
 
+/** Human only: retire a theme from the pool (by id or exact text) to the graveyard, with a reason. Never callable by a nightly run. */
+export function remove({ dir = path.join(ROOT, 'themes'), today = todayUTC(), which, reason, env = process.env } = {}) {
+  if (env.NIGHT_RUN === '1') throw new ThemeError('remove is for the human only; refused under NIGHT_RUN=1.');
+  if (!which) throw new ThemeError('give a theme id or its exact text.');
+  if (!reason || !reason.trim()) throw new ThemeError('--reason is required.');
+  const { f, pool, graveyard } = load(dir);
+  const t = pool.find((x) => x.id === which || x.text === which);
+  if (!t) throw new ThemeError(`no theme in the pool with id or text "${which}".`);
+  t.reasons.push({ date: today, text: `removed by human: ${reason.trim()}` });
+  graveyard.push({ ...t, retired: today });
+  write(f.pool, pool.filter((x) => x !== t));
+  write(f.graveyard, graveyard);
+  return { text: `removed ${t.id}: ${t.text}` };
+}
+
+/** Human only: bring a retired theme (by id or exact text) back from the graveyard into the pool, strikes cleared. */
+export function restore({ dir = path.join(ROOT, 'themes'), today = todayUTC(), which, env = process.env } = {}) {
+  if (env.NIGHT_RUN === '1') throw new ThemeError('restore is for the human only; refused under NIGHT_RUN=1.');
+  const { f, pool, graveyard, state } = load(dir);
+  const t = graveyard.find((x) => x.id === which || x.text === which);
+  if (!t) throw new ThemeError(`no theme in the graveyard with id or text "${which}".`);
+  if (state.used.some((u) => u.id === t.id)) throw new ThemeError(`${t.id} was already used by a run; themes are never repeated.`);
+  const { retired, ...rest } = t;
+  pool.push({ ...rest, strikes: 0, reasons: [...(t.reasons ?? []), { date: today, text: 'restored by human' }] });
+  write(f.pool, pool);
+  write(f.graveyard, graveyard.filter((x) => x !== t));
+  return { text: `restored ${t.id}: ${t.text}` };
+}
+
 export function report({ dir = path.join(ROOT, 'themes'), env = process.env } = {}) {
   if (env.NIGHT_RUN === '1') throw new ThemeError('report is for the human only; refused under NIGHT_RUN=1.');
   const { pool, graveyard, state } = load(dir);
@@ -222,8 +255,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     if (cmd === 'roll') r = roll({ dir, n: a.n ? Number(a.n) : 3 });
     else if (cmd === 'resolve') r = resolve({ dir, pick: a.pick, rejects: a.reject });
     else if (cmd === 'add') r = add({ dir, text: a._[0], type: a.type, source: a.source ?? 'postmortem' });
+    else if (cmd === 'remove') r = remove({ dir, which: a._[0], reason: a.reason });
+    else if (cmd === 'restore') r = restore({ dir, which: a._[0] });
     else if (cmd === 'report') r = report({ dir });
-    else throw new ThemeError('usage: themes.mjs roll [--n 3] | resolve --pick <id> --reject <id>:"reason" ... | add "<text>" --type <type> --source postmortem | report');
+    else throw new ThemeError('usage: themes.mjs roll [--n 3] | resolve --pick <id> --reject <id>:"reason" ... | add "<text>" --type <type> --source postmortem | report | remove <id|text> --reason "why" (human only) | restore <id|text> (human only)');
     console.log(r.text);
   } catch (e) {
     if (e instanceof ThemeError) { console.error(`themes: ${e.message}`); process.exit(1); }

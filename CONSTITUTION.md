@@ -17,7 +17,7 @@ Slone dislikes: mastery-by-humiliation ("git gud"), online multiplayer, gritty t
 ## 4. Decision authority
 **The agent decides alone:** stack details, art direction, audio sourcing, what to build within the brief, how to cut scope, which theme option to pick, which scaffold helpers to add.
 **In chat sessions Slone is the design architect and the agent is the designer:** the agent makes detail decisions and reports them; it asks only about direction-level choices. A feedback message that asks for a change is a request to make it.
-**The agent never asks the human during a night.** Ambiguity is resolved by a documented default and logged in the post mortem's run-health line.
+**An unattended run never asks the human anything. An attended run (the prompt says so) asks exactly once: the check-in after the theme, genre and look are chosen, before building (doc 06, "Check in").** If there is no answer, it proceeds with no input and does not wait. Everywhere else ambiguity is resolved by a documented default and logged in the post mortem's run-health line.
 **Only the human changes:** the Bible, this constitution, taste cards, and the roadmap. Nightly runs may propose changes in `pending-lessons.md`.
 **Escalation exists for exactly one case:** broken infrastructure that blocks publishing. Leave the previous prototype playable, log the failure, stop.
 
@@ -51,7 +51,7 @@ Every run logs every file it opens outside the allowed set in the post mortem ru
 Each night's brief must be built around: **one theme** (from the theme script's n=3 options), **two random atoms** from the concept library, and **at most one wildcard constraint** (e.g. one button only, camera never moves, 60 seconds max, no player character). The brief must include a "what is different from the last five nights" line, written from the ledger only.
 
 ## 9. Time and cost
-- Budget: wrap-up at 1:15, pencils-down at 1:30 (the night targets about 90 minutes), measured by wall clock. Stamp the start with `night-state.mjs start`; check elapsed time at every phase boundary and before every long command. Give builds, bot runs, and downloads their own timeouts.
+- The clock starts at the check-in answer (`night-state.mjs resume`), not at launch. Budget: wrap-up at 1:15, pencils-down at 1:30 (the night targets about 90 minutes), measured by wall clock. Stamp the start with `night-state.mjs start`; check elapsed time at every phase boundary and before every long command. Give builds, bot runs, and downloads their own timeouts.
 - **Wrap-up (1:15):** stop starting features. Freeze scope. Bot tests, one fix pass, manifest, feedback sheet, post mortem.
 - **Pencils-down (1:30):** stop editing. Ship the last build that passed the smoke test, or leave the previous prototype as latest. Write the post mortem.
 - Phase times: ideation 10 min, core verb up to 25 (first playable by about 0:30), then iterate in rounds of play, note, change until wrap-up, then wrap 15. These are not targets to beat. Finishing early means the loop did not run: `night-state.mjs checkpoint done` is refused before 1:00 or without 3 rounds and a step-back, unless `--early --reason` explains why (doc 06, "Iterate").

@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Run-protocol helper: NIGHT_STATE.md checkpoints, elapsed-time gates, seeded atom picks.
-// Commands: start [--night <slug>] [--force] | checkpoint <phase> [note...] [--early --reason "why"] | round "<played> | <noticed> | <changed>" [--stepback] | set key=value ... | show | elapsed | check | atoms [--seed N] | look [--seed N] | sound | genre <g1> <g2> <g3> [<g4> <g5>] [--reroll --reason "why"]
+// Commands: start [--night <slug>] [--attended] [--force] | checkin | resume "<input>" | checkpoint <phase> [note...] [--early --reason "why"] | round "<played> | <noticed> | <changed>" [--stepback] | set key=value ... | show | elapsed | check | atoms [--seed N] | look [--seed N] | sound | genre <g1> <g2> <g3> [<g4> <g5>] [--reroll --reason "why"]
 // Spec: docs/tech/06-nightly-run-protocol.md
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runKey } from './run-key.mjs';
 import { formatMenu } from './sounds.mjs';
 import { formatLook, parseLedgerLooks, pickLook } from './looks.mjs';
 
@@ -16,7 +17,7 @@ export const MIN_DONE_MIN = 60;
 export const MIN_ROUNDS = 3;
 const STATE_FILE = () => process.env.NIGHT_STATE_FILE || path.join(ROOT, 'NIGHT_STATE.md');
 const PHASES = ['start', 'brief', 'core', 'feel', 'test', 'done'];
-const KEYS = ['night', 'started', 'phase', 'branch', 'brief', 'lastGoodBuild', 'genre', 'genreOptions'];
+const KEYS = ['night', 'started', 'phase', 'branch', 'brief', 'lastGoodBuild', 'genre', 'genreOptions', 'workStart', 'checkinAt', 'attended'];
 
 export function parseState(text) {
   const s = { notes: [] };
@@ -49,9 +50,10 @@ function writeState(s) {
   fs.writeFileSync(STATE_FILE(), formatState(s));
 }
 
+/** Minutes of work so far. The night's clock starts at the check-in answer (`resume`), not at launch; before that it counts from `started`. */
 export function elapsedMinutes(s, now = Date.now()) {
-  const t = Date.parse(s.started);
-  return Number.isFinite(t) ? (now - t) / 60000 : NaN;
+  const t = Date.parse(s.workStart || s.started);
+  return Number.isFinite(t) ? Math.max(0, (now - t) / 60000) : NaN;
 }
 export function gate(min) {
   return min >= PENCILS_MIN ? 'PENCILS-DOWN' : min >= WRAP_MIN ? 'WRAP-UP' : 'OK';
@@ -139,7 +141,7 @@ export function pickGenre(options, recent, seed) {
   return { genre: pool[Math.floor(rng() * pool.length)], options: opts, repeated: fresh.length === 0 };
 }
 
-function dateSeed(d = new Date().toISOString().slice(0, 10)) {
+function dateSeed(d = runKey()) {
   let h = 0x811c9dc5;
   for (const c of d) { h ^= c.charCodeAt(0); h = Math.imul(h, 0x01000193); }
   return h >>> 0;
@@ -159,9 +161,9 @@ function main(argv) {
       console.log(`RESUMING night ${prev.night || '(unnamed)'} phase=${prev.phase} elapsed ${fmt(m)} [${gate(m)}]. Use --force to start over.`);
       return;
     }
-    const s = { night: opt('night') ?? 'tbd', started: now.toISOString(), phase: 'start', branch: 'none', brief: 'none', lastGoodBuild: 'none', notes: [`${now.toISOString()} started`] };
+    const s = { night: opt('night') ?? 'tbd', started: now.toISOString(), phase: 'start', branch: 'none', brief: 'none', lastGoodBuild: 'none', attended: flag('attended') ? 'yes' : 'no', notes: [`${now.toISOString()} started${flag('attended') ? ' (attended: a human is present, check in)' : ' (unattended: no check-in)'}`] };
     writeState(s);
-    console.log(`started ${s.started}. Soft wrap-up at 1:15, pencils-down at 1:30 (target about 90 minutes).`);
+    console.log(`started ${s.started} (${flag('attended') ? 'ATTENDED: check in after theme, genre and look' : 'UNATTENDED: no check-in, never ask'}). Wrap-up at 1:15 and pencils-down at 1:30 are counted from \`resume\`.`);
   } else if (cmd === 'checkpoint') {
     const s = readState();
     if (!s) throw new Error('no NIGHT_STATE.md; run `start` first');
@@ -199,6 +201,26 @@ function main(argv) {
     writeState(s);
     const left = WRAP_MIN - m;
     console.log(`logged ${kind} ${n} at ${fmt(m)}. ${left > 0 ? `${fmt(left)} until wrap-up: ` : 'Past wrap-up: '}${kind === 'stepback' ? 'now act on the biggest weakness you named, then loop again.' : 'now play it again.'}`);
+  } else if (cmd === 'checkin') {
+    const s = readState();
+    if (!s) throw new Error('no NIGHT_STATE.md; run `start` first');
+    if (s.attended !== 'yes') { console.log('UNATTENDED run: there is no human to ask. Do not ask and do not wait. Run `resume "unattended"` now to start the clock, then carry on.'); return; }
+    if (s.checkinAt) { console.log(`already asked at ${s.checkinAt}; run \`resume\` when they answer or you give up.`); return; }
+    s.checkinAt = now.toISOString();
+    s.notes.push(`${fmt(elapsedMinutes(s, now.getTime()))} check-in: asked the human for input`);
+    writeState(s);
+    console.log('Ask the question now (see doc 06, "Check in"), then run `resume "<their input, or no input>"`. The night\'s clock starts when you resume.');
+  } else if (cmd === 'resume') {
+    const s = readState();
+    if (!s) throw new Error('no NIGHT_STATE.md; run `start` first');
+    if (!s.checkinAt && s.attended === 'yes') throw new Error('no check-in is open; run `checkin` first');
+    const waited = s.checkinAt ? Math.max(0, now.getTime() - Date.parse(s.checkinAt)) / 60000 : 0;
+    s.workStart = now.toISOString();
+    s.checkinAt = '';
+    const text = rest.join(' ').trim() || 'no input';
+    s.notes.push(s.attended === 'yes' ? `0:00 clock started (check-in answered after ${waited.toFixed(1)} min): ${text}` : `0:00 clock started (unattended, no check-in): ${text}`);
+    writeState(s);
+    console.log(`clock started now: wrap-up at ${fmt(WRAP_MIN)}, pencils-down at ${fmt(PENCILS_MIN)}. ${s.attended === 'yes' ? 'Put the human\'s input in the brief ("Human input:") and follow it.' : 'Write "Human input: none (unattended)" in the brief.'}`);
   } else if (cmd === 'set') {
     const s = readState();
     if (!s) throw new Error('no NIGHT_STATE.md; run `start` first');

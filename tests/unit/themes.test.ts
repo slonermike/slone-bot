@@ -49,8 +49,18 @@ describe('roll', () => {
     expect(themes.roll({ dir, today: '2030-03-01' }).text).toMatch(/WARNING.*minimum 15/);
     fs.writeFileSync(path.join(dir, 'pool.json'), JSON.stringify(pool().slice(0, 2)));
     const r = themes.roll({ dir, today: '2030-03-02' });
-    expect(r.text).toMatch(/Falling back/);
-    expect(pool().length).toBe(FALLBACK_SIZE);
+    expect(r.text).toMatch(/Refilling/);
+    expect(pool().length).toBeGreaterThanOrEqual(3);
+  });
+  it('never brings a used theme back when the pool is refilled from the fallback', () => {
+    const fb = JSON.parse(fs.readFileSync(path.join(dir, 'fallback-pool.json'), 'utf8')) as { id: string; text: string; type: string }[];
+    const spent = fb.slice(0, 5);
+    fs.writeFileSync(path.join(dir, 'pool.json'), JSON.stringify([]));
+    fs.writeFileSync(path.join(dir, 'state.json'), JSON.stringify({ ...JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8')), used: spent.map((t) => ({ ...t, date: '2030-01-01' })) }));
+    themes.roll({ dir, today: '2030-08-01' });
+    const ids = pool().map((t: { id: string }) => t.id);
+    for (const t of spent) expect(ids).not.toContain(t.id);
+    expect(ids.length).toBe(FALLBACK_SIZE - 5);
   });
 });
 
@@ -128,5 +138,27 @@ describe('report', () => {
   it('the CLI refuses report when NIGHT_RUN=1', () => {
     const run = () => execFileSync('node', ['scripts/themes.mjs', 'report'], { cwd: path.resolve(__dirname, '../..'), env: { ...process.env, NIGHT_RUN: '1', THEMES_DIR: dir }, stdio: 'pipe' });
     expect(run).toThrow();
+  });
+});
+
+describe('remove', () => {
+  it('retires a theme to the graveyard by id or text, human only', () => {
+    const t = pool()[0];
+    expect(() => themes.remove({ dir, which: t.id, reason: 'x', env: { NIGHT_RUN: '1' } })).toThrow(/human only/);
+    expect(() => themes.remove({ dir, which: t.id, reason: ' ', env: {} })).toThrow(/reason/);
+    expect(() => themes.remove({ dir, which: 'no such theme', reason: 'x', env: {} })).toThrow(/no theme/);
+    themes.remove({ dir, which: t.text, reason: 'too vague', today: '2030-09-01', env: {} });
+    expect(pool().some((x: { id: string }) => x.id === t.id)).toBe(false);
+    expect(grave().some((x: { id: string; reasons: { text: string }[] }) => x.id === t.id && /too vague/.test(x.reasons.at(-1)!.text))).toBe(true);
+    expect(() => themes.add({ dir, today: '2030-09-01', text: t.text, type: 'system', env: {} })).toThrow(/too similar/); // retired themes are not re-added
+  });
+  it('restores a retired theme, human only, never one a run used', () => {
+    const t = pool()[0];
+    themes.remove({ dir, which: t.id, reason: 'x', env: {} });
+    expect(() => themes.restore({ dir, which: t.id, env: { NIGHT_RUN: '1' } })).toThrow(/human only/);
+    expect(themes.restore({ dir, which: t.text, env: {} }).text).toMatch(/restored/);
+    expect(pool().find((x: { id: string }) => x.id === t.id).strikes).toBe(0);
+    expect(grave().some((x: { id: string }) => x.id === t.id)).toBe(false);
+    expect(() => themes.restore({ dir, which: t.id, env: {} })).toThrow(/no theme in the graveyard/);
   });
 });

@@ -27,6 +27,18 @@ describe('check-secrets', () => {
   });
 });
 
+describe('check-in', () => {
+  it('starts the night\'s clock at the answer, not at launch', () => {
+    const start = Date.parse('2030-01-01T00:00:00Z');
+    const at = (min: number) => start + min * 60000;
+    const s: any = { started: '2030-01-01T00:00:00.000Z' };
+    expect(night.elapsedMinutes(s, at(8))).toBeCloseTo(8); // ideation before the check-in counts from launch
+    s.workStart = '2030-01-01T02:00:00.000Z'; // the human answered two hours in
+    expect(night.elapsedMinutes(s, at(120))).toBeCloseTo(0);
+    expect(night.elapsedMinutes(s, at(165))).toBeCloseTo(45);
+  });
+});
+
 describe('night-state', () => {
   it('gates at 1:15 and 1:30', () => {
     expect(gate(74)).toBe('OK');
@@ -130,6 +142,23 @@ describe('host version guard', () => {
   });
 });
 
+describe('run key', () => {
+  it('keys a run by its start stamp, so two runs on one day differ; falls back to the date', async () => {
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const { runKey } = await import('../../scripts/run-key.mjs');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'runkey-'));
+    const a = path.join(dir, 'a.md');
+    const b = path.join(dir, 'b.md');
+    fs.writeFileSync(a, '```\nnight: x\nstarted: 2030-01-01T03:00:00.000Z\n```\n');
+    fs.writeFileSync(b, '```\nnight: y\nstarted: 2030-01-01T09:30:12.000Z\n```\n');
+    expect(runKey(a)).toBe('2030-01-01T03:00:00');
+    expect(runKey(b)).toBe('2030-01-01T09:30:12');
+    expect(runKey(path.join(dir, 'missing.md'), new Date('2030-01-02T05:00:00Z'))).toBe('2030-01-02');
+  });
+});
+
 describe('genre roll', () => {
   it('needs 3 to 5 distinct genres, is deterministic, and every option can win', async () => {
     const { pickGenre } = await import('../../scripts/night-state.mjs');
@@ -159,5 +188,77 @@ describe('genre roll', () => {
       expect(r.repeated).toBe(false);
     }
     expect(pickGenre(['tower defense', 'roguelike', 'x'], ['x', 'tower defense', 'roguelike'], 3).repeated).toBe(true);
+  });
+});
+
+describe('appendAdded', () => {
+  it('appends only what a run added, keeps other runs\' entries, and is idempotent', async () => {
+    const { appendAdded } = await import('../../scripts/sync-main.mjs');
+    const base = '# L\n\n## Nights\nn1\n';
+    const mine = '# L\n\n## Nights\nn1\nn-mine\n';
+    const main = '# L\n\n## Nights\nn1\nn-other\n';
+    const merged = appendAdded(base, mine, main);
+    expect(merged).toBe('# L\n\n## Nights\nn1\nn-other\nn-mine\n');
+    expect(appendAdded(base, mine, merged)).toBe(merged);
+    const lessons = appendAdded('## A\n- x\n', '## A\n- x\n\n## B\n- y\n', '## A\n- x\n');
+    expect(lessons).toBe('## A\n- x\n\n## B\n- y\n');
+  });
+});
+
+describe('sync-main', () => {
+  it('pushes themes/ to main from another branch and pulls it back', async () => {
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const { execFileSync } = await import('node:child_process');
+    const { push, pull } = await import('../../scripts/sync-main.mjs');
+    const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
+    const g = (cwd: string, ...a: string[]) => execFileSync('git', a, { cwd, env, encoding: 'utf8' }).trim();
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sync-'));
+    const bare = path.join(base, 'remote.git');
+    const a = path.join(base, 'a');
+    const b = path.join(base, 'b');
+    g(base, 'init', '-q', '--bare', '-b', 'main', bare);
+    g(base, 'clone', '-q', bare, a);
+    fs.mkdirSync(path.join(a, 'themes'));
+    fs.writeFileSync(path.join(a, 'themes/pool.json'), '[1,2,3]');
+    g(a, 'add', '.'); g(a, 'commit', '-q', '-m', 'seed'); g(a, 'push', '-q', 'origin', 'HEAD:main');
+    g(base, 'clone', '-q', bare, b);
+    g(b, 'checkout', '-q', '-b', 'proto/x');
+    const old = { ...process.env };
+    Object.assign(process.env, { GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' });
+    try {
+      fs.writeFileSync(path.join(b, 'themes/pool.json'), '[2,3]'); // a run consumed theme 1 on its proto branch
+      expect(push(b, 'msg')).toMatch(/pushed/);
+      expect(g(a, 'fetch', '-q', 'origin') + g(a, 'show', 'origin/main:themes/pool.json')).toBe('[2,3]');
+      expect(push(b, 'again')).toMatch(/already has/);
+      fs.writeFileSync(path.join(b, 'themes/pool.json'), 'stale');
+      pull(b);
+      expect(fs.readFileSync(path.join(b, 'themes/pool.json'), 'utf8')).toBe('[2,3]');
+    } finally { process.env = old; }
+  });
+});
+
+describe('attended and unattended runs', () => {
+  it('an unattended run never opens a check-in and starts the clock with resume; an attended run must check in', async () => {
+    const { execFileSync } = await import('node:child_process');
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'attend-'));
+    const run = (file: string, ...a: string[]) => {
+      try { return execFileSync('node', ['scripts/night-state.mjs', ...a], { encoding: 'utf8', env: { ...process.env, NIGHT_STATE_FILE: file }, stdio: ['ignore', 'pipe', 'pipe'] }); } catch (e: any) { return String(e.stderr || e.message); }
+    };
+    const u = path.join(dir, 'u.md');
+    expect(run(u, 'start')).toMatch(/UNATTENDED/);
+    expect(run(u, 'checkin')).toMatch(/UNATTENDED run: there is no human to ask/);
+    expect(fs.readFileSync(u, 'utf8')).not.toMatch(/checkinAt: 20/);
+    expect(run(u, 'resume', 'unattended')).toMatch(/clock started/);
+    expect(fs.readFileSync(u, 'utf8')).toMatch(/workStart: 20/);
+    const a = path.join(dir, 'a.md');
+    expect(run(a, 'start', '--attended')).toMatch(/ATTENDED/);
+    expect(run(a, 'resume', 'x')).toMatch(/no check-in is open/);
+    expect(run(a, 'checkin')).toMatch(/Ask the question now/);
+    expect(run(a, 'resume', 'a calmer game')).toMatch(/clock started/);
   });
 });
