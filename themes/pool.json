@@ -206,5 +206,419 @@
     "strikes": 0,
     "reasons": [],
     "used": null
+  },
+  {
+    "id": "t024",
+    "text": "You can only hold one thing at a time",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t025",
+    "text": "Nothing can be undone, but everything can be moved",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t026",
+    "text": "The playfield shrinks every time you succeed",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t027",
+    "text": "You act only on a shared rhythm you do not control",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t028",
+    "text": "One button whose meaning depends on where you stand",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t029",
+    "text": "You see everything but can only touch the edge of it",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t030",
+    "text": "Three moves, then the world answers",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t031",
+    "text": "Your tools wear out in the order you use them",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t032",
+    "text": "Whatever you leave unwatched keeps growing",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t033",
+    "text": "Every action is paid for by something else you own",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t034",
+    "text": "The level never changes, but you do",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t035",
+    "text": "You may only ever go forward, and the way back closes behind you",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t036",
+    "text": "Barely holding it together",
+    "type": "feeling",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t037",
+    "text": "A cozy emergency",
+    "type": "feeling",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t038",
+    "text": "Getting away with it",
+    "type": "feeling",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t039",
+    "text": "The satisfaction of a perfect fit",
+    "type": "feeling",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t040",
+    "text": "Being very small in a very large thing",
+    "type": "feeling",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t041",
+    "text": "Everyone is counting on you and no one is watching",
+    "type": "feeling",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t042",
+    "text": "Tending something that could break",
+    "type": "feeling",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t043",
+    "text": "Almost remembering something important",
+    "type": "feeling",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t044",
+    "text": "Mischief with real consequences",
+    "type": "feeling",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t045",
+    "text": "Calm competence in the middle of a mess",
+    "type": "feeling",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t046",
+    "text": "Gravity is a resource you spend",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t047",
+    "text": "Two meters that fight each other",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t048",
+    "text": "A crowd that follows your mistakes",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t049",
+    "text": "Things you build slowly start building things of their own",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t050",
+    "text": "Trade a little of the future for the present",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t051",
+    "text": "Everything you destroy becomes a path",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t052",
+    "text": "A debt that grows when ignored and shrinks when you fix what it broke",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t053",
+    "text": "Echoes of your last attempt help or hinder this one",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t054",
+    "text": "Information is the only currency",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t055",
+    "text": "Heat spreads, and so does cold",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t056",
+    "text": "Stack things until they fall, then use the pieces",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t057",
+    "text": "Every shortcut leaves a trail something else can follow",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t058",
+    "text": "A town where the weather is a job",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t059",
+    "text": "A lighthouse that guides something that is not a ship",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t060",
+    "text": "The last shop at the end of a very long road",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t061",
+    "text": "A garden running on borrowed time",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t062",
+    "text": "A workshop inside a living creature",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t063",
+    "text": "A border crossing where everyone carries something odd",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t064",
+    "text": "A market that never stops moving",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t065",
+    "text": "A library whose books rearrange themselves",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t066",
+    "text": "The smallest kingdom, under heavy management",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t067",
+    "text": "A night shift in a place that is only alive in the dark",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t068",
+    "text": "A river that every decision must follow downstream",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t069",
+    "text": "A rooftop city that is slowly sinking into its own clouds",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
   }
 ]
