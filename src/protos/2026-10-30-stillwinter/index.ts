@@ -878,6 +878,7 @@ export function createPrototype(): Prototype {
         b.g.position.set(x, y);
         b.trail.push(x, y);
         b.trail.draw();
+        particles.emit('sparks', x, y, { count: 2, color: i % 2 ? C.glow : C.night, speed: 0.25, size: 0.9 });
         if (p >= 1) { b.trail.gfx.destroy(); b.g.destroy(); bolts.splice(i, 1); }
       }
       // --- flying time numbers
@@ -1405,12 +1406,16 @@ export function createPrototype(): Prototype {
             tween(g, { alpha: 0 }, 260, ease.outQuad, { onComplete: () => g.destroy() });
           } else {
             const g = new Graphics();
-            g.poly([14, 0, 0, -6, -10, 0, 0, 6]).fill(C.slate).stroke({ width: 2, color: C.night });
-            g.poly([8, 0, 0, -3, -4, 0, 0, 3]).fill(C.ice);
+            // big, bright-cored darts with a dark outline: they read on pale ice and on the dark path alike
+            const crystal = data.kind === 'crystal';
+            g.circle(0, 0, 17).fill({ color: C.glow, alpha: 0.35 });
+            if (crystal) g.poly([20, 0, 4, -11, -14, 0, 4, 11]).fill(C.glow).stroke({ width: 4, color: C.night, join: 'round' });
+            else g.poly([30, 0, 0, -11, -20, 0, 0, 11]).fill(C.glow).stroke({ width: 4, color: C.night, join: 'round' });
+            g.poly([16, 0, 0, -4, -8, 0, 0, 4]).fill(0xffffff);
             g.rotation = ang;
             fxLayer.addChild(g);
-            const trail = new Trail(fxLayer, { color: C.slate, width: 7, length: 6, alpha: 0.7 });
-            bolts.push({ g, trail, t: 0, dur: 0.07, x0: oX, y0: oY, x1: tX, y1: tY - 20 });
+            const trail = new Trail(fxLayer, { color: C.orange, width: 14, length: 12, alpha: 0.75 });
+            bolts.push({ g, trail, t: 0, dur: 0.15, x0: oX, y0: oY, x1: tX, y1: tY - 20 });
           }
           play('sw-shot', { pitch: prism ? 0.7 : 1, variation: 0.08, pan, volume: 0.8 });
           break;
