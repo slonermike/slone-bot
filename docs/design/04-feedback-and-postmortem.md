@@ -10,6 +10,7 @@ Target feeling: specific emotion or fantasy (not "fun")
 Mode: content-driven (5-10 min) | systemic (endless, polish 1-2 mechanics)
 Theme: <text>   Why picked: one line
 Genre: <rolled genre>   Options considered: <the 3 to 5 you listed>   (from `node scripts/night-state.mjs genre ...`; reinterpret freely, stay recognizable)
+Human input: <what Slone said at the check-in, and how it shapes the build> or none
 Atoms: <id>, <id>      Wildcard: <text or none>
 Look (from `node scripts/night-state.mjs look`; override at most one dimension, say which and why): palette, shapes, rendering, framing, ui. Then the 3 to 5 hex colors you will actually use and one sentence on what the game looks like at rest.
 Loop (4 lines): win/reward | obstacle/pressure | fail state and recovery | player actions
