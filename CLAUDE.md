@@ -23,6 +23,7 @@ A factory for small, playable 2D game prototypes, built unattended one per night
 - `docs/design/04-feedback-and-postmortem.md`: templates for the feedback sheet and post mortem
 - `docs/design/05-source-notes.md`: distilled lessons from the source videos. Read-only.
 - `docs/design/06-music-craft.md`: hooks, song structure, meter/mode/tempo vibe formula. Read-only.
+- `docs/design/07-rhythm-game-lessons.md`: genre-specific lessons for rhythm and music-driven builds (chart from the song, keysounds, one clock, density and thumb limits, song variety). Read-only. Read it when the genre or atoms involve music or timing.
 - `docs/design/pending-lessons.md`: the ONLY design file a nightly run may append to
 - `docs/design/ledger.md`: atoms and pairings used so far; nightly runs append one line
 - `themes/`: theme pool data. **Never open these directly. Use `node scripts/themes.mjs`.**
@@ -39,7 +40,7 @@ A factory for small, playable 2D game prototypes, built unattended one per night
 6. The target is about 90 minutes. At 1:15 elapsed: wrap up. At 1:30: pencils down. Post mortem. Publish.
 
 ## When Slone gives feedback in chat
-Default procedure (details in `CONSTITUTION.md` section 15): (1) capture what it teaches about his design philosophy and preferences; (2) update the Bible (and feel checklist or taste cards if they fit), bump the version, log evidence in `pending-lessons.md`; write Bible lessons genre-neutral (no prototype names, no genre vocabulary: they must fit any kind of game); (3) then ask whether to update the game or use the feedback only for future games. Do not change the game first. Whenever you change a game so that it looks noticeably different or more interesting, refresh its media with `npm run media -- <slug>` (see below). This applies to chat sessions with Slone; nightly runs never edit the Bible.
+Default procedure (details in `CONSTITUTION.md` section 15): (1) capture what it teaches about his design philosophy and preferences; (2) update the Bible (and feel checklist or taste cards if they fit), bump the version, log evidence in `pending-lessons.md`; write Bible lessons genre-neutral (no prototype names, no genre vocabulary: they must fit any kind of game); genre-specific lessons Slone wants shared go in a genre file such as `docs/design/07-rhythm-game-lessons.md`; (3) then ask whether to update the game or use the feedback only for future games. Do not change the game first. Whenever you change a game so that it looks noticeably different or more interesting, refresh its media with `npm run media -- <slug>` (see below). This applies to chat sessions with Slone; nightly runs never edit the Bible.
 
 ## How to work with Slone in chat
 Slone is the design architect; you are the designer. Make the detail calls yourself (buttons, numbers, layout, names, timings) and tell him what you chose; do not ask him to pick between details. Ask only when his direction would change what the game is. When his feedback includes a request to change the game ("add a meter..."), that is the answer to the update-or-not question: do it.
