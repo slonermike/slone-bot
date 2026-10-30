@@ -59,5 +59,9 @@ function shatterSpam(): Bot {
   };
 }
 
-export const bots: Bot[] = [planBot('greedy'), shatterSpam()];
+/** Plays for crystal chains: banks time in a cluster, keeps turrets apart, uses Cold Snap. Should beat greedy if chains are the real game. */
+const chainFilter = (o: Record<string, unknown>): Record<string, unknown> => ({
+  ...o, act: o.act === 3 || o.act === 4 ? o.act : o.c_act, tx: o.c_act === 0 || o.act === 3 ? o.tx : o.c_tx, ty: o.c_act === 0 || o.act === 3 ? o.ty : o.c_ty, kind: o.c_act === 1 ? o.c_kind : o.kind,
+});
+export const bots: Bot[] = [planBot('greedy'), shatterSpam(), planBot('chain-cluster', chainFilter)];
 export { KIND_ORDER };

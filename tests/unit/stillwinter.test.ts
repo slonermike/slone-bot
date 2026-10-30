@@ -190,3 +190,21 @@ describe('Stillwinter balance knobs', () => {
     }
   });
 });
+
+describe('Stillwinter Polar Night', () => {
+  it('after dawn, Y continues into an endless mode that keeps scaling', () => {
+    const sim = fresh();
+    sim.s.dawn = sim.s.dawnLen - 0.01;
+    sim.s.thaw = 5;
+    run(sim, 0.5);
+    expect(sim.s.phase).toBe('won');
+    expect(sim.events().some((e) => e.type === 'complete')).toBe(true);
+    sim.step(1 / 60, press('y'));
+    expect(sim.s.phase).toBe('play');
+    expect(sim.s.endless).toBe(true);
+    sim.s.thaw = 10;
+    run(sim, 4);
+    expect(sim.s.polar).toBeGreaterThan(3);
+    expect(sim.telemetry().won).toBe(1);
+  });
+});

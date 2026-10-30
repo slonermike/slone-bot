@@ -3,7 +3,7 @@ import { Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { glyph } from '../../core/index.ts';
 import { play, defineSound } from '../../audio/index.ts';
 import { music } from '../../audio/music.ts';
-import { tween, ease, shake, hitStop, flash, punch, Particles, numberPop, chaseDt, vfxRange } from '../../juice/index.ts';
+import { tween, ease, shake, hitStop, flash, punch, Particles, numberPop, chaseDt, vfxRange, Trail } from '../../juice/index.ts';
 import type { Prototype, SimEvent, View, Ctx, InputState } from '../../core/types.ts';
 import { createSim, BALANCE, SPIRE, KINDS, N, ENEMY, ENEMY_BLURB, type Kind, type EnemyKind, type Sim, type Spire, type Enemy } from './sim.ts';
 import { bots } from './bots.ts';
@@ -16,7 +16,7 @@ const C = { ice: 0xeaf4fb, frost: 0x9cc7e6, mid: 0x5e8fb5, deep: 0x3a5370, slate
 const TW = 112;
 const TH = 56;
 const OX = 640;
-const OY = 196;
+const OY = 214;
 const sx = (gx: number, gy: number): number => OX + ((gx - gy) * TW) / 2;
 const sy = (gx: number, gy: number): number => OY + ((gx + gy) * TH) / 2;
 const css = (c: number): string => `#${c.toString(16).padStart(6, '0')}`;
@@ -169,7 +169,7 @@ const UNLOCK_BLURB: Record<Kind, string> = {
 const eyeY: Record<EnemyKind, number> = { drift: -2, ram: -2, glider: 0, wisp: -1, thaw: -4 };
 
 interface SpireView { c: Container; body: Graphics; cracks: Graphics; lastHp: number; kind: Kind; drop: number }
-interface EnemyView { c: Container; body: Graphics; eyes: Graphics; bar: Graphics; shadow: Graphics; kind: EnemyKind; lastHit: number }
+interface EnemyView { c: Container; body: Graphics; eyes: Graphics; bar: Graphics; shadow: Graphics; shell: Graphics; trail: Trail | null; kind: EnemyKind; lastHit: number }
 
 // ---------------------------------------------------------------- sound
 let soundsDefined = false;
@@ -244,6 +244,9 @@ export function createPrototype(): Prototype {
   let snow: { g: Graphics; x: number; y: number; v: number; d: number }[] = [];
   let sunG!: Graphics;
   let faultC!: Container;
+  let trailLayer!: Container;
+  let decals: { g: Graphics; age: number }[] = [];
+  let decalC!: Container;
   let glowG!: Graphics;
   let windT = 6;
   let frontG!: Graphics;
@@ -252,6 +255,7 @@ export function createPrototype(): Prototype {
   // hud
   let iceText!: Text;
   let thawText!: Text;
+  let nightText!: Text;
   let thawBar!: Graphics;
   let dawnBar!: Graphics;
   let hintText!: Text;
@@ -312,9 +316,16 @@ export function createPrototype(): Prototype {
       const bar = new Graphics();
       const spin = new Container();
       spin.addChild(body);
-      c.addChild(shadow, spin, eyes, bar);
+      // the frost shell: enemies are encased while time is stopped
+      const shell = new Graphics();
+      const R = e.kind === 'thaw' ? 74 : e.kind === 'ram' ? 34 : e.kind === 'wisp' ? 22 : 26;
+      shell.poly([0, -R * 1.25, R * 0.8, -R * 0.35, R * 0.55, R * 0.7, -R * 0.55, R * 0.7, -R * 0.8, -R * 0.35]).fill({ color: C.frost, alpha: 0.35 }).stroke({ width: 3, color: C.ice, alpha: 0.9, join: 'round' });
+      shell.poly([0, -R * 1.25, R * 0.25, -R * 0.4, -R * 0.35, -R * 0.2]).fill({ color: C.ice, alpha: 0.5 });
+      shell.alpha = 0;
+      c.addChild(shadow, spin, eyes, shell, bar);
       things.addChild(c);
-      v = { c, body, eyes, bar, shadow, kind: e.kind, lastHit: 0 };
+      const trail = e.kind === 'glider' || e.kind === 'wisp' || e.kind === 'thaw' ? new Trail(trailLayer, { color: e.kind === 'thaw' ? C.deep : C.ice, width: e.kind === 'thaw' ? 26 : e.kind === 'glider' ? 9 : 6, length: e.kind === 'glider' ? 12 : 16, alpha: 0.55 }) : null;
+      v = { c, body, eyes, bar, shadow, shell, trail, kind: e.kind, lastHit: 0 };
       (v as unknown as { spin: Container }).spin = spin;
       enemyViews.set(e.id, v);
     }
@@ -327,6 +338,21 @@ export function createPrototype(): Prototype {
     g.scale.set(0.2);
     fxLayer.addChild(g);
     tween(g, { 'scale.x': 1, 'scale.y': 1, alpha: 0 }, ms, ease.outCubic, { onComplete: () => g.destroy() });
+  }
+
+  /** A crack mark left on the ice where something broke; fades slowly so the board keeps a little history. */
+  function scorch(gx: number, gy: number, size: number): void {
+    if (decals.length > 36) decals.shift()?.g.destroy();
+    const g = new Graphics();
+    const n = 6 + Math.floor(vfxRange(0, 4));
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + vfxRange(-0.3, 0.3);
+      const r = size * vfxRange(0.5, 1);
+      g.moveTo(0, 0).lineTo(Math.cos(a) * r * 0.5, Math.sin(a) * r * 0.5 * 0.5).lineTo(Math.cos(a + 0.2) * r, Math.sin(a + 0.2) * r * 0.5).stroke({ width: 2, color: C.deep, alpha: 0.75 });
+    }
+    g.position.set(sx(gx, gy), sy(gx, gy));
+    decalC.addChild(g);
+    decals.push({ g, age: 0 });
   }
 
   function flashDiamond(x: number, y: number, color: number, size: number, ms = 220): void {
@@ -409,7 +435,7 @@ export function createPrototype(): Prototype {
       world.addChild(bg);
       // the dawn glow: a warm horizon that grows with every thawed second
       glowG = new Graphics();
-      for (let i = 0; i < 7; i++) glowG.ellipse(640, 470, 760 - i * 90, 280 - i * 34).fill({ color: i < 3 ? C.orange : C.glow, alpha: 0.05 });
+      for (let i = 0; i < 7; i++) glowG.ellipse(640, 490, 760 - i * 90, 280 - i * 34).fill({ color: i < 3 ? C.orange : C.glow, alpha: 0.05 });
       glowG.alpha = 0;
       world.addChild(glowG);
 
@@ -462,7 +488,9 @@ export function createPrototype(): Prototype {
       faultTex = ditherDiamond(TW, TH, C.ice, C.orange, 0.5);
       faultC = new Container();
       frontG = new Graphics();
-      world.addChild(faultC, frontG);
+      decalC = new Container();
+      trailLayer = new Container();
+      world.addChild(faultC, frontG, decalC);
 
       chainG = new Graphics();
       rangeG = new Graphics();
@@ -472,7 +500,7 @@ export function createPrototype(): Prototype {
 
       things = new Container();
       things.sortableChildren = true;
-      world.addChild(things);
+      world.addChild(things, trailLayer);
 
       // beacon
       beacon = new Container();
@@ -547,6 +575,9 @@ export function createPrototype(): Prototype {
       thawBar = new Graphics();
       ui.addChild(thawBar);
       thawText = mk(24, C.orange);
+      nightText = mk(24, C.frost);
+      nightText.position.set(952, 14);
+      ui.addChild(nightText);
       thawText.anchor.set(0.5, 0);
       thawText.position.set(640, 64);
       ui.addChild(thawText);
@@ -558,11 +589,11 @@ export function createPrototype(): Prototype {
       ui.addChild(hintText);
       bannerText = mk(46, C.ice);
       bannerText.anchor.set(0.5);
-      bannerText.position.set(640, 128);
+      bannerText.position.set(640, 118);
       bannerText.alpha = 0;
       bannerSub = mk(28, C.frost, 'normal');
       bannerSub.anchor.set(0.5);
-      bannerSub.position.set(640, 178);
+      bannerSub.position.set(640, 168);
       bannerSub.alpha = 0;
       ui.addChild(bannerText, bannerSub);
 
@@ -661,6 +692,13 @@ export function createPrototype(): Prototype {
         v.c.position.set(sx(x, y), sy(x, y));
         v.c.zIndex = x + y + 0.1;
         v.spin.position.set(0, -lift);
+        v.shell.position.set(0, -lift + 4);
+        v.shell.alpha = chaseDt(v.shell.alpha, flowing ? 0 : 0.95, 0.12, dt);
+        v.shell.visible = v.shell.alpha > 0.02;
+        if (v.trail) {
+          if (flowing) v.trail.push(sx(x, y), sy(x, y) - lift);
+          v.trail.draw();
+        }
         v.shadow.scale.set(1 - (lift - 20) / 200);
         if (flowing) v.spin.rotation += dt * (e.kind === 'glider' ? 9 : e.kind === 'ram' ? 1.5 : e.kind === 'thaw' ? 0.6 : 2.4) * flowK;
         else v.spin.rotation += Math.sin(timeNow() * 40 + e.id) * 0.002; // a frozen shiver
@@ -679,7 +717,7 @@ export function createPrototype(): Prototype {
         }
         v.c.tint = e.hit > 0 ? 0xffffff : 0xffffff;
       }
-      for (const [id, v] of enemyViews) if (!seen.has(id)) { v.c.destroy({ children: true }); enemyViews.delete(id); }
+      for (const [id, v] of enemyViews) if (!seen.has(id)) { v.trail?.gfx.destroy(); v.c.destroy({ children: true }); enemyViews.delete(id); }
 
       // --- cursor, ghost, previews
       const tx = sx(s.cx, s.cy);
@@ -722,6 +760,8 @@ export function createPrototype(): Prototype {
         }
       }
 
+      for (const d of decals) { d.age += dt; d.g.alpha = d.age < 4 ? 1 : Math.max(0, 1 - (d.age - 4) / 26); }
+      while (decals.length && decals[0].age > 30) decals.shift()!.g.destroy();
       // --- fault lines pulse; warm front telegraph
       faultC.children.forEach((c, i) => { c.alpha = 0.55 + 0.3 * Math.sin(timeNow() * 3 + i); });
       frontG.clear();
@@ -773,18 +813,19 @@ export function createPrototype(): Prototype {
       const bx = 390;
       const bw = 500;
       dawnBar.roundRect(bx, 30, bw, 16, 8).fill({ color: C.night, alpha: 0.85 }).stroke({ width: 2, color: C.deep });
-      if (f > 0) dawnBar.roundRect(bx + 2, 32, Math.max(12, (bw - 4) * f), 12, 6).fill(C.orange);
+      if (f > 0) dawnBar.roundRect(bx + 2, 32, Math.max(12, (bw - 4) * Math.min(1, f)), 12, 6).fill(s.endless ? C.frost : C.orange);
       for (const k of KINDS) {
         const u = SPIRE[k].unlock;
         if (u > 0) dawnBar.poly(diamondPts(bx + bw * u, 38, 10, 16)).fill(f >= u ? C.ice : C.deep).stroke({ width: 2, color: C.slate });
       }
       star(dawnBar, 8, 17, 8, 0, bx + bw + 24, 38).fill(f >= 1 ? C.glow : C.orange);
+      nightText.text = s.endless ? `POLAR NIGHT  ${Math.floor(s.polar / 60)}:${String(Math.floor(s.polar % 60)).padStart(2, '0')}` : '';
       thawBar.clear();
-      thawBar.roundRect(540, 90, 200, 10, 5).fill({ color: C.night, alpha: 0.7 });
-      if (s.thaw > 0) thawBar.roundRect(540, 90, Math.max(10, 200 * (s.thaw / 10)), 10, 5).fill(C.orange);
+      thawBar.roundRect(540, 58, 200, 10, 5).fill({ color: C.night, alpha: 0.7 });
+      if (s.thaw > 0) thawBar.roundRect(540, 58, Math.max(10, 200 * Math.min(1, s.thaw / 12)), 10, 5).fill(s.thaw > 12 ? C.glow : C.orange);
       thawText.text = s.phase !== 'play' ? '' : s.thaw > 0 ? `TIME  ${s.thaw.toFixed(1)}` : 'FROZEN';
       thawText.style.fill = s.thaw > 0 ? C.orange : C.frost;
-      thawText.position.set(640, 106);
+      thawText.position.set(640, 70);
 
       // tray
       trayPlates.forEach((p, i) => {
@@ -858,6 +899,8 @@ export function createPrototype(): Prototype {
           sunG.alpha = 0;
           endC.visible = false;
           faultC.removeChildren();
+          for (const d of decals) d.g.destroy();
+          decals = [];
           beacon.alpha = 1;
           setBeaconHearts();
           lastPartsKey = '';
@@ -875,6 +918,7 @@ export function createPrototype(): Prototype {
         case 'deny':
           play('sw-deny', { pan });
           punch(cursorG, 0.12);
+          if (data.why === 'ice') { punch(iceText, 0.35); iceText.tint = C.orange; tween(iceText, { tint: 0xffffff }, 600, ease.outQuad); }
           break;
         case 'place': {
           const sp = s.spires.find((p) => p.gx === x && p.gy === y);
@@ -908,6 +952,7 @@ export function createPrototype(): Prototype {
           particles.emit('sparks', X, Y - 34, { count: 14 + depth * 3, color: C.orange, speed: 1.4, size: 0.9 });
           ring(X, Y, C.orange, 140 + depth * 18 + (kind === 'lantern' ? 60 : 0), 520, 5);
           ring(X, Y, C.ice, 90, 360, 3);
+          scorch(x, y, 30 + depth * 4 + (kind === 'lantern' ? 14 : 0));
           flashDiamond(X, Y - 20, C.ice, 160 + depth * 20, 240);
           numberPop(view.world as Container, `+${Number(data.thaw).toFixed(1)}s`, X, Y - 80, { color: C.orange, size: 28 + Math.min(18, depth * 4), rise: 40, ms: 800 });
           play('sw-glass', { pitch: 1 + (kind === 'chime' ? 0.2 : 0), pan, volume: 0.7 + big * 0.3 });
@@ -1076,6 +1121,16 @@ export function createPrototype(): Prototype {
         case 'dawn-step':
           play('sw-dawn-step', { pitch: wholeTone(Number(data.step) - 1) });
           break;
+        case 'endless':
+          banner('POLAR NIGHT', C.frost, 64, 'no dawn this time: hold the beacon as long as you can');
+          endC.visible = false;
+          tween(sunG, { alpha: 0 }, 900, ease.outQuad);
+          sunrise = 0;
+          shake(0.3);
+          ring(640, 420, C.frost, 560, 800, 8);
+          if (mset) music.play(mset.loop, partsFor({ dawn: 1, flowing: true, snapping: false, over: false }));
+          lastPartsKey = '';
+          break;
         case 'ice-gift':
           banner('the beacon lends you ice', C.frost, 32);
           play('sw-gift');
@@ -1084,7 +1139,7 @@ export function createPrototype(): Prototype {
           endTitle.text = 'THE BEACON WENT DARK';
           endTitle.style.fill = C.frost;
           endTitle.style.fontSize = 64;
-          { const tl = sim.telemetry(); endSub.text = `${Math.round(Number(data.dawn) * 100)}% of the way to dawn  ·  ${tl.kills} kills  ·  best chain ${tl.maxChain}\n${glyph('a')}: try again`; }
+          { const tl = sim.telemetry(); const pn = s.endless ? `held ${Math.floor(s.polar / 60)}:${String(Math.floor(s.polar % 60)).padStart(2, '0')} into the Polar Night` : `${Math.round(Number(data.dawn) * 100)}% of the way to dawn`; endSub.text = `${pn}  ·  ${tl.kills} kills  ·  best chain ${tl.maxChain}\n${glyph('a')}: try again`; }
           overlayEnd.clear().rect(0, 0, 1280, 800).fill(C.night);
           shake(0.9);
           particles.emit('debris', X, Y - 90, { count: 60, color: C.ice, speed: 2.4, size: 1.5 });
@@ -1097,7 +1152,7 @@ export function createPrototype(): Prototype {
           endTitle.text = 'DAWN';
           endTitle.style.fill = C.glow;
           endTitle.style.fontSize = 96;
-          { const tl = sim.telemetry(); endSub.text = `${sim.s.hearts} of ${sim.s.maxHearts} hearts left  ·  ${tl.kills} kills  ·  best chain ${tl.maxChain}  ·  ${tl.shatters} shatters\n${glyph('a')}: again`; }
+          { const tl = sim.telemetry(); endSub.text = `${sim.s.hearts} of ${sim.s.maxHearts} hearts left  ·  ${tl.kills} kills  ·  best chain ${tl.maxChain}  ·  ${tl.shatters} shatters\n${glyph('y')}: keep going into the Polar Night      ${glyph('a')}: again`; }
           overlayEnd.clear().rect(0, 0, 1280, 800).fill(0x3d2210);
           shake(0.5);
           particles.emit('confetti', 640, 300, { count: 60, color: C.glow, speed: 1.6, size: 1.4 });
@@ -1119,6 +1174,7 @@ export function createPrototype(): Prototype {
       spireViews.clear();
       enemyViews.clear();
       trayPlates = [];
+      decals = [];
       twinkle = [];
       snow = [];
     },

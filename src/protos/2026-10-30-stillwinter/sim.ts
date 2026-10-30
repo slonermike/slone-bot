@@ -4,7 +4,7 @@
 import type { BalanceSpec, Ctx, InputState, SimEvent } from '../../core/types.ts';
 
 export const N = 9;
-export const THAW_CAP = 10;
+export const THAW_CAP = 20;
 
 export type Kind = 'spike' | 'crystal' | 'lantern' | 'chime' | 'prism';
 export const KINDS: Kind[] = ['spike', 'crystal', 'lantern', 'chime', 'prism'];
@@ -203,6 +203,9 @@ export interface SimState {
   faultsShown: boolean;
   /** A warm front: a row (axis 0) or column (axis 1) that will melt its spires when `t` runs out. */
   front: { axis: 0 | 1; idx: number; t: number; total: number } | null;
+  /** After dawn, the player can keep going into the Polar Night: no end but the beacon going dark. */
+  endless: boolean;
+  polar: number;
 }
 
 export function createSim(ctx: Ctx): Sim {
@@ -219,7 +222,7 @@ export function createSim(ctx: Ctx): Sim {
   let queue: EnemyKind[] = [];
   let queueT = 0;
   let reprieve = 0;
-  let bossSpawned = false;
+  let nextBoss = 0.88;
   let tickT = 0;
   let tickParity = 0;
   let dawnStepSeen = 0;
@@ -247,7 +250,6 @@ export function createSim(ctx: Ctx): Sim {
     queue = [];
     queueT = 0;
     reprieve = 0;
-    bossSpawned = false;
     tickT = 0;
     tickParity = 0;
     dawnStepSeen = 0;
@@ -260,8 +262,9 @@ export function createSim(ctx: Ctx): Sim {
       phase: 'play', map, cx: path.beacon[0], cy: path.beacon[1] - 2 < 0 ? path.beacon[1] + 2 : path.beacon[1] - 2,
       sel: 'spike', ice: bal('startIce', 10), thaw: 0, dawn: 0, dawnLen: bal('dawnLength', 90),
       hearts, maxHearts: hearts, snap: 0, snapReady: false, spires: [], enemies: [], flowT: 0, realT: 0, flowing: false,
-      unlockedSet: new Set<Kind>(['spike']), chain: 0, faults: [], faultsShown: false, front: null,
+      unlockedSet: new Set<Kind>(['spike']), chain: 0, faults: [], faultsShown: false, front: null, endless: false, polar: 0,
     };
+    nextBoss = 0.88;
     frontT = 14;
     introSeen.clear();
     // fault lines: three quiet cells away from the path, picked now so the run is deterministic
@@ -357,7 +360,7 @@ export function createSim(ctx: Ctx): Sim {
     const corners: [number, number][] = [[-1.5, -1.5], [N + 0.5, -1.5], [-1.5, N + 0.5], [N + 0.5, N + 0.5]];
     const c = flier ? ctx.rng.pick(corners) : path.poly[0];
     const e: Enemy = {
-      id: nextId++, kind, s: 0, hp: Math.round(def.hp * (kind === 'thaw' ? 1 : 1 + 1.9 * Math.min(1, s.dawn / s.dawnLen))), maxHp: 0, x: c[0], y: c[1], px: c[0], py: c[1], flier,
+      id: nextId++, kind, s: 0, hp: Math.round(def.hp * (kind === 'thaw' ? 1 + 1.2 * Math.max(0, s.dawn / s.dawnLen - 0.88) : 1 + 1.9 * Math.min(2.2, s.dawn / s.dawnLen))), maxHp: 0, x: c[0], y: c[1], px: c[0], py: c[1], flier,
       fx: c[0], fy: c[1], hit: 0, alive: true,
     };
     e.maxHp = e.hp;
@@ -519,7 +522,7 @@ export function createSim(ctx: Ctx): Sim {
           if (sp.hp <= 0) breakSpire(sp, 'eaten');
         }
       }
-    } else if (f >= 0.4 && f < 0.95) {
+    } else if (f >= 0.4 && (f < 0.95 || s.endless)) {
       frontT -= wdt;
       if (frontT <= 0) {
         frontT = 22 - 8 * f;
@@ -535,16 +538,16 @@ export function createSim(ctx: Ctx): Sim {
     // spawning
     reprieve = Math.max(0, reprieve - wdt);
     spawnT -= wdt;
-    if (spawnT <= 0 && f < 0.97) {
-      const interval = (3.7 - 2.0 * Math.min(1, f)) / bal('spawnRate', 1) * (reprieve > 0 ? 1.5 : 1);
+    if (spawnT <= 0 && (f < 0.97 || s.endless)) {
+      const interval = Math.max(0.9, (3.7 - 2.0 * Math.min(1, f)) / bal('spawnRate', 1) / (1 + Math.max(0, f - 1) * 0.7)) * (reprieve > 0 ? 1.5 : 1);
       spawnT = interval;
       let n = 1;
       if (f > 0.3 && ctx.rng.chance(0.5)) n++;
       if (f > 0.6 && ctx.rng.chance(0.4)) n++;
       for (let i = 0; i < n; i++) queue.push(pickKind(f));
     }
-    if (!bossSpawned && f >= 0.88) {
-      bossSpawned = true;
+    if (f >= nextBoss) {
+      nextBoss = s.endless ? nextBoss + 0.35 : 99;
       queue.push('thaw');
       emit('boss', path.poly[0][0], path.poly[0][1], 1);
     }
@@ -560,7 +563,8 @@ export function createSim(ctx: Ctx): Sim {
     tel.maxEnemies = Math.max(tel.maxEnemies, s.enemies.length);
     tickT += wdt;
     if (tickT >= 0.25) { tickT -= 0.25; tickParity ^= 1; emit('tick', 0, 0, tickParity); }
-    if (s.dawn >= s.dawnLen) {
+    if (s.endless) s.polar += wdt;
+    if (s.dawn >= s.dawnLen && !s.endless) {
       s.phase = 'won';
       emit('complete', path.beacon[0], path.beacon[1], 1, { hearts: s.hearts });
     }
@@ -626,6 +630,14 @@ export function createSim(ctx: Ctx): Sim {
     handleInput(dt, input);
     if (s.phase === 'over' || s.phase === 'won') {
       if (input.buttons.a.pressed) init();
+      else if (s.phase === 'won' && input.buttons.y.pressed) {
+        s.phase = 'play';
+        s.endless = true;
+        s.hearts = Math.min(s.maxHearts, s.hearts + 1);
+        s.ice += 6;
+        s.thaw = Math.max(s.thaw, 3);
+        emit('endless', path.beacon[0], path.beacon[1], 1);
+      }
       return;
     }
     // chain cracks run on real time: breaking is what starts the clock
@@ -663,7 +675,7 @@ export function createSim(ctx: Ctx): Sim {
 
   function telemetry(): Record<string, number> {
     return {
-      scoreOrProgress: Math.round(((s.dawn / s.dawnLen) * 100 + tel.kills * 0.5 + (s.phase === 'won' ? 50 : 0)) * 10) / 10,
+      scoreOrProgress: Math.round(((s.dawn / s.dawnLen) * 100 + tel.kills * 0.5 + (s.phase === 'won' || s.endless ? 50 : 0) + s.polar * 0.5) * 10) / 10,
       dawnPct: Math.round((s.dawn / s.dawnLen) * 1000) / 10,
       thawedSeconds: Math.round(tel.thawed * 10) / 10,
       shatters: tel.shatters,
@@ -685,7 +697,8 @@ export function createSim(ctx: Ctx): Sim {
       maxEnemies: tel.maxEnemies,
       enemyKindsSeen: tel.kindsSeen,
       ice: Math.round(s.ice * 10) / 10,
-      won: s.phase === 'won' ? 1 : 0,
+      won: s.phase === 'won' || s.endless ? 1 : 0,
+      polarSeconds: Math.round(s.polar * 10) / 10,
     };
   }
 
@@ -718,7 +731,38 @@ export function createSim(ctx: Ctx): Sim {
   }
 
   function observe(): Record<string, number> {
-    return plan();
+    const p = plan();
+    const c = planChain(p);
+    for (const k of ['act', 'tx', 'ty', 'kind']) p[`c_${k}`] = c[k];
+    return p;
+  }
+
+  /** A second bot plan that plays for chains: a cluster of crystals as a time-bank, defenders kept apart from it. */
+  function planChain(base: Record<string, number>): Record<string, number> {
+    const out: Record<string, number> = { act: base.act, tx: base.tx, ty: base.ty, kind: base.kind };
+    if (s.phase !== 'play') return out;
+    const crystals = s.spires.filter((p) => p.kind === 'crystal' && p.crack < 0);
+    const fuelKind = s.unlockedSet.has('crystal') ? 'crystal' : null;
+    if (!fuelKind) return out;
+    if (s.thaw < 0.5 && crystals.length >= 3) {
+      // fire the end of the cluster: the one with the fewest crystal neighbours
+      const end = [...crystals].sort((a, b) => crystals.filter((o) => o !== a && Math.max(Math.abs(o.gx - a.gx), Math.abs(o.gy - a.gy)) === 1).length - crystals.filter((o) => o !== b && Math.max(Math.abs(o.gx - b.gx), Math.abs(o.gy - b.gy)) === 1).length)[0];
+      return { act: 2, tx: end.gx, ty: end.gy, kind: 0 };
+    }
+    if (crystals.length < 4 && s.ice >= SPIRE.crystal.cost && (s.thaw < 0.5 || base.act !== 1)) {
+      const defenders = s.spires.filter((p) => p.kind !== 'crystal');
+      const free: { gx: number; gy: number; w: number }[] = [];
+      for (const c of cells()) {
+        if (!canPlace(c.gx, c.gy)) continue;
+        if (defenders.some((d) => Math.max(Math.abs(d.gx - c.gx), Math.abs(d.gy - c.gy)) <= 1)) continue;
+        const near = crystals.filter((o) => Math.max(Math.abs(o.gx - c.gx), Math.abs(o.gy - c.gy)) === 1).length;
+        if (crystals.length && !near) continue;
+        free.push({ gx: c.gx, gy: c.gy, w: near * 10 + (c.c < 6 ? 1 : 0) });
+      }
+      free.sort((a, b) => b.w - a.w);
+      if (free[0]) return { act: 1, tx: free[0].gx, ty: free[0].gy, kind: KINDS.indexOf('crystal') };
+    }
+    return out;
   }
 
   // ---- greedy-bot support: a small numeric plan the bot can follow with the stick and buttons ----
