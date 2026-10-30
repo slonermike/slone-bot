@@ -37,7 +37,7 @@ These times are not targets to finish under. **The night is about 90 minutes of 
 - Bare core first, quickly. Confirm with the idle, random, and greedy bots that the core does something. Then start the rounds. Do not hold the core until it is "done"; an okay game you can play beats a perfect plan, because an okay game is what gives you ideas (see Iterate).
 - Follow the Follow-the-Fun rule: log surprises (accidents, emergent behavior, the most interesting part) in `runs/<slug>/surprises.md` before fixing them. If a discovery is better than the brief, pivot toward it and log the pivot.
 - Drastic changes are welcome when the build is not working: see "When it is not working" below.
-- Reusable tech goes to main only when the smoke test passes, with a `SCAFFOLD_API.md` entry.
+- General-use code does not go to main during the build. When the prototype is complete (after the post mortem), put it in a pull request from a separate branch off main that contains only that code, a unit test and a `SCAFFOLD_API.md` entry, and open it only if `npm run check` passes. List what you proposed in the post mortem's "Reusable tech" line. Never put game code in main. Prefer extending an existing scaffold helper with an option over copying it into the prototype.
 
 ## Iterate (the loop that fills the night)
 Blank pages are hard and okay games are easy to improve: once something is playable, ideas for it come fast. So get to playable quickly, then loop until wrap-up. One round is about 10 to 15 minutes, so expect three or four of them:
