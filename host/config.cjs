@@ -67,7 +67,17 @@ function launchedBySteam(env = {}) {
   return !!(env.SteamGameId || env.SteamAppId || env.SteamOverlayGameId || env.STEAM_COMPAT_APP_ID);
 }
 
+/**
+ * True when this Linux cannot give Electron its sandbox. An AppImage cannot be setuid, so Chromium needs unprivileged
+ * user namespaces, and Ubuntu 23.10+ (AppArmor) and some hardened kernels switch them off; the app then dies at launch.
+ * `read(path)` returns a file's text or '' when missing.
+ */
+function sandboxUnavailable(read = () => '') {
+  const t = (p) => read(p).trim();
+  return t('/proc/sys/kernel/apparmor_restrict_unprivileged_userns') === '1' || t('/proc/sys/kernel/unprivileged_userns_clone') === '0' || t('/proc/sys/user/max_user_namespaces') === '0';
+}
+
 /** Injected into every page on the Deck: the controller is the only input, so a stray click must do nothing. */
 const NO_MOUSE_CSS = 'html,body,*{cursor:none !important;pointer-events:none !important;user-select:none !important}';
 
-module.exports = { resolveConfig, isAllowedNavigation, needsRevalidation, isSteamDeck, launchedBySteam, NO_MOUSE_CSS, DEFAULT_URL };
+module.exports = { resolveConfig, isAllowedNavigation, needsRevalidation, isSteamDeck, launchedBySteam, sandboxUnavailable, NO_MOUSE_CSS, DEFAULT_URL };

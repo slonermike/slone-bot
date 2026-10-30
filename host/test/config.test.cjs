@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { resolveConfig, isAllowedNavigation, needsRevalidation, isSteamDeck, launchedBySteam, NO_MOUSE_CSS, DEFAULT_URL } = require('../config.cjs');
+const { resolveConfig, isAllowedNavigation, needsRevalidation, isSteamDeck, launchedBySteam, sandboxUnavailable, NO_MOUSE_CSS, DEFAULT_URL } = require('../config.cjs');
 
 test('defaults', () => {
   const c = resolveConfig();
@@ -56,4 +56,13 @@ test('knows whether Steam launched the app (Desktop Mode launches do not get a g
   assert.ok(launchedBySteam({ STEAM_COMPAT_APP_ID: '0' }));
   assert.ok(!launchedBySteam({}));
   assert.ok(!launchedBySteam({ SteamDeck: '1' })); // being on a Deck is not the same as being launched by Steam
+});
+
+test('detects a Linux that cannot sandbox (Ubuntu AppArmor, disabled userns)', () => {
+  const files = (m) => (p) => m[p] ?? '';
+  assert.ok(sandboxUnavailable(files({ '/proc/sys/kernel/apparmor_restrict_unprivileged_userns': '1\n' })));
+  assert.ok(sandboxUnavailable(files({ '/proc/sys/kernel/unprivileged_userns_clone': '0\n' })));
+  assert.ok(sandboxUnavailable(files({ '/proc/sys/user/max_user_namespaces': '0\n' })));
+  assert.ok(!sandboxUnavailable(files({ '/proc/sys/kernel/apparmor_restrict_unprivileged_userns': '0\n', '/proc/sys/kernel/unprivileged_userns_clone': '1\n' })));
+  assert.ok(!sandboxUnavailable(files({})));
 });

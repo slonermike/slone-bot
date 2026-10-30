@@ -330,7 +330,6 @@ function menuItems() {
     { label: () => 'About and credits', activate: () => void openCredits() },
     // only inside the desktop app, which has no window chrome to close it with
     ...(host ? [{ label: () => 'Quit app', activate: () => void host.quit() }] : []),
-    { label: () => 'Close', activate: () => closeOverlay() },
   ] as { label: () => string; value?: () => string; activate?: () => void; adjust?: (d: number) => void }[];
   // a waiting update goes to the top of the menu (desktop app only; hostUpdate is null in a browser)
   if (host && hostUpdate && ['available', 'downloading', 'ready'].includes(hostUpdate.status)) {

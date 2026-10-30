@@ -45,3 +45,6 @@ Sandboxed renderer, no Node in the page, all permission prompts denied, navigati
 
 ## Not built yet
 Syncing snapshots into a local cache for true offline play, an in-launcher Quit item, an app icon, code signing, Steam overlay and achievements (Steamworks), and a public Steam release (see ROADMAP).
+
+## Ubuntu and other desktop Linux
+The AppImage needs FUSE 2 (`sudo apt install libfuse2`, or `libfuse2t64` on 24.04), or run it with `--appimage-extract-and-run`. Ubuntu 23.10+ restricts unprivileged user namespaces, which Electron's sandbox needs and an AppImage cannot get through setuid; since 0.2.4 the app notices this at launch (AppArmor `apparmor_restrict_unprivileged_userns`, `unprivileged_userns_clone`, `max_user_namespaces`) and starts without the OS sandbox. The page itself stays sandboxed, context-isolated, and locked to the launcher's origin. To keep the OS sandbox instead, allow user namespaces (`sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0`) or pass `--no-sandbox` yourself.

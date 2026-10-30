@@ -1,7 +1,7 @@
 const { app, BrowserWindow, session, ipcMain, shell, net } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
-const { resolveConfig, isAllowedNavigation, needsRevalidation, isSteamDeck, launchedBySteam, NO_MOUSE_CSS } = require('./config.cjs');
+const { resolveConfig, isAllowedNavigation, needsRevalidation, isSteamDeck, launchedBySteam, sandboxUnavailable, NO_MOUSE_CSS } = require('./config.cjs');
 const { createUpdater } = require('./updater.cjs');
 
 const cfg = resolveConfig({
@@ -17,8 +17,13 @@ app.commandLine.appendSwitch('disable-background-timer-throttling');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 // Steam Deck: gamescope runs a Wayland/X session; let Electron pick (ozone auto) and use the GPU.
 app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
-// The Deck's sandbox needs user namespaces; SteamOS has them, but fall back if a launch reports otherwise.
-if (process.argv.includes('--no-sandbox-if-needed') && process.platform === 'linux') app.commandLine.appendSwitch('no-sandbox');
+// The Chromium sandbox needs unprivileged user namespaces. SteamOS has them; Ubuntu 23.10+ restricts them, and the
+// app would die at launch. Drop the OS sandbox there (the page is still sandboxed, isolated, and locked to our origin)
+// or when asked with --no-sandbox-if-needed.
+if (process.platform === 'linux') {
+  const readText = (p) => { try { return fs.readFileSync(p, 'utf8'); } catch { return ''; } };
+  if (process.argv.includes('--no-sandbox-if-needed') || sandboxUnavailable(readText)) app.commandLine.appendSwitch('no-sandbox');
+}
 
 if (!app.requestSingleInstanceLock()) app.quit();
 
