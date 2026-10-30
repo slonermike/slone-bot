@@ -298,13 +298,16 @@ Each prototype writes its own music to match its game. A song is plain data (`sr
 import { composeSong, composeStinger } from '../../music/compose.ts';
 import { music } from '../../audio/music.ts';
 
-// in src/protos/<slug>/music.ts: one tonic and mode for everything in the game
-const KEY = { mode: 'dorian', root: 50 } as const;
-loop    = composeSong({ ...KEY, seed: 11, name, description, style, mood, form: 'loop', layout: 'groove-8', bpm: 120, feel: { ... } });
-powerup = composeStinger({ ...KEY, seed: 12, name, description, style, mood, form: 'oneshot', event: 'powerup', bpm: 150 });
-lose    = composeStinger({ ...KEY, seed: 13, ..., event: 'lose', bpm: 96 });
+// in src/protos/<slug>/music.ts: one tonic for everything in the game. Do not copy values from here: choose them
+// for your game. Write the Music plan in your brief first (docs/design/06-music-craft.md, "Music is a design tool");
+// `node scripts/night-state.mjs sound` prints the menu of options and the generator settings behind each.
+const ROOT = 50; // the tonic; pick one, keep it for every song in the game
+calm    = composeSong({ root: ROOT, seed: 11, name, description, style, mood, form: 'loop', layout, mode, meter, bpm, character, feel });
+tense   = composeSong({ root: ROOT, seed: 12, /* a contrasting second loop: other tempo, meter or brightness */ ... });
+powerup = composeStinger({ root: ROOT, seed: 13, name, description, style, mood, form: 'oneshot', event: 'powerup', mode, bpm });
+// reviewGameMusic([calm, tense, powerup, ...]) from src/music/review.ts: flags the default zone, flat loops, no layers
 ```
 - `music.play(song, parts?)` starts a loop (waits for audio unlock); `music.setParts(parts, fadeSeconds?)` brings parts in and out on the beat (`pad`, `bass`, `drums`, `arp`, `lead`, `harmony`, `riff`); `music.stinger(song, { duck? })` plays over the loop, ducking it; `music.release(seconds)` fades the loop out; `music.stop()`. `music.setPaused` is called by the shell. Every call is logged in `music.log` and `scaffold.music.state` for bots and the smoke test.
 - Loops, because ongoing action has no length: a loop has no ending and leads back into itself. Stingers, because events do: two to four bars. `form: 'loop'` with `layout: 'groove-8'` is hook all the time (for games that gate the hook behind an earned moment); the other layouts are in `docs/tech/10-music-and-jukebox.md`.
-- Keep `root` and `mode` the same across the game's loop and stingers so they sit together. `seed` makes it deterministic; change it for a different tune.
+- Keep `root` (the tonic) the same across the game's loops and stingers so they sit together. The mode may change on purpose between a calm and a tense loop (a parallel mode on the same root is a strong way to signal relief or dread); a stinger takes the mode of the state it punctuates. `seed` makes it deterministic; change it for a different tune.
 - Wiring pattern: the sim emits events (`run-start`, `layer`, `power-start`, `power-ready`, `gameover`, ...) and `onEvent` calls `music`: start the loop on the run-start event, `setParts` when pressure layers arrive, bring the hook (`lead`, `harmony`) in only for an earned moment, a stinger for the big events, thin the parts out when pressure resets, `music.stop()` in `dispose`. Put the choice of parts in a pure function (`partsFor(pressure, powerMoment)`) with a unit test.

@@ -9,6 +9,58 @@ Songs have a `character`:
 
 The jukebox shows which one a song is, so catchiness gets judged against what the song was trying to do. A vibe piece scoring low on catchiness is not a failure.
 
+## Music is a design tool, not wallpaper
+Music does four jobs in a game: it **sets the mood** (the target feeling), it **paces the session** (tension, release, rest), it **reports state** (how much pressure there is, whether something good just happened) and it **gives the game an identity** the player remembers. A loop that only fills the air does none of these. This section is for choosing music on purpose.
+
+### What the research says, and how far to trust it
+- **Layering, resequencing and stingers are the standard toolkit** ([Audiokinetic, "How to use interactive music to score gameplay"](https://www.audiokinetic.com/en/blog/how-to-use-interactive-music-to-score-gameplay/)). *Vertical layering* stacks synchronized stems and fades them in and out to build or release tension; *horizontal resequencing* switches between contrasting sections at bar lines for big changes of state; short stingers give reward and feedback. Our tools map directly: `music.setParts` is vertical layering, swapping the loop with `music.play` is resequencing, `music.stinger` is the stinger.
+- **Tempo moves arousal, but the evidence is soft.** One small Tetris study found fast-tempo music raised perceived arousal over a 13-minute session without changing happiness ([Brunel](https://bura.brunel.ac.uk/handle/2438/3111)); a first-person-shooter study measured no difference ([figshare](https://figshare.com/articles/Effect_of_music_tempo_in_First-Person_Shooter_on_arousal_and_aggression/5113537)); a CHI PLAY 2019 paper found that the affect and tempo of music changed immersion and the experienced mastery and challenge ([Rogers et al.](https://www.uni-ulm.de/fileadmin/website_uni_ulm/iui.inst.100/institut/Papers/Prof_Rukzio/2019/p213-rogers.pdf)). Read that as: tempo is a lever on how urgent and how hard a game feels, so choose it deliberately, and let Slone's ratings settle the rest. Samples are small and results conflict.
+- **Silence is a lever too.** In a non-game study silence was less arousing than most music conditions. From working knowledge (not measured): when music stops, its return lands, and constant music flattens everything.
+- **Classic uses of music as a gauge** (working knowledge): Space Invaders' four-note march speeds up as the aliens thin out; Super Mario Bros. quickens its music when the clock runs low; Tetris speeds its music when the stack gets dangerously high. In each, the music *is* the pressure meter, and the player feels it before reading it.
+
+### The mid-tempo trap
+Left to themselves, the first four nightly games chose almost the same music: 92 to 120 bpm, 4/4, D or F dorian or mixolydian, a rock or funk groove, a syncopated sub bass, a bell arpeggio, labelled "playful", all copied from the example in the docs. It sounds fine and says nothing: no rest, no rise, no relief, no personality. That is what this section exists to prevent. The fix is not randomness; the music has to be considered and fit the game. The default zone (4/4 at 100 to 125 bpm) is allowed only when the game truly wants it, and the music plan says why.
+
+### Write a music plan before composing
+Answer these in the brief's Music plan (a few lines):
+1. **The arc.** What should the player feel at the start, at the peak, and at the end? The music should travel there.
+2. **The gauge.** What does the music tell the player about state (pressure, safety, progress)? How is that shown: layers, a tempo step, a switch of loop, a dropout?
+3. **The quiet.** Where does the music thin out or stop? (If the answer is "nowhere", the answer is wrong.)
+4. **The punctuation.** What are the three to five moments that deserve a stinger, and what does each one say?
+5. **The contrast.** What is the second sound the game goes to (a calm and a tense loop, an early and a late phase)? A game's music is a *set* of a few loops and several stingers, not one song.
+6. **The options.** Weigh at least three choices from different parts of the spectrum (tempo band, meter, mode, texture; `node scripts/night-state.mjs sound` prints the menu with the generator settings), say what each would do to this game, then choose. Say how the choice differs from the last games' music (the ledger's `music:` tags), and why that difference serves this game and is not variety for its own sake.
+
+### Tension and release: what to reach for, and how
+| Technique | What it does | How here |
+|---|---|---|
+| Add a layer | pressure grows; the bed fills in | `music.setParts` brings in drums, arp, lead on pressure layers |
+| Strip to the bass | danger; exposure; the floor drops out | `setParts` with only `bass` and `drums` |
+| Dropout before the payoff | a held breath; the payoff hits harder | `feel.drop: true`, or `setParts([])` for a beat, then everything back with a stinger |
+| Tempo step | urgency, a countdown | swap to a faster loop in the same key (`play(fast)`); a stinger can slow into a loss |
+| Mode and brightness shift | relief, dread, a lift | a second loop on the same root in a brighter or darker mode |
+| Meter instability | unease; resolving back to 4/4 feels like relief | a 5/4 or 7/8 tense loop against a steady calm loop |
+| Rhythmic density | energy without changing tempo | `arpStep` 0.5 versus 1, drum style, `density` |
+| Register and voice | weight versus sparkle | `bassVoice`, `leadVoice`, `arpVoice` (sub, saw, square, bell, flute, warm, pluck) |
+| Silence | contrast; the return is an event | `music.release(seconds)`, then bring the music back for the moment that matters |
+| A stinger that resolves | closure, reward | `composeStinger` (`win`, `lose`, `boss`, `powerup`, `secret`) with `duck` |
+
+### Matching the music to the feeling
+These are starting points, not rules (the vibe formula below computes valence, energy, tension, lilt and quirk):
+| To feel | Reach for |
+|---|---|
+| calm, restorative, wonder | slow, no drums or soft drums, lydian or major, pad and bell, a sparse hook |
+| tense, sneaky | slow to mid, sparse bass, phrygian or harmonic minor, little melody, silence |
+| frantic, chased | 160+ bpm, gallop or driving bass, minor, fast arpeggio; a vibe, not noise |
+| heavy, ominous | half-time drums, sub bass, low riff, harmonic minor, slow |
+| funny, kooky | march or 2/4, square lead, bright mode, a wobbling meter, big dynamic jumps |
+| cozy, domestic | 3/4 or 6/8, pluck, flute, warm bass, soft drums |
+| cool, wry | walking bass, dorian, brushed drums, a lonely lead |
+| hypnotic, flow | steady pulse, shimmering arpeggio, no drums, 5/4 or 7/8 if you want it to drift |
+| triumphant | a rising hook, a key lift, a held final chord (stingers do this best) |
+
+### Check your work (you cannot hear it)
+`reviewGameMusic(songs)` (`src/music/review.ts`) prints each song's tempo, meter, mode, vibe, per-bar energy curve and layers, and flags the traps: the default zone, a loop that never changes energy, music that cannot follow pressure (no layers), loops that share one tempo and meter so switching changes nothing, too few stingers. Call it in your game's music unit test and read the output. It measures; it cannot say the music is good. For that, add the brief to a jukebox batch for Slone to rate (`docs/tech/11-music-batch-runbook.md`).
+
 ## What makes a song catchy (research)
 Main source: Jakubowski et al. 2016, ["Dissecting an earworm"](https://www.apa.org/news/press/releases/2016/11/earworms) (about 100 earworms compared with 100 equally popular non-earworms; self-reported, pitch and rhythm only, so it says nothing about harmony or timbre). Findings:
 - Earworms were **faster** and had rhythms people could move to.

@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Run-protocol helper: NIGHT_STATE.md checkpoints, elapsed-time gates, seeded atom picks.
-// Commands: start [--night <slug>] [--force] | checkpoint <phase> [note...] [--early --reason "why"] | round "<played> | <noticed> | <changed>" [--stepback] | set key=value ... | show | elapsed | check | atoms [--seed N] | look [--seed N] | genre <g1> <g2> <g3> [<g4> <g5>] [--reroll --reason "why"]
+// Commands: start [--night <slug>] [--force] | checkpoint <phase> [note...] [--early --reason "why"] | round "<played> | <noticed> | <changed>" [--stepback] | set key=value ... | show | elapsed | check | atoms [--seed N] | look [--seed N] | sound | genre <g1> <g2> <g3> [<g4> <g5>] [--reroll --reason "why"]
 // Spec: docs/tech/06-nightly-run-protocol.md
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { formatMenu } from './sounds.mjs';
 import { formatLook, parseLedgerLooks, pickLook } from './looks.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -244,12 +245,14 @@ function main(argv) {
     s.notes.push(`${fmt(m)} genre ${flag('reroll') ? 'rerolled' : 'rolled'}: ${r.genre} (from ${r.options.join(', ')})${flag('reroll') ? ' because ' + opt('reason') : ''}`);
     writeState(s);
     console.log(`GENRE: ${r.genre}\nfrom: ${r.options.join(', ')}${r.repeated ? '\nnote: every option was used in the last three nights, so repeats were allowed' : ''}\nBuild a game recognizably of this genre. Reinterpret it freely for the theme; put "Genre: ${r.genre}" in the brief and add "genre: ${r.genre}" to your ledger line.`);
+  } else if (cmd === 'sound') {
+    console.log(formatMenu());
   } else if (cmd === 'look') {
     const ledger = fs.readFileSync(path.join(ROOT, 'docs/design/ledger.md'), 'utf8');
     const seed = opt('seed') ? Number(opt('seed')) : dateSeed();
     console.log(formatLook(pickLook(parseLedgerLooks(ledger), seed)));
   } else {
-    console.error('usage: night-state.mjs start|checkpoint <phase> [note]|set k=v|round \"<played | noticed | changed>\" [--stepback]|show|elapsed|check|atoms [--seed N]|look [--seed N]|genre <3-5 genres>');
+    console.error('usage: night-state.mjs start|checkpoint <phase> [note]|set k=v|round \"<played | noticed | changed>\" [--stepback]|show|elapsed|check|atoms [--seed N]|look [--seed N]|sound|genre <3-5 genres>');
     process.exitCode = 1;
   }
 }
