@@ -26,16 +26,26 @@ Check elapsed time at every phase boundary and before any long command.
 ## Step 1: ideation (greenfield)
 1. `node scripts/themes.mjs roll` returns three options. Pick one.
 2. `node scripts/themes.mjs resolve ...` with a reason for each rejection (see doc 07).
-3. Roll the look: `node scripts/night-state.mjs look` returns a seeded visual identity (palette, shapes, rendering, framing, UI) that avoids the last three nights' looks and the demo's. Follow it; you may override one dimension if the core verb needs it, and the brief says which and why. Do not open any earlier prototype for reference (other nights' branches, including the original demo `proto/2026-10-29-demo-ball`): copying an earlier game's look or structure is the failure mode this roll exists to prevent. `docs/tech/SCAFFOLD_API.md` is the whole contract.
-4. Draw two atoms at random from the concept library (use `scripts/night-state.mjs atoms` for a seeded pick that avoids recent pairings in the ledger) and at most one wildcard constraint.
-5. Write the **brief** to `briefs/<slug>.md` using the template in `docs/design/04-feedback-and-postmortem.md`: one question, one target feeling, mode, theme, atoms, wildcard, core verb, pressure source, failure and recovery loop, what is different from the last five nights (from the ledger only), and the 3 to 5 feedback questions.
-6. Do not open earlier prototypes. Do not read rejection reasons.
+3. Roll the genre: list 3 to 5 genres that would fit the chosen theme (be honest and varied: not all variations of one idea), then run `node scripts/night-state.mjs genre "<g1>" "<g2>" "<g3>" ...`. It picks one at random (skipping genres used in the last three nights) and records it in `NIGHT_STATE.md`. You do not choose. Build a game that is recognizably that genre, reinterpreted freely for the theme and the atoms; the brief names the genre and the options you listed. Do not re-run it to fish for a better pick: a second call just prints the first result. The only exception is a drastic change (see "When it is not working").
+4. Roll the look: `node scripts/night-state.mjs look` returns a seeded visual identity (palette, shapes, rendering, framing, UI) that avoids the last three nights' looks and the demo's. Follow it; you may override one dimension if the core verb needs it, and the brief says which and why. Do not open any earlier prototype for reference (other nights' branches, including the original demo `proto/2026-10-29-demo-ball`): copying an earlier game's look or structure is the failure mode this roll exists to prevent. `docs/tech/SCAFFOLD_API.md` is the whole contract.
+5. Draw two atoms at random from the concept library (use `scripts/night-state.mjs atoms` for a seeded pick that avoids recent pairings in the ledger) and at most one wildcard constraint.
+6. Write the **brief** to `briefs/<slug>.md` using the template in `docs/design/04-feedback-and-postmortem.md`: one question, one target feeling, mode, theme, atoms, wildcard, core verb, pressure source, failure and recovery loop, what is different from the last five nights (from the ledger only), and the 3 to 5 feedback questions.
+7. Do not open earlier prototypes. Do not read rejection reasons.
 
 ## Step 2 to 4: build, feel, test
 - Branch `proto/YYYY-MM-DD-name`. Code in `src/protos/<slug>/`.
 - Bare core first. Confirm with the idle, random, and greedy bots that the core does something. Then the feel pass. Then the full bot suite and the feel checklist.
-- Follow the Follow-the-Fun rule: log surprises (accidents, emergent behavior, the most interesting part) in `runs/<slug>/surprises.md` before fixing them. If a discovery is better than the brief, pivot only if it reinforces the target feeling; log the pivot.
+- Follow the Follow-the-Fun rule: log surprises (accidents, emergent behavior, the most interesting part) in `runs/<slug>/surprises.md` before fixing them. If a discovery is better than the brief, pivot toward it and log the pivot.
+- Drastic changes are welcome when the build is not working: see "When it is not working" below.
 - Reusable tech goes to main only when the smoke test passes, with a `SCAFFOLD_API.md` entry.
+
+## When it is not working
+A flat game that shipped on plan is worse than a different game that works. When things are not panning out, **drastic changes are reasonable and encouraged**, not a failure of the plan.
+- **Signs:** the idle, random and greedy bots all do roughly the same thing after the core phase; you cannot name what is fun in the first minute; the suite keeps flagging the same problem after a fix pass; you are polishing to hide a flat verb; you have been surprised by nothing.
+- **What you may change:** the core verb, the pressure source, the genre (`node scripts/night-state.mjs genre ... --reroll --reason "why"` for a fresh random pick from a new list), the structure of the game, even the question and target feeling if the build points somewhere better. Throw away the core and start the core over if that is faster than rescuing it. Keep the theme unless the theme itself is the problem, and keep the look.
+- **How:** decide quickly (an hour of doubt is worse than a restart). Write what is not working in `runs/<slug>/surprises.md`, then add a `PIVOT:` line to the brief (what changed and why; the old text stays below it). Checkpoint with a note (`node scripts/night-state.mjs checkpoint core "pivot: ..."`).
+- **Limits:** the night is still time-boxed. A pivot must start before 2:00 elapsed so there is time for the feel pass and bots; after that, cut scope instead. Two pivots is plenty. A broken build at pencils-down is still published as broken, and the post mortem says what you tried.
+- Say in the post mortem what you changed, what was not working, and whether the pivot helped.
 
 ## Wrap-up (3:00) and pencils-down (3:30)
 - At 3:00: freeze scope. Remaining work: bots, one fix pass, manifest, feedback sheet, post mortem.

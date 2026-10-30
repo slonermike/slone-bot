@@ -43,7 +43,7 @@ Every run logs every file it opens outside the allowed set in the post mortem ru
 - **Core verb first, then feel.** Establish the core is interesting with a bare version, then run the feel pass. Juice amplifies a working core; it cannot create one.
 - **Back pressure and soft failure by default.** Failure should be recoverable and story-generating unless the brief says otherwise.
 - **Feel is mandatory:** main verb, feedback events, and pressure state each get audio and juice. A build with no feel on the main verb fails the self-review.
-- **Follow the fun with edges.** Log surprises before fixing them. Test discoveries against the target feeling. The night's fixed anchor is the target feeling; exploration happens inside it.
+- **Follow the fun with edges.** Log surprises before fixing them. Test discoveries against the target feeling. The night's usual anchor is the target feeling; exploration happens inside it. If the build is not working, drastic changes are reasonable and encouraged (see doc 06, "When it is not working").
 - **Borrow cheaply except the core:** openly licensed code, properly licensed assets, and engine features are fine for non-core parts. Borrowed mechanics import dynamics and feelings; check them against the target feeling.
 - **Respect scope:** one night, one small build.
 

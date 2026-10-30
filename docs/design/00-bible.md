@@ -2,7 +2,7 @@
 
 Design principles for making prototypes Slone will like. Nightly runs read and follow this file but never edit it. It changes when Slone gives feedback in chat (the chat agent updates it directly as the first step, see `CONSTITUTION.md` section 15) or runs an assessment of `pending-lessons.md`.
 
-Version: 3 (seeded from six GMTK sources and Slone's taste; feedback incorporated from the `_demo` prototype, 2026-10-29. One data point per lesson so far; see the revision log at the end).
+Version: 4 (seeded from six GMTK sources and Slone's taste; feedback incorporated from the `_demo` prototype, 2026-10-29. One data point per lesson so far; see the revision log at the end).
 
 ## 1. What a prototype is for
 A prototype answers one question quickly. The big three questions: Is it fun? Is it viable? Will people like it? Our nightly prototypes mostly ask "is it fun and what does it feel like?" Slone is the only playtester, so every build must make his feedback easy and specific.
@@ -25,6 +25,7 @@ A prototype answers one question quickly. The big three questions: Is it fun? Is
 - The signal that a discovery is a keeper: it pulls the design toward it repeatedly, and it makes other design decisions easier.
 - Edges: the target feeling is the anchor, the night is time-boxed, and the MVP is small. Exploring in every direction at once is analysis paralysis, not following the fun.
 - Prefer subtraction. Ape Out and Into the Breach got better by removing what was not the point.
+- **When it is not working, change something big.** A flat prototype is not rescued by polish. Drastic changes (a new core verb, a new genre, throwing the core away, even a new target feeling) are reasonable and encouraged; a different game that works beats a planned one that does not. Decide early, log the pivot, and keep the time box. (v4, one data point: Slone.)
 
 ## 5. MDA: mechanics, dynamics, aesthetics
 - Mechanics are rules and numbers. Dynamics are what players do and what the systems do in response. Aesthetics are the feelings that result.
@@ -70,6 +71,7 @@ Bots can show the build works and find exploits. They cannot say whether it is f
 AI is weak at balance work, and balance is where a game's feel is finally decided. Each game therefore exposes a handful (3 to 8) of tweakable values in a balance menu in the pause menu: the pressure rate and ramp, how fast the player's power grows (forward pressure), forgiveness (lives, relief per success), and the pace of new layers. Each has a sensible default, a range, and a plain label. Slone tunes by feel while playing; the values persist on the device and can be copied out. The plan is to save his tuned values globally through an API so every player gets the values he settled on (roadmap). The agent's job is to pick good knobs and defaults, not to be the final balancer. (v3, one data point: `_demo`.)
 
 ## Revision log
+- v4, 2026-10-30: drastic changes are reasonable and encouraged when a prototype is not working (4). Prompted by Slone's guidance for the nightly agent, together with the new genre roll (a random pick from 3 to 5 genres that fit the theme).
 - v3, 2026-10-29: balance menu rule (11). Prompted by Slone expecting AI to be weak at balance.
 - v2, 2026-10-29: from Slone's second round on `_demo`. Confirmed working: layered back pressure that grows, hard failure, failure juice (still one data point each). Added: forward pressure, every reward cue must mean something, earned power moments (6).
 - v1, 2026-10-29: from Slone's first play of `_demo` (two rounds of feedback). Added: pressure gains complexity over time and the target feeling chooses soft vs hard failure (6); failure as reprieve (6), collecting opens content (6), failure gets the full effect stack, equal-step pitch ladders with a cap, juice-in-first-pass (7). All one data point until repeated on another night.

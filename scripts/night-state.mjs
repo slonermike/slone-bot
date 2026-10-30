@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Run-protocol helper: NIGHT_STATE.md checkpoints, elapsed-time gates, seeded atom picks.
-// Commands: start [--night <slug>] [--force] | checkpoint <phase> [note...] | set key=value ... | show | elapsed | check | atoms [--seed N] | look [--seed N]
+// Commands: start [--night <slug>] [--force] | checkpoint <phase> [note...] | set key=value ... | show | elapsed | check | atoms [--seed N] | look [--seed N] | genre <g1> <g2> <g3> [<g4> <g5>] [--reroll --reason "why"]
 // Spec: docs/tech/06-nightly-run-protocol.md
 import fs from 'node:fs';
 import path from 'node:path';
@@ -12,7 +12,7 @@ export const WRAP_MIN = 180;
 export const PENCILS_MIN = 210;
 const STATE_FILE = () => process.env.NIGHT_STATE_FILE || path.join(ROOT, 'NIGHT_STATE.md');
 const PHASES = ['start', 'brief', 'core', 'feel', 'test', 'done'];
-const KEYS = ['night', 'started', 'phase', 'branch', 'brief', 'lastGoodBuild'];
+const KEYS = ['night', 'started', 'phase', 'branch', 'brief', 'lastGoodBuild', 'genre', 'genreOptions'];
 
 export function parseState(text) {
   const s = { notes: [] };
@@ -90,6 +90,36 @@ export function pickAtoms(atoms, ledgerPairs, seed) {
   }
   throw new Error('no unused atom pairing found');
 }
+// ---------- genre ----------
+export const normalizeGenre = (s) => String(s).trim().toLowerCase().replace(/\s+/g, ' ');
+/** `genre: x` tags from the ledger, oldest first. */
+export function parseLedgerGenres(md) {
+  const out = [];
+  for (const line of md.split(/\r?\n/)) {
+    const m = /genre:\s*([^|]+?)\s*(?:\||$)/.exec(line);
+    if (m) out.push(normalizeGenre(m[1]));
+  }
+  return out;
+}
+function textSeed(t) {
+  let h = 0x811c9dc5;
+  for (const c of t) { h ^= c.charCodeAt(0); h = Math.imul(h, 0x01000193); }
+  return h >>> 0;
+}
+/**
+ * The agent lists 3 to 5 genres that fit tonight's theme; this picks one at random so the agent cannot steer toward a
+ * favorite. Genres used in the last three ledger lines are skipped when there is any other option.
+ */
+export function pickGenre(options, recent, seed) {
+  const opts = [...new Set(options.map(normalizeGenre).filter(Boolean))];
+  if (opts.length < 3 || opts.length > 5) throw new Error('give 3 to 5 distinct genres that fit the theme');
+  const last = recent.slice(-3);
+  const fresh = opts.filter((o) => !last.includes(o));
+  const pool = fresh.length ? fresh : opts;
+  const rng = mulberry32((seed ^ textSeed(opts.join('|'))) >>> 0);
+  return { genre: pool[Math.floor(rng() * pool.length)], options: opts, repeated: fresh.length === 0 };
+}
+
 function dateSeed(d = new Date().toISOString().slice(0, 10)) {
   let h = 0x811c9dc5;
   for (const c of d) { h ^= c.charCodeAt(0); h = Math.imul(h, 0x01000193); }
@@ -149,12 +179,30 @@ function main(argv) {
     const seed = opt('seed') ? Number(opt('seed')) : dateSeed();
     const [a, b] = pickAtoms(parseAtoms(lib), parseLedgerPairs(ledger), seed);
     console.log(`${a}, ${b}`);
+  } else if (cmd === 'genre') {
+    const s = readState();
+    if (!s) throw new Error('no NIGHT_STATE.md; run `start` first');
+    const options = rest.filter((a, i) => !a.startsWith('--') && rest[i - 1] !== '--reason');
+    if (s.genre && s.genre !== 'none' && !flag('reroll')) {
+      console.log(`genre already rolled: ${s.genre} (from: ${s.genreOptions}). A drastic change later is allowed: --reroll --reason "why".`);
+      return;
+    }
+    if (flag('reroll') && !opt('reason')) throw new Error('--reroll needs --reason "why the current genre is not working"');
+    const ledger = fs.readFileSync(path.join(ROOT, 'docs/design/ledger.md'), 'utf8');
+    const rerolls = (s.notes ?? []).filter((n) => /genre rerolled/.test(n)).length;
+    const r = pickGenre(options, parseLedgerGenres(ledger), dateSeed() + rerolls);
+    s.genre = r.genre;
+    s.genreOptions = r.options.join(' / ');
+    const m = elapsedMinutes(s, now.getTime());
+    s.notes.push(`${fmt(m)} genre ${flag('reroll') ? 'rerolled' : 'rolled'}: ${r.genre} (from ${r.options.join(', ')})${flag('reroll') ? ' because ' + opt('reason') : ''}`);
+    writeState(s);
+    console.log(`GENRE: ${r.genre}\nfrom: ${r.options.join(', ')}${r.repeated ? '\nnote: every option was used in the last three nights, so repeats were allowed' : ''}\nBuild a game recognizably of this genre. Reinterpret it freely for the theme; put "Genre: ${r.genre}" in the brief and add "genre: ${r.genre}" to your ledger line.`);
   } else if (cmd === 'look') {
     const ledger = fs.readFileSync(path.join(ROOT, 'docs/design/ledger.md'), 'utf8');
     const seed = opt('seed') ? Number(opt('seed')) : dateSeed();
     console.log(formatLook(pickLook(parseLedgerLooks(ledger), seed)));
   } else {
-    console.error('usage: night-state.mjs start|checkpoint <phase> [note]|set k=v|show|elapsed|check|atoms [--seed N]|look [--seed N]');
+    console.error('usage: night-state.mjs start|checkpoint <phase> [note]|set k=v|show|elapsed|check|atoms [--seed N]|look [--seed N]|genre <3-5 genres>');
     process.exitCode = 1;
   }
 }

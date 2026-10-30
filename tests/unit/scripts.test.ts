@@ -122,3 +122,35 @@ describe('host version guard', () => {
     expect(hostVersionProblem(['src/core/shell.ts'], '0.2.2', '0.2.2')).toBeNull();
   });
 });
+
+describe('genre roll', () => {
+  it('needs 3 to 5 distinct genres, is deterministic, and every option can win', async () => {
+    const { pickGenre } = await import('../../scripts/night-state.mjs');
+    expect(() => pickGenre(['a', 'b'], [], 1)).toThrow(/3 to 5/);
+    expect(() => pickGenre(['a', 'A ', 'b'], [], 1)).toThrow(/3 to 5/); // duplicates collapse
+    expect(() => pickGenre(['a', 'b', 'c', 'd', 'e', 'f'], [], 1)).toThrow(/3 to 5/);
+    const opts = ['Tower Defense', 'rhythm game', 'Roguelike', 'puzzle platformer'];
+    const a = pickGenre(opts, [], 7);
+    expect(pickGenre(opts, [], 7)).toEqual(a);
+    expect(a.options).toContain(a.genre);
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 60; seed++) seen.add(pickGenre(opts, [], seed).genre);
+    expect(seen.size).toBe(4); // so the agent cannot steer toward a favorite
+  });
+
+  it('skips genres used in the last three nights, unless every option was', async () => {
+    const { pickGenre, parseLedgerGenres } = await import('../../scripts/night-state.mjs');
+    const ledger = [
+      '2030-01-01 | a | systemic | atoms: v-a, p-c | theme: x | wildcard: none | genre: Tower Defense | look: a/b/c | verdict: pending',
+      '2030-01-02 | b | systemic | atoms: v-a, p-d | theme: x | wildcard: none | genre: roguelike | look: a/b/c | verdict: pending',
+    ].join('\n');
+    const recent = parseLedgerGenres(ledger);
+    expect(recent).toEqual(['tower defense', 'roguelike']);
+    for (let seed = 1; seed <= 40; seed++) {
+      const r = pickGenre(['tower defense', 'roguelike', 'rhythm game', 'card battler'], recent, seed);
+      expect(['rhythm game', 'card battler']).toContain(r.genre);
+      expect(r.repeated).toBe(false);
+    }
+    expect(pickGenre(['tower defense', 'roguelike', 'x'], ['x', 'tower defense', 'roguelike'], 3).repeated).toBe(true);
+  });
+});
