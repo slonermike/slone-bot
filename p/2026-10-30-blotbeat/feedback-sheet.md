@@ -8,8 +8,8 @@ TARGETED QUESTIONS:
 1. Did a miss ever feel like fuel rather than punishment? When? (yes / kind of / no)
 2. Did you hold ink on purpose for a bigger fever, or stamp the moment it lit up? Did the leak (from set 3) change that?
 3. Could you tell what each note kind wanted (tap, hold, double) the first time you saw it?
-4. Did your hits feel like playing the music, or like noise on top of it? Did hits feel early or late (Timing offset knob: pause menu, Balance)?
-5. Which sticker did you pick first, and did it change how you played?
+4. Did your hits feel like you were playing the song (kick, snare, bass, melody), and did a miss leave a hole in it? Did the four songs feel different from each other? Did hits feel early or late (Timing offset knob: pause menu, Balance)?
+5. Was the number of notes ever overwhelming, and was any button combination awkward for your thumb? Which sticker did you pick first, and did it change how you played?
 
 CONSTANTS (every night, so we can compare over time):
 A. First minute: did it feel good to just move/act before anything else? yes / kind of / no
