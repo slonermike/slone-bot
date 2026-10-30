@@ -28,6 +28,8 @@ Themes are design prompts, not skins. "Limited space" is a mechanical spark; "pi
   Validation: every rejected option needs a non-empty reason; a reason that is only "too hard to build" (or equivalent) is refused with the message "reinterpret it smaller instead"; the picked id must be one of tonight's rolled ids.
 - `node scripts/themes.mjs remove <id|exact text> --reason "why"`
   Human only (refused under `NIGHT_RUN=1`). Moves a theme to the graveyard with the reason; it is not offered again, and `add` will refuse near-duplicates of it.
+- `node scripts/themes.mjs restore <id|exact text>`
+  Human only. Brings a retired theme back into the pool with its strikes cleared (refused for a theme a run already used).
 - `node scripts/themes.mjs add "<text>" --type <type> --source postmortem`
   Adds a new theme (1 to 3 per night). Detects near-duplicates (normalized text overlap) and refuses them. Sources must be `postmortem` for nightly runs.
 - `node scripts/themes.mjs report`

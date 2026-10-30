@@ -152,4 +152,13 @@ describe('remove', () => {
     expect(grave().some((x: { id: string; reasons: { text: string }[] }) => x.id === t.id && /too vague/.test(x.reasons.at(-1)!.text))).toBe(true);
     expect(() => themes.add({ dir, today: '2030-09-01', text: t.text, type: 'system', env: {} })).toThrow(/too similar/); // retired themes are not re-added
   });
+  it('restores a retired theme, human only, never one a run used', () => {
+    const t = pool()[0];
+    themes.remove({ dir, which: t.id, reason: 'x', env: {} });
+    expect(() => themes.restore({ dir, which: t.id, env: { NIGHT_RUN: '1' } })).toThrow(/human only/);
+    expect(themes.restore({ dir, which: t.text, env: {} }).text).toMatch(/restored/);
+    expect(pool().find((x: { id: string }) => x.id === t.id).strikes).toBe(0);
+    expect(grave().some((x: { id: string }) => x.id === t.id)).toBe(false);
+    expect(() => themes.restore({ dir, which: t.id, env: {} })).toThrow(/no theme in the graveyard/);
+  });
 });
