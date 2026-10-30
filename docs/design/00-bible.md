@@ -2,7 +2,7 @@
 
 Design principles for making prototypes Slone will like. Nightly runs read and follow this file but never edit it. It changes when Slone gives feedback in chat (the chat agent updates it directly as the first step, see `CONSTITUTION.md` section 15) or runs an assessment of `pending-lessons.md`. **Every lesson here is written to apply to any kind of game**: principles in genre-neutral terms, no prototype names, no vocabulary that implies a genre (see `CONSTITUTION.md` section 15). Keep it that way in every edit.
 
-Version: 8 (seeded from six GMTK sources and Slone's taste; feedback incorporated from the `_demo` prototype and from a first nightly prototype, 2026-10-29. One data point per lesson so far; see the revision log at the end).
+Version: 9 (seeded from six GMTK sources and Slone's taste; feedback incorporated from the `_demo` prototype and from a first nightly prototype, 2026-10-29. One data point per lesson so far; see the revision log at the end).
 
 ## 1. What a prototype is for
 A prototype answers one question quickly. The big three questions: Is it fun? Is it viable? Will people like it? Our nightly prototypes mostly ask "is it fun and what does it feel like?" Slone is the only playtester, so every build must make his feedback easy and specific.
@@ -72,6 +72,7 @@ See `01-feel-checklist.md`. The headline rules: respond to every input right awa
 - **Setbacks get the full effect stack.** A failure, loss or setback moment is as expressive and reactive as the main interaction: layered sound, a hold beat, and a visible reaction (shake, flash, particles, text, or the world or characters reacting). It is a moment the player wants to see, not a pause. (v1, one data point: `_demo`.)
 - **Progress sounds climb in equal musical steps, then change.** A pitch that rises by a fixed ratio per step stops being audible after a few steps. Climb in equal semitone steps (whole tones read well), cap the climb near an octave, and signal "maxed" with a different layer or sound. Per-play pitch variation itself works well. (v1, one data point: `_demo`.)
 - **Juice in the first pass works.** Slone liked a full juice stack added in one pass and found the pacing about right, so build the stack early rather than polishing late. (v1, one data point: `_demo`.)
+- **Music is a design tool, not wallpaper.** It sets the mood, paces the session (tension, release, rest), reports state (how much pressure there is, whether something good just happened) and gives the game an identity. Choose it on purpose: tempo, meter, mode and texture follow the target feeling; the music changes with the game's state through layers, switching sections, or silence; big moments get a punctuating stinger; and a game has a contrasting second sound, not one loop. A mid-tempo background groove that could sit under any game is the failure to avoid. (v9, one data point: Slone, from the first four nights' music.)
 
 ## 8. Scope and time
 - A small prototype is a feature, not a bad version of the whole game. Keep it to one core verb, one pressure source, one recovery loop.
@@ -99,6 +100,7 @@ A game can have plenty of activity (motion, numbers, events, effects, systems) a
 - **Test:** show a new player ten seconds of play with no text. Could they say what the goal is, what they control, and whether the last action was good? If not, fix clarity before polishing feel.
 
 ## Revision log
+- v9, 2026-10-30: music is a design tool (7). Prompted by every nightly game choosing the same mid-tempo 4/4 groove. New: sound roll, Music plan in the brief, music review tool, and a research-backed craft section (`06-music-craft.md`).
 - v8, 2026-10-30: from Slone's list of games he loves (ten new taste cards): a pull can replace a push, one distinctive verb asked new questions, costly choices and edge-of-catastrophe tuning, short and sharp, cryptic but not obfuscated, silly is welcome (6). One data point each. This softens the earlier rule that open-ended play needs back pressure: Slone says curiosity and creativity can drive a game with or without it.
 - v7, 2026-10-30: from Slone's later rounds on `2026-10-30-stillwinter`: designed UI instead of loose text, currency near its use and unlike meters apart (shape as well as numbers), win and lose as designed events with plainly named modes, loud projectiles and hits, unit types with distinct jobs (7a). All one data point.
 - v4, 2026-10-30: from Slone's first play of `2026-10-30-stillwinter`: show the rule through nonverbal cause and effect, running out of the engine resource as a fail state with a queued guard, flipped genres (6). Selection lists must show their bumper glyphs (feel checklist). All one data point.
