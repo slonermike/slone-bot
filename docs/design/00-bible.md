@@ -2,7 +2,7 @@
 
 Design principles for making prototypes Slone will like. Nightly runs read and follow this file but never edit it. It changes when Slone gives feedback in chat (the chat agent updates it directly as the first step, see `CONSTITUTION.md` section 15) or runs an assessment of `pending-lessons.md`. **Every lesson here is written to apply to any kind of game**: principles in genre-neutral terms, no prototype names, no vocabulary that implies a genre (see `CONSTITUTION.md` section 15). Keep it that way in every edit.
 
-Version: 4 (seeded from six GMTK sources and Slone's taste; feedback incorporated from the `_demo` prototype and from a first nightly prototype, 2026-10-29. One data point per lesson so far; see the revision log at the end).
+Version: 6 (seeded from six GMTK sources and Slone's taste; feedback incorporated from the `_demo` prototype and from a first nightly prototype, 2026-10-29. One data point per lesson so far; see the revision log at the end).
 
 ## 1. What a prototype is for
 A prototype answers one question quickly. The big three questions: Is it fun? Is it viable? Will people like it? Our nightly prototypes mostly ask "is it fun and what does it feel like?" Slone is the only playtester, so every build must make his feedback easy and specific.
@@ -25,6 +25,8 @@ A prototype answers one question quickly. The big three questions: Is it fun? Is
 - The signal that a discovery is a keeper: it pulls the design toward it repeatedly, and it makes other design decisions easier.
 - Edges: the target feeling is the anchor, the night is time-boxed, and the MVP is small. Exploring in every direction at once is analysis paralysis, not following the fun.
 - Prefer subtraction. Ape Out and Into the Breach got better by removing what was not the point.
+- **Games are made by looping, so use the whole night.** An okay game is easier to improve than a blank page: get something playable fast, then play it, note what works and what does not, change it, repeat. Every few rounds step back and look at the whole (does it build and pay off, does it deliver the target feeling). If the obvious problems are fixed, look for the next layer; leftover time means another loop. Finishing a one-pass build early is a failure signal. (v6, one data point: Slone.)
+- **When it is not working, change something big.** A flat prototype is not rescued by polish. Drastic changes (a new core verb, a new genre, throwing the core away, even a new target feeling) are reasonable and encouraged; a different game that works beats a planned one that does not. Decide early, log the pivot, and keep the time box. (v5, one data point: Slone.)
 
 ## 5. MDA: mechanics, dynamics, aesthetics
 - Mechanics are rules and numbers. Dynamics are what players do and what the systems do in response. Aesthetics are the feelings that result.
@@ -79,6 +81,8 @@ A game can have plenty of activity (motion, numbers, events, effects, systems) a
 - **Test:** show a new player ten seconds of play with no text. Could they say what the goal is, what they control, and whether the last action was good? If not, fix clarity before polishing feel.
 
 ## Revision log
+- v6, 2026-10-30: iteration is the method (4). Prompted by nightly agents declaring themselves done after about 20 minutes instead of looping play, note, change, and stepping back.
+- v5, 2026-10-30: drastic changes are reasonable and encouraged when a prototype is not working (4). Prompted by Slone's guidance for the nightly agent, together with the new genre roll (a random pick from 3 to 5 genres that fit the theme).
 - v4, 2026-10-29: agency, clarity and causality (12). From Slone's first play of a nightly prototype: "the game isn't fun"; indirect control, lots of activity without meaning, good play not obviously rewarded, progression hidden. One data point. Also reworded earlier rules (loop template, back pressure, power moments, verb first, discovery, failure effects) and the feel checklist so they state the principle for any kind of game, with avatar-, camera- and real-time-specific items made conditional; intent unchanged.
 - v3, 2026-10-29: balance menu rule (11). Prompted by Slone expecting AI to be weak at balance.
 - v2, 2026-10-29: from Slone's second round on `_demo`. Confirmed working: layered back pressure that grows, hard failure, failure juice (still one data point each). Added: forward pressure, every reward cue must mean something, earned power moments (6).

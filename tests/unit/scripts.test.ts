@@ -3,7 +3,7 @@ import * as secrets from '../../scripts/check-secrets.mjs';
 import * as night from '../../scripts/night-state.mjs';
 
 const { scanText } = secrets as any;
-const { gate, parseAtoms, parseLedgerPairs, pickAtoms, parseState, formatState } = night as any;
+const { gate, countRounds, doneBlockers, parseAtoms, parseLedgerPairs, pickAtoms, parseState, formatState } = night as any;
 
 // Fake credentials are assembled at runtime so this file never trips the repo's own secret scan.
 const fake = {
@@ -28,10 +28,17 @@ describe('check-secrets', () => {
 });
 
 describe('night-state', () => {
-  it('gates at 3:00 and 3:30', () => {
-    expect(gate(179)).toBe('OK');
-    expect(gate(180)).toBe('WRAP-UP');
-    expect(gate(210)).toBe('PENCILS-DOWN');
+  it('gates at 1:15 and 1:30', () => {
+    expect(gate(74)).toBe('OK');
+    expect(gate(75)).toBe('WRAP-UP');
+    expect(gate(90)).toBe('PENCILS-DOWN');
+  });
+  it('counts rounds and step-backs, and blocks finishing early without them', () => {
+    const notes = ['0:10 phase=brief', '0:20 round 1: played | boring start | added a ramp', '0:35 round 2: a | b | c', '0:50 stepback 1: arc is flat | cut X'];
+    expect(countRounds(notes)).toEqual({ rounds: 2, stepbacks: 1 });
+    expect(doneBlockers(20, [])).toEqual(['only 0:20 elapsed (need 1:00)', '0 of 3 rounds logged', 'no step-back logged']);
+    expect(doneBlockers(70, notes)).toEqual(['2 of 3 rounds logged']);
+    expect(doneBlockers(70, [...notes, '1:00 round 3: x | y | z'])).toEqual([]);
   });
   it('round-trips the state file', () => {
     const s = { night: 'n', started: '2030-01-01T00:00:00.000Z', phase: 'core', branch: 'proto/n', brief: 'b.md', lastGoodBuild: 'abc', notes: ['one', 'two'] };
@@ -120,5 +127,37 @@ describe('host version guard', () => {
     expect(hostVersionProblem(['host/main.cjs', 'host/package.json'], '0.2.2', '0.2.3')).toBeNull();
     expect(hostVersionProblem(['host/README.md', 'host/test/config.test.cjs'], '0.2.2', '0.2.2')).toBeNull();
     expect(hostVersionProblem(['src/core/shell.ts'], '0.2.2', '0.2.2')).toBeNull();
+  });
+});
+
+describe('genre roll', () => {
+  it('needs 3 to 5 distinct genres, is deterministic, and every option can win', async () => {
+    const { pickGenre } = await import('../../scripts/night-state.mjs');
+    expect(() => pickGenre(['a', 'b'], [], 1)).toThrow(/3 to 5/);
+    expect(() => pickGenre(['a', 'A ', 'b'], [], 1)).toThrow(/3 to 5/); // duplicates collapse
+    expect(() => pickGenre(['a', 'b', 'c', 'd', 'e', 'f'], [], 1)).toThrow(/3 to 5/);
+    const opts = ['Tower Defense', 'rhythm game', 'Roguelike', 'puzzle platformer'];
+    const a = pickGenre(opts, [], 7);
+    expect(pickGenre(opts, [], 7)).toEqual(a);
+    expect(a.options).toContain(a.genre);
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 60; seed++) seen.add(pickGenre(opts, [], seed).genre);
+    expect(seen.size).toBe(4); // so the agent cannot steer toward a favorite
+  });
+
+  it('skips genres used in the last three nights, unless every option was', async () => {
+    const { pickGenre, parseLedgerGenres } = await import('../../scripts/night-state.mjs');
+    const ledger = [
+      '2030-01-01 | a | systemic | atoms: v-a, p-c | theme: x | wildcard: none | genre: Tower Defense | look: a/b/c | verdict: pending',
+      '2030-01-02 | b | systemic | atoms: v-a, p-d | theme: x | wildcard: none | genre: roguelike | look: a/b/c | verdict: pending',
+    ].join('\n');
+    const recent = parseLedgerGenres(ledger);
+    expect(recent).toEqual(['tower defense', 'roguelike']);
+    for (let seed = 1; seed <= 40; seed++) {
+      const r = pickGenre(['tower defense', 'roguelike', 'rhythm game', 'card battler'], recent, seed);
+      expect(['rhythm game', 'card battler']).toContain(r.genre);
+      expect(r.repeated).toBe(false);
+    }
+    expect(pickGenre(['tower defense', 'roguelike', 'x'], ['x', 'tower defense', 'roguelike'], 3).repeated).toBe(true);
   });
 });

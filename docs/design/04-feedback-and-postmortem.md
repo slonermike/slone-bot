@@ -9,6 +9,7 @@ Question: the one thing this build tests
 Target feeling: specific emotion or fantasy (not "fun")
 Mode: content-driven (5-10 min) | systemic (endless, polish 1-2 mechanics)
 Theme: <text>   Why picked: one line
+Genre: <rolled genre>   Options considered: <the 3 to 5 you listed>   (from `node scripts/night-state.mjs genre ...`; reinterpret freely, stay recognizable)
 Atoms: <id>, <id>      Wildcard: <text or none>
 Look (from `node scripts/night-state.mjs look`; override at most one dimension, say which and why): palette, shapes, rendering, framing, ui. Then the 3 to 5 hex colors you will actually use and one sentence on what the game looks like at rest.
 Loop (4 lines): win/reward | obstacle/pressure | fail state and recovery | player actions
@@ -59,13 +60,14 @@ Questions are tied to the night's target feeling and risk. Phrase them as feelin
 # Post mortem: <title>
 Question and target feeling: (copied from the brief)
 What shipped: one sentence (main verb, pressure source)
+Rounds: how many rounds and step-backs, and the biggest thing each changed (one line each)
 Core before polish: was the bare core interesting with juice off? how I judged it
 Did it work (honest read): checklist counts (pass / fail / untested); the shaky items
 Measured (telemetry): runLength, deaths, firstPressureSimSec, idleSurvivalSec, variance, fps, inputToAudioMs (a few numbers)
 Believed (labeled): my guesses about feel, which I cannot verify (I cannot play or hear the build)
 Degenerate strategies found: or "none found"
 What I cut or ran out of time for:
-Surprises (follow the fun): accidents, emergent behavior, pivots (and whether a pivot reinforced the target feeling)
+Surprises (follow the fun): accidents, emergent behavior, pivots (what was not working, what you changed, and whether it helped)
 Biggest risk for Slone to check: the one thing most likely to feel wrong
 Reusable tech proposed to main (as a PR opened after the prototype is complete, not merged during the build): or "none"
 Assets sourced: (source, license) or "all synthesized"
