@@ -12,6 +12,9 @@ export const C = {
   lime: 0xc6ff3d, // the one contrasting accent
 } as const;
 
+/** One hue per lane, the standard pad colours in our own flavour: Y amber (north), B coral red (east), A teal (south, a cool green kept clear of the lime ink), X blue (west). */
+export const LANE_COLORS = [0xffbe2e, 0xff5a5f, 0x1fd6b5, 0x4f8bff] as const;
+
 export const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 
 export function label(text: string, size: number, fill: number = C.white, opts: { stroke?: number; sw?: number; weight?: string; align?: 'left' | 'center' | 'right'; anchor?: [number, number] } = {}): Text {
@@ -55,7 +58,7 @@ export function chip(text: string, size = 22, fill: number = C.white, ink: numbe
   return c;
 }
 
-export type HintPart = string | { key: string };
+export type HintPart = string | { key: string; fill?: number };
 
 /** An anchored prompt plate: text and key-cap chips on a sticker. Centered on (0,0). */
 export function hintPlate(parts: HintPart[], size = 24, fill: number = C.board): Container {
@@ -64,7 +67,7 @@ export function hintPlate(parts: HintPart[], size = 24, fill: number = C.board):
   let x = 0;
   const gap = 10;
   for (const p of parts) {
-    const it = typeof p === 'string' ? label(p, size, C.white, { anchor: [0, 0.5] }) : chip(p.key, size * 0.85);
+    const it = typeof p === 'string' ? label(p, size, C.white, { anchor: [0, 0.5] }) : chip(p.key, size * 0.85, p.fill ?? C.white);
     const w = typeof p === 'string' ? (it as Text).width : (it as Container & { chipW: number }).chipW;
     if (typeof p === 'string') it.position.set(x, 0); else it.position.set(x + w / 2, 0);
     items.push(it);

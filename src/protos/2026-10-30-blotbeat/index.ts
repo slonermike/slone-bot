@@ -9,7 +9,7 @@ import { Eyes, Particles, SquashStretch, chase, ease, flash, numberPop, punch, s
 import { BALANCE, SETS, STICKERS, createSim } from './sim.ts';
 import type { Note } from './sim.ts';
 import { CX, CY, HH, HW, LANE_BUTTON, LANE_DIR, RING_RX, RING_RY, lanePoint, laneRing, laneStart } from './geometry.ts';
-import { C, FONT, chip, drop, hintPlate, label, sheet, sticker, stickerIcon } from './ui.ts';
+import { C, FONT, LANE_COLORS, chip, drop, hintPlate, label, sheet, sticker, stickerIcon } from './ui.ts';
 import { defineBlotSounds, pitchFor } from './sounds.ts';
 import { SET_DEFS, backingFor, partsFor, stingerFor } from './music.ts';
 import { LANE_KIND, LANE_LABEL } from './chart.ts';
@@ -21,9 +21,9 @@ const PHASE = { play: 0, pick: 1, won: 2, lost: 3 } as const;
 const ARROWS = ['\u2191', '\u2192', '\u2193', '\u2190'];
 const laneGlyph = (lane: number) => (getDevice() === 'keyboard' ? ARROWS[lane]! : glyph(LANE_BUTTON[lane]!));
 const hintFor = (set: number): Parameters<typeof hintPlate>[0] => [
-  ['Every note is part of the song. Play it:', { key: laneGlyph(2) }, 'kick', { key: laneGlyph(0) }, 'snare', { key: laneGlyph(1) }, 'melody'],
+  ['Every note is part of the song. Play it:', { key: laneGlyph(2), fill: LANE_COLORS[2] }, 'kick', { key: laneGlyph(0), fill: LANE_COLORS[0] }, 'snare', { key: laneGlyph(1), fill: LANE_COLORS[1] }, 'melody'],
   ['Long melody notes: press, then keep holding to the tail'],
-  [{ key: laneGlyph(3) }, 'bass joins. Linked notes are struck together'],
+  [{ key: laneGlyph(3), fill: LANE_COLORS[3] }, 'bass joins. Linked notes are struck together'],
   ['Six-eight: the beat sways in threes. Hold the bass'],
   ['Finale: the whole band. Play it all'],
 ][set]!;
@@ -312,12 +312,15 @@ export function createPrototype(): Prototype {
       const a = laneStart(l); const b = laneRing(l);
       lanes.moveTo(a.x, a.y).lineTo(b.x, b.y);
     }
-    lanes.stroke({ width: 7, color: C.ink });
+    lanes.stroke({ width: 8, color: C.ink });
     for (let l = 0; l < 4; l++) {
       const a = laneStart(l); const b = laneRing(l);
       lanes.moveTo(a.x, a.y).lineTo(b.x, b.y);
     }
-    lanes.stroke({ width: 2, color: C.tint, alpha: 0.9 });
+    for (let l = 0; l < 4; l++) {
+      const a = laneStart(l); const b = laneRing(l);
+      lanes.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width: 3, color: LANE_COLORS[l], alpha: 0.95 });
+    }
     const ring = new Graphics().ellipse(CX, CY, RING_RX, RING_RY).stroke({ width: 8, color: C.ink }).ellipse(CX, CY, RING_RX, RING_RY).stroke({ width: 2, color: C.tint, alpha: 0.8 });
     // the static board is baked into one sprite: a few dozen draw calls become one (the slow part of a software GL frame)
     const statics = new Container();
@@ -332,7 +335,8 @@ export function createPrototype(): Prototype {
       const a = laneStart(l); const b = laneRing(l);
       const st = new Graphics();
       st.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width: 12, color: C.ink, cap: 'round' });
-      st.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width: 5, color: C.white, cap: 'round' });
+      st.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width: 6, color: LANE_COLORS[l], cap: 'round' });
+      st.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width: 2, color: C.white, cap: 'round' });
       st.alpha = 0;
       boardC.addChild(st);
       streaks.push(st);
@@ -342,13 +346,13 @@ export function createPrototype(): Prototype {
       const c = new Container();
       const p = laneRing(l);
       c.position.set(p.x, p.y);
-      const g = new Graphics().ellipse(0, 0, 40, 24).fill(C.bg).stroke({ width: 7, color: C.ink }).ellipse(0, 0, 40, 24).stroke({ width: 2, color: C.white, alpha: 0.9 });
-      const t = label(laneGlyph(l), 22, C.tint, { weight: '900' });
+      const g = new Graphics().ellipse(0, 0, 40, 24).fill(C.bg).stroke({ width: 7, color: C.ink }).ellipse(0, 0, 40, 24).stroke({ width: 4, color: LANE_COLORS[l] });
+      const t = label(laneGlyph(l), 22, LANE_COLORS[l], { weight: '900' });
       c.addChild(g, t);
       boardC.addChild(c);
       targets.push(c);
       targetLabels.push(t);
-      const lb = label(LANE_LABEL[l]!, 20, C.tint, { stroke: C.ink, sw: 5, weight: '900' });
+      const lb = label(LANE_LABEL[l]!, 20, LANE_COLORS[l], { stroke: C.ink, sw: 5, weight: '900' });
       const dir = LANE_DIR[l]!;
       lb.position.set(p.x + dir.x * 104, p.y + dir.y * 46);
       boardC.addChild(lb);
@@ -409,7 +413,7 @@ export function createPrototype(): Prototype {
       pageIcons.push(g);
     }
     // set badge (top centre) with a progress rail
-    const sb = sticker(400, 76, C.tint, 16);
+    const sb = sticker(480, 76, C.tint, 16);
     sb.position.set(CX, 48);
     ui.addChild(sb);
     setText = label('', 28, C.ink, { weight: '900' });
@@ -586,11 +590,11 @@ export function createPrototype(): Prototype {
       // doubles wear a second outline and a solid core so they read as "two at once"
       g.poly([0, -34, 58, 0, 0, 34, -58, 0]).fill(C.ink);
       g.poly([0, -28, 50, 0, 0, 28, -50, 0]).stroke({ width: 3, color: C.white });
-      g.poly([0, -20, 34, 0, 0, 20, -34, 0]).fill(C.white).stroke({ width: 8, color: C.ink, join: 'round' });
-      g.poly([0, -8, 14, 0, 0, 8, -14, 0]).fill(C.line);
+      g.poly([0, -20, 34, 0, 0, 20, -34, 0]).fill(LANE_COLORS[n.lane]).stroke({ width: 8, color: C.ink, join: 'round' });
+      g.poly([0, -8, 14, 0, 0, 8, -14, 0]).fill(C.white);
     } else {
-      g.poly([0, -25, 42, 0, 0, 25, -42, 0]).fill(n.len > 0 ? C.tint : C.white).stroke({ width: 9, color: C.ink, join: 'round' });
-      g.poly([0, -11, 19, 0, 0, 11, -19, 0]).stroke({ width: 2.5, color: C.line });
+      g.poly([0, -25, 42, 0, 0, 25, -42, 0]).fill(LANE_COLORS[n.lane]).stroke({ width: 9, color: C.ink, join: 'round' });
+      g.poly([0, -11, 19, 0, 0, 11, -19, 0]).fill(C.white).stroke({ width: 3, color: C.ink, join: 'round' });
     }
     noteC.addChild(g);
     let ribbon: Graphics | null = null;
@@ -644,8 +648,8 @@ export function createPrototype(): Prototype {
         v.ribbon.clear();
         const wdt = 26 * (0.45 + 0.7 * Math.min(1, (p + pt) / 2));
         v.ribbon.moveTo(a.x, a.y).lineTo(pos.x, pos.y).stroke({ width: wdt + 12, color: C.ink, cap: 'round' });
-        v.ribbon.moveTo(a.x, a.y).lineTo(pos.x, pos.y).stroke({ width: wdt, color: holding ? C.white : C.tint, cap: 'round' });
-        v.ribbon.moveTo(a.x, a.y).lineTo(pos.x, pos.y).stroke({ width: 3, color: C.line });
+        v.ribbon.moveTo(a.x, a.y).lineTo(pos.x, pos.y).stroke({ width: wdt, color: LANE_COLORS[n.lane], cap: 'round' });
+        v.ribbon.moveTo(a.x, a.y).lineTo(pos.x, pos.y).stroke({ width: holding ? 7 : 4, color: C.white, alpha: holding ? 1 : 0.8, cap: 'round' });
         v.ribbon.alpha = holding ? 0.8 + 0.2 * Math.sin(time * 30) : 1;
       }
     }
@@ -871,12 +875,13 @@ export function createPrototype(): Prototype {
     const y = e.y ?? CY;
     const d = D()[lane]!;
     const m = e.magnitude ?? 0.5;
-    const col = grade === 'perfect' ? C.white : C.tint;
+    const col = LANE_COLORS[lane]!;
     const delay = auto ? 120 + Number(e.data?.order ?? 0) * 28 : 0;
     const fire = () => {
       playKind(String(e.data?.kind ?? LANE_KIND[lane]), Number(e.data?.midi ?? 60), (auto ? 0.55 : grade === 'perfect' ? 0.9 : grade === 'good' ? 0.75 : 0.6), d.x * 0.35);
       spark(x, y, lane, col, grade === 'perfect' ? 14 : 8, 1 + m);
-      ringPulse(x, y, 60 + m * 40, col, 340, grade === 'perfect' ? 5 : 3);
+      ringPulse(x, y, 60 + m * 40, col, 340, grade === 'perfect' ? 6 : 4);
+      if (grade === 'perfect') ringPulse(x, y, 40 + m * 30, C.white, 260, 3);
       punch(targets[lane]!, 0.3 + m * 0.2);
       streaks[lane]!.alpha = grade === 'perfect' ? 0.9 : 0.55;
       const g = targets[lane]!.children[0] as Graphics;
