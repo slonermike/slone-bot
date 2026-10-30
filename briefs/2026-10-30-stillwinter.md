@@ -28,3 +28,6 @@ Feedback questions:
 3. Did you ever stall (stand frozen) because you were scared to let time loose? When?
 4. Did Cold Snap feel earned, and did it feel big enough?
 5. Did you find anything I did not tell you about?
+
+## Revised after play (same day)
+Towers: Spike (rapid turret), Crystal (bomb that chains), Hourglass (time bank), Mender (heals nearby spires by sending health), Prism (slow heavy piercing beam). Spires placed while frozen are queued until the clock starts; the board starts with three solid spikes; running out of solid spires is a loss. Dawn clears the board with the beacon, then offers Endless Night (no dawn, the waves never stop). Feedback questions 6 and 7 were added to the sheet.
