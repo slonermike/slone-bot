@@ -10,6 +10,8 @@ TARGETED QUESTIONS:
 3. Did you ever stall (stay frozen) because you were afraid to let time loose? When?
 4. Did Cold Snap feel earned and big enough? (How many times did you use it?)
 5. Did you find anything I did not tell you about? (fault lines? warm fronts? chains?)
+6. Could you tell what each tower does just from how it looks and moves? Which one was unclear?
+7. Did the dawn sequence (sun, beacon powers up, enemies broken in turn) read clearly as a win? Did "Endless Night" make sense?
 
 CONSTANTS:
 A. First minute: did it feel good to just move/act before anything else? yes / kind of / no
