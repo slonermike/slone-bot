@@ -119,6 +119,10 @@ export interface Spire {
   crack: number;
   depth: number;
   age: number;
+  /** Placed but not yet real: can't shoot, be shattered or be chained until the clock starts (or it settles). */
+  queued: boolean;
+  /** Seconds until a spire placed while time was flowing settles; Infinity while frozen. */
+  settle: number;
 }
 export interface Enemy {
   id: number;
@@ -232,7 +236,7 @@ export function createSim(ctx: Ctx): Sim {
   let frontT = 14;
   const introSeen = new Set<EnemyKind>();
   let steps = 0;
-  const tel = { thawed: 0, shatters: 0, maxChain: 0, kills: 0, placed: 0, heartsLost: 0, longestFrozen: 0, eaten: 0, snaps: 0, deniedPlace: 0, enemiesSeen: 0, firstPressure: 0, maxEnemies: 0, kindsSeen: 0, fronts: 0, frontMelts: 0, faultShatters: 0 };
+  const tel = { thawed: 0, shatters: 0, maxChain: 0, kills: 0, placed: 0, heartsLost: 0, longestFrozen: 0, eaten: 0, snaps: 0, deniedPlace: 0, enemiesSeen: 0, firstPressure: 0, maxEnemies: 0, kindsSeen: 0, stuck: 0, fronts: 0, frontMelts: 0, faultShatters: 0 };
   const kindsSeen = new Set<EnemyKind>();
 
   const spireAt = (gx: number, gy: number): Spire | undefined => s.spires.find((p) => p.gx === gx && p.gy === gy);
@@ -272,6 +276,13 @@ export function createSim(ctx: Ctx): Sim {
     for (let gy = 1; gy < N - 1; gy++) for (let gx = 1; gx < N - 1; gx++) if (!path.cells.has(cellKey(gx, gy)) && !(gx === path.beacon[0] && gy === path.beacon[1])) quiet.push(cellKey(gx, gy));
     ctx.rng.shuffle(quiet);
     s.faults = quiet.slice(0, 3);
+    // the board starts with three real spikes, so there is always something to break
+    const starts = cells().filter((c) => c.gx > 0 && c.gy > 0 && c.gx < N - 1 && c.gy < N - 1).sort((a, b) => b.c - a.c);
+    for (const c of starts) {
+      if (s.spires.length >= 3) break;
+      if (s.spires.some((p) => Math.max(Math.abs(p.gx - c.gx), Math.abs(p.gy - c.gy)) < 2)) continue;
+      s.spires.push({ id: nextId++, kind: 'spike', gx: c.gx, gy: c.gy, hp: SPIRE.spike.hp, cd: 0.4, crack: -1, depth: 0, age: 0, queued: false, settle: Infinity });
+    }
     if (!canPlace(s.cx, s.cy)) { s.cx = 4; s.cy = 0; for (let y = 0; y < N && !canPlace(s.cx, s.cy); y++) s.cy = y; }
     // debug/test hooks: ?dawn=0.5 starts that far along (unlocking what it should), ?ice=40 adds ice
     const dawn0 = Number(ctx.params?.dawn ?? 0);
@@ -303,14 +314,21 @@ export function createSim(ctx: Ctx): Sim {
       s.ice += ENEMY[e.kind].ice;
       addThaw(bal('killThaw', 0.15), e.x, e.y);
       tel.kills++;
-      emit('kill', e.x, e.y, e.kind === 'thaw' ? 1 : e.kind === 'ram' ? 0.6 : 0.35, { kind: e.kind, blast });
+      emit('kill', e.x, e.y, e.kind === 'thaw' ? 1 : e.kind === 'ram' ? 0.6 : 0.35, { kind: e.kind, blast, thaw: bal('killThaw', 0.15) });
     } else {
       emit('hit', e.x, e.y, Math.min(1, 0.2 + d * 0.1), { kind: e.kind });
     }
   }
 
+  function solidify(sp: Spire): void {
+    if (!sp.queued) return;
+    sp.queued = false;
+    sp.settle = Infinity;
+    emit('solidify', sp.gx, sp.gy, 0.4, { kind: sp.kind });
+  }
+
   function neighbours(sp: Spire): Spire[] {
-    return s.spires.filter((o) => o !== sp && Math.max(Math.abs(o.gx - sp.gx), Math.abs(o.gy - sp.gy)) === 1 && (sp.kind === 'crystal' || o.kind === 'crystal'));
+    return s.spires.filter((o) => o !== sp && !o.queued && Math.max(Math.abs(o.gx - sp.gx), Math.abs(o.gy - sp.gy)) === 1 && (sp.kind === 'crystal' || o.kind === 'crystal'));
   }
 
   /** Remove a spire: refund, release time, blast, crack its neighbours. */
@@ -360,7 +378,7 @@ export function createSim(ctx: Ctx): Sim {
     const corners: [number, number][] = [[-1.5, -1.5], [N + 0.5, -1.5], [-1.5, N + 0.5], [N + 0.5, N + 0.5]];
     const c = flier ? ctx.rng.pick(corners) : path.poly[0];
     const e: Enemy = {
-      id: nextId++, kind, s: 0, hp: Math.round(def.hp * (kind === 'thaw' ? 1 + 1.2 * Math.max(0, s.dawn / s.dawnLen - 0.88) : 1 + 1.9 * Math.min(2.2, s.dawn / s.dawnLen))), maxHp: 0, x: c[0], y: c[1], px: c[0], py: c[1], flier,
+      id: nextId++, kind, s: 0, hp: Math.round(def.hp * (kind === 'thaw' ? 1 + 1.2 * Math.max(0, s.dawn / s.dawnLen - 0.88) : 1 + 3.2 * Math.min(2.2, s.dawn / s.dawnLen))), maxHp: 0, x: c[0], y: c[1], px: c[0], py: c[1], flier,
       fx: c[0], fy: c[1], hit: 0, alive: true,
     };
     e.maxHp = e.hp;
@@ -389,7 +407,7 @@ export function createSim(ctx: Ctx): Sim {
     s.hearts--;
     tel.heartsLost++;
     e.alive = false;
-    emit('heart-lost', path.beacon[0], path.beacon[1], 1, { hearts: s.hearts });
+    emit('heart-lost', path.beacon[0], path.beacon[1], 1, { hearts: s.hearts, thaw: 1 });
     addThaw(1.0, 0, 0);
     s.ice += 4; // the beacon's light melts into ice: a failure is also a rebuild
     // reprieve: everything is blasted back and the next waves come slower
@@ -437,6 +455,7 @@ export function createSim(ctx: Ctx): Sim {
         let best: Spire | null = null;
         let bd = def.chewR;
         for (const sp of s.spires) {
+          if (sp.queued) continue;
           const d = Math.hypot(sp.gx - e.x, sp.gy - e.y);
           if (d < bd) { bd = d; best = sp; }
         }
@@ -450,6 +469,7 @@ export function createSim(ctx: Ctx): Sim {
 
   function fireSpires(wdt: number): void {
     for (const sp of s.spires) {
+      if (sp.queued) continue;
       const def = SPIRE[sp.kind];
       sp.age += wdt;
       if (def.dmg === 0) continue;
@@ -494,7 +514,7 @@ export function createSim(ctx: Ctx): Sim {
   function worldStep(wdt: number): void {
     s.flowT += wdt;
     s.dawn += wdt;
-    s.ice += 0.22 * wdt;
+    s.ice += 0.18 * wdt;
     const f = s.dawn / s.dawnLen;
     // unlocks open new verbs as dawn advances
     for (const k of KINDS) {
@@ -515,7 +535,7 @@ export function createSim(ctx: Ctx): Sim {
         s.front = null;
         emit('front-hit', fr.axis === 0 ? 0 : fr.idx, fr.axis === 0 ? fr.idx : 0, 0.8, { axis: fr.axis, idx: fr.idx });
         for (const sp of [...s.spires]) {
-          if ((fr.axis === 0 ? sp.gy : sp.gx) !== fr.idx) continue;
+          if (sp.queued || (fr.axis === 0 ? sp.gy : sp.gx) !== fr.idx) continue;
           sp.hp -= 2;
           tel.frontMelts++;
           emit('melt', sp.gx, sp.gy, 0.5, { hp: sp.hp });
@@ -539,7 +559,7 @@ export function createSim(ctx: Ctx): Sim {
     reprieve = Math.max(0, reprieve - wdt);
     spawnT -= wdt;
     if (spawnT <= 0 && (f < 0.97 || s.endless)) {
-      const interval = Math.max(0.9, (3.7 - 2.0 * Math.min(1, f)) / bal('spawnRate', 1) / (1 + Math.max(0, f - 1) * 0.7)) * (reprieve > 0 ? 1.5 : 1);
+      const interval = Math.max(0.9, (3.0 - 1.6 * Math.min(1, f)) / bal('spawnRate', 1) / (1 + Math.max(0, f - 1) * 0.7)) * (reprieve > 0 ? 1.5 : 1);
       spawnT = interval;
       let n = 1;
       if (f > 0.3 && ctx.rng.chance(0.5)) n++;
@@ -571,13 +591,13 @@ export function createSim(ctx: Ctx): Sim {
   }
 
   function snap(): void {
-    if (!s.snapReady || !s.spires.length) return;
+    if (!s.snapReady || !s.spires.some((p) => !p.queued)) return;
     s.snapReady = false;
     s.snap = 0;
     tel.snaps++;
     const bx = path.beacon[0];
     const by = path.beacon[1];
-    const order = [...s.spires].sort((a, b) => Math.hypot(a.gx - bx, a.gy - by) - Math.hypot(b.gx - bx, b.gy - by));
+    const order = s.spires.filter((p) => !p.queued).sort((a, b) => Math.hypot(a.gx - bx, a.gy - by) - Math.hypot(b.gx - bx, b.gy - by));
     order.forEach((sp, i) => { sp.crack = 0.06 * (i + 1); sp.depth = -1; });
     emit('snap', bx, by, 1, { n: order.length });
   }
@@ -608,9 +628,9 @@ export function createSim(ctx: Ctx): Sim {
       const def = SPIRE[s.sel];
       if (canPlace(s.cx, s.cy) && s.ice >= def.cost) {
         s.ice -= def.cost;
-        s.spires.push({ id: nextId++, kind: s.sel, gx: s.cx, gy: s.cy, hp: def.hp, cd: def.cd * 0.5, crack: -1, depth: 0, age: 0 });
+        s.spires.push({ id: nextId++, kind: s.sel, gx: s.cx, gy: s.cy, hp: def.hp, cd: def.cd * 0.5, crack: -1, depth: 0, age: 0, queued: true, settle: s.thaw > 0 ? 1.5 : Infinity });
         tel.placed++;
-        emit('place', s.cx, s.cy, 0.4, { kind: s.sel });
+        emit('place', s.cx, s.cy, 0.4, { kind: s.sel, queued: true });
       } else {
         tel.deniedPlace++;
         emit('deny', s.cx, s.cy, 0.3, { why: canPlace(s.cx, s.cy) ? 'ice' : 'cell' });
@@ -618,7 +638,8 @@ export function createSim(ctx: Ctx): Sim {
     }
     if (b.x.pressed) {
       const sp = spireAt(s.cx, s.cy);
-      if (sp && sp.crack < 0) breakSpire(sp, 'player');
+      if (sp && sp.queued) emit('deny', s.cx, s.cy, 0.3, { why: 'queued' });
+      else if (sp && sp.crack < 0) breakSpire(sp, 'player');
       else emit('deny', s.cx, s.cy, 0.2, { why: 'nothing' });
     }
     if (b.y.pressed && s.snapReady) snap();
@@ -670,15 +691,28 @@ export function createSim(ctx: Ctx): Sim {
         if (sp.crack <= 0) breakSpire(sp, sp.depth < 0 ? 'snap' : 'chain');
       }
     }
-    // rescue: never leave the player with nothing to do
-    if (s.phase === 'play' && s.thaw <= 0 && !s.spires.length && s.ice < SPIRE.spike.cost) {
-      s.ice = SPIRE.spike.cost;
-      emit('ice-gift', path.beacon[0], path.beacon[1], 0.4);
+    // spires placed while time flows take a moment to set
+    for (const sp of s.spires) {
+      if (sp.queued && Number.isFinite(sp.settle)) {
+        sp.settle -= dt;
+        if (sp.settle <= 0) solidify(sp);
+      }
     }
     const flowing = s.thaw > 0;
     if (flowing !== s.flowing) {
       s.flowing = flowing;
-      if (flowing) { emit('thaw-on', 0, 0, 0.5); frozenStretch = 0; } else emit('thaw-off', 0, 0, 0.5);
+      if (flowing) {
+        emit('thaw-on', 0, 0, 0.5);
+        frozenStretch = 0;
+        for (const sp of s.spires) if (sp.queued) solidify(sp); // the clock is running: everything queued becomes real
+      } else emit('thaw-off', 0, 0, 0.5);
+    }
+    // nothing solid left to break while frozen: the cold wins
+    if (!flowing && s.phase === 'play' && !s.spires.some((p) => !p.queued || p.crack >= 0)) {
+      s.phase = 'over';
+      tel.stuck++;
+      emit('gameover', path.beacon[0], path.beacon[1], 1, { dawn: s.dawn / s.dawnLen, reason: 'stuck' });
+      return;
     }
     if (flowing) {
       const scale = Math.min(1, s.thaw / 0.35);
@@ -712,6 +746,8 @@ export function createSim(ctx: Ctx): Sim {
       firstPressureSimSec: Math.round(tel.firstPressure * 10) / 10,
       longestFrozenSec: Math.round(tel.longestFrozen * 10) / 10,
       spiresEaten: tel.eaten,
+      stuck: tel.stuck,
+      solid: s.spires.filter((p) => !p.queued).length,
       fronts: tel.fronts,
       frontMelts: tel.frontMelts,
       faultShatters: tel.faultShatters,
@@ -764,7 +800,8 @@ export function createSim(ctx: Ctx): Sim {
   function planChain(base: Record<string, number>): Record<string, number> {
     const out: Record<string, number> = { act: base.act, tx: base.tx, ty: base.ty, kind: base.kind };
     if (s.phase !== 'play') return out;
-    const crystals = s.spires.filter((p) => p.kind === 'crystal' && p.crack < 0);
+    const allCrystals = s.spires.filter((p) => p.kind === 'crystal' && p.crack < 0);
+    const crystals = allCrystals.filter((p) => !p.queued);
     const fuelKind = s.unlockedSet.has('crystal') ? 'crystal' : null;
     if (!fuelKind) return out;
     if (s.thaw < 0.5 && crystals.length >= 3) {
@@ -772,14 +809,14 @@ export function createSim(ctx: Ctx): Sim {
       const end = [...crystals].sort((a, b) => crystals.filter((o) => o !== a && Math.max(Math.abs(o.gx - a.gx), Math.abs(o.gy - a.gy)) === 1).length - crystals.filter((o) => o !== b && Math.max(Math.abs(o.gx - b.gx), Math.abs(o.gy - b.gy)) === 1).length)[0];
       return { act: 2, tx: end.gx, ty: end.gy, kind: 0 };
     }
-    if (crystals.length < 4 && s.ice >= SPIRE.crystal.cost && (s.thaw < 0.5 || base.act !== 1)) {
+    if (allCrystals.length < 4 && s.ice >= SPIRE.crystal.cost && (s.thaw < 0.5 || base.act !== 1)) {
       const defenders = s.spires.filter((p) => p.kind !== 'crystal');
       const free: { gx: number; gy: number; w: number }[] = [];
       for (const c of cells()) {
         if (!canPlace(c.gx, c.gy)) continue;
         if (defenders.some((d) => Math.max(Math.abs(d.gx - c.gx), Math.abs(d.gy - c.gy)) <= 1)) continue;
-        const near = crystals.filter((o) => Math.max(Math.abs(o.gx - c.gx), Math.abs(o.gy - c.gy)) === 1).length;
-        if (crystals.length && !near) continue;
+        const near = allCrystals.filter((o) => Math.max(Math.abs(o.gx - c.gx), Math.abs(o.gy - c.gy)) === 1).length;
+        if (allCrystals.length && !near) continue;
         free.push({ gx: c.gx, gy: c.gy, w: near * 10 + (c.c < 6 ? 1 : 0) });
       }
       free.sort((a, b) => b.w - a.w);
@@ -817,25 +854,33 @@ export function createSim(ctx: Ctx): Sim {
     const attackers = s.spires.filter((p) => SPIRE[p.kind].dmg > 0).length;
     const target = 3 + Math.floor(f * 8);
     const free = cells().filter((c) => canPlace(c.gx, c.gy));
-    if (s.snapReady && alive >= 3 && s.spires.length >= 3) { base.act = 3; return base; }
+    if (s.snapReady && alive >= 3 && s.spires.filter((p) => !p.queued).length >= 3) { base.act = 3; return base; }
     const wantAttacker = attackers < target;
     const pickAttacker = (): Kind => {
       const opts = kinds.filter((k) => SPIRE[k].dmg > 0 && k !== 'crystal' && s.ice >= SPIRE[k].cost);
       if (!opts.length) return 'spike';
       return opts[attackers % opts.length];
     };
+    const solid = s.spires.filter((p) => !p.queued && p.crack < 0);
+    const fuelKind: Kind = kinds.includes('lantern') && s.ice >= SPIRE.lantern.cost ? 'lantern' : kinds.includes('crystal') && s.ice >= SPIRE.crystal.cost ? 'crystal' : 'spike';
+    const reserve = s.spires.filter((p) => p.kind === 'lantern' || p.kind === 'crystal').length;
+    const stock = (): boolean => {
+      if (s.ice < SPIRE[fuelKind].cost) return false;
+      const quiet = free.filter((c) => !s.spires.some((p) => Math.max(Math.abs(p.gx - c.gx), Math.abs(p.gy - c.gy)) === 1)).sort((a, b) => a.c - b.c)[0];
+      if (!quiet) return false;
+      base.act = 1; base.tx = quiet.gx; base.ty = quiet.gy; base.kind = KINDS.indexOf(fuelKind);
+      return true;
+    };
     if (s.thaw < 0.5) {
-      // make time: shatter fuel (lantern/crystal) or build some and shatter it
-      const fuel = s.spires.find((p) => p.kind === 'lantern') ?? s.spires.find((p) => p.kind === 'crystal' && p.crack < 0);
+      // make time: shatter a solid fuel spire, else the least useful solid spire
+      const fuel = solid.find((p) => p.kind === 'lantern') ?? solid.find((p) => p.kind === 'crystal');
       if (fuel) { base.act = 2; base.tx = fuel.gx; base.ty = fuel.gy; return base; }
-      const fk: Kind = kinds.includes('lantern') && s.ice >= SPIRE.lantern.cost ? 'lantern' : kinds.includes('crystal') && s.ice >= SPIRE.crystal.cost ? 'crystal' : 'spike';
-      if (s.ice >= SPIRE[fk].cost && (fk !== 'spike' || attackers < 1)) {
-        const quiet = free.filter((c) => !s.spires.some((p) => Math.max(Math.abs(p.gx - c.gx), Math.abs(p.gy - c.gy)) === 1)).sort((a, b) => a.c - b.c)[0];
-        if (quiet) { base.act = 1; base.tx = quiet.gx; base.ty = quiet.gy; base.kind = KINDS.indexOf(fk); return base; }
-      }
-      const weakest = [...s.spires].sort((a, b) => coverage(a.gx, a.gy, 3.4) - coverage(b.gx, b.gy, 3.4))[0];
+      const weakest = [...solid].sort((a, b) => coverage(a.gx, a.gy, 3.4) - coverage(b.gx, b.gy, 3.4))[0];
       if (weakest) { base.act = 2; base.tx = weakest.gx; base.ty = weakest.gy; return base; }
     }
+    // restock the bench while time still runs: queued fuel becomes real the next time the clock starts
+    if ((reserve < 2 || solid.length <= 2) && fuelKind !== 'spike' && stock()) return base;
+    if (solid.length <= 2 && fuelKind === 'spike' && s.ice >= SPIRE.spike.cost && stock()) return base;
     if (wantAttacker) {
       const k = pickAttacker();
       if (s.ice >= SPIRE[k].cost) {

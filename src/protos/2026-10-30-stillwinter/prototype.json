@@ -12,7 +12,7 @@
   "metrics": ["dawnPct", "thawedSeconds", "shatters", "maxChain", "kills", "placed", "heartsLost", "longestFrozenSec", "spiresEaten", "snaps", "enemyKindsSeen"],
   "assets": [],
   "buildStatus": "ok",
-  "feedbackStatus": "needs-feedback",
+  "feedbackStatus": "assessed",
   "sizeKB": 0,
   "thumbnail": ""
 }

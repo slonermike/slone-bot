@@ -1,6 +1,6 @@
 // Stillwinter: render, juice and audio. The sim (sim.ts) is pure; everything here reacts to its events.
 import { Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
-import { glyph } from '../../core/index.ts';
+import { glyph, getDevice } from '../../core/index.ts';
 import { play, defineSound } from '../../audio/index.ts';
 import { music } from '../../audio/music.ts';
 import { tween, ease, shake, hitStop, flash, punch, Particles, numberPop, chaseDt, vfxRange, Trail } from '../../juice/index.ts';
@@ -168,12 +168,12 @@ const UNLOCK_BLURB: Record<Kind, string> = {
 };
 const eyeY: Record<EnemyKind, number> = { drift: -2, ram: -2, glider: 0, wisp: -1, thaw: -4 };
 
-interface SpireView { c: Container; body: Graphics; cracks: Graphics; lastHp: number; kind: Kind; drop: number }
+interface SpireView { c: Container; body: Graphics; q: Graphics; cracks: Graphics; lastHp: number; kind: Kind; drop: number }
 interface EnemyView { c: Container; body: Graphics; eyes: Graphics; bar: Graphics; shadow: Graphics; shell: Graphics; trail: Trail | null; kind: EnemyKind; lastHit: number }
 
 // ---------------------------------------------------------------- sound
 let soundsDefined = false;
-export const SOUND_NAMES = ['sw-place', 'sw-place-thud', 'sw-deny', 'sw-select', 'sw-move', 'sw-glass', 'sw-crunch', 'sw-thaw', 'sw-crack', 'sw-tick', 'sw-tock', 'sw-freeze', 'sw-shot', 'sw-pulse', 'sw-kill', 'sw-ice', 'sw-eaten', 'sw-heart', 'sw-heart-low', 'sw-unlock', 'sw-snap-ready', 'sw-snap', 'sw-dawn-step', 'sw-boss', 'sw-spawn', 'sw-warn', 'sw-front', 'sw-melt', 'sw-wind', 'sw-gift'];
+export const SOUND_NAMES = ['sw-place', 'sw-place-thud', 'sw-deny', 'sw-select', 'sw-move', 'sw-glass', 'sw-crunch', 'sw-thaw', 'sw-crack', 'sw-tick', 'sw-tock', 'sw-freeze', 'sw-shot', 'sw-pulse', 'sw-kill', 'sw-ice', 'sw-eaten', 'sw-heart', 'sw-heart-low', 'sw-unlock', 'sw-snap-ready', 'sw-snap', 'sw-dawn-step', 'sw-boss', 'sw-spawn', 'sw-warn', 'sw-front', 'sw-melt', 'sw-wind', 'sw-solid', 'sw-gift'];
 export function defineSounds(): void {
   if (soundsDefined) return;
   soundsDefined = true;
@@ -215,6 +215,10 @@ export function defineSounds(): void {
   defineSound('sw-front', { wave: 'noise', freq: 700, lowpass: 2200, slide: 0.9, attack: 0.05, sustain: 0.25, decay: 0.7, volume: 0.5 });
   defineSound('sw-melt', { wave: 'noise', freq: 1500, highpass: 900, slide: -1.2, sustain: 0.05, decay: 0.25, volume: 0.3 });
   defineSound('sw-wind', { wave: 'noise', freq: 500, lowpass: 700, highpass: 120, slide: 0.5, attack: 0.9, sustain: 0.6, decay: 1.4, volume: 0.12 });
+  defineSound('sw-solid', [
+    { wave: 'triangle', freq: 330, slide: 0.5, sustain: 0.02, decay: 0.18, transient: 0.3, volume: 0.4 },
+    { wave: 'triangle', freq: 392, slide: 0.5, sustain: 0.02, decay: 0.18, transient: 0.3, volume: 0.4 },
+  ]);
   defineSound('sw-gift', { wave: 'sine', freq: 700, slide: 0.8, sustain: 0.05, decay: 0.3, volume: 0.3 });
 }
 const wholeTone = (i: number, cap = 6): number => Math.pow(2, (Math.min(i, cap) * 2) / 12);
@@ -245,6 +249,14 @@ export function createPrototype(): Prototype {
   let sunG!: Graphics;
   let faultC!: Container;
   let etaG!: Graphics;
+  let markG!: Graphics;
+  interface Flyer { txt: Text; trail: Trail; t: number; dur: number; x0: number; y0: number; amount: number; size: number }
+  let flyers: Flyer[] = [];
+  let pendingFly = 0;
+  let thawFlash = 0;
+  let arrivals = 0;
+  let arrivalT = 0;
+  let uiLayer!: Container;
   let chainText!: Text;
   let snapIdx = 0;
   let trailLayer!: Container;
@@ -267,6 +279,7 @@ export function createPrototype(): Prototype {
   let snapG!: Graphics;
   let snapText!: Text;
   let trayG!: Container;
+  let bumpers: { side: 'lb' | 'rb'; pill: Graphics; label: Text; shown: string }[] = [];
   let trayPlates: { plate: Graphics; icon: Graphics; cost: Text; kind: Kind }[] = [];
   let endC!: Container;
   let endTitle!: Text;
@@ -298,11 +311,14 @@ export function createPrototype(): Prototype {
       const body = new Graphics();
       drawSpire(body, sp.kind);
       const cracks = new Graphics();
-      c.addChild(shadow, body, cracks);
+      const q = new Graphics();
+      q.poly(diamondPts(0, 0, TW * 0.8, TH * 0.8)).stroke({ width: 3, color: C.frost });
+      q.poly(diamondPts(0, 0, TW * 0.55, TH * 0.55)).stroke({ width: 2, color: C.ice, alpha: 0.7 });
+      c.addChild(shadow, q, body, cracks);
       c.position.set(sx(sp.gx, sp.gy), sy(sp.gx, sp.gy));
       c.zIndex = sp.gx + sp.gy;
       things.addChild(c);
-      v = { c, body, cracks, lastHp: sp.hp, kind: sp.kind, drop: 9 };
+      v = { c, body, q, cracks, lastHp: sp.hp, kind: sp.kind, drop: 9 };
       spireViews.set(sp.id, v);
     }
     return v;
@@ -365,6 +381,19 @@ export function createPrototype(): Prototype {
     tween(g, { alpha: 0, scale: 1.6 }, ms, ease.outQuad, { onComplete: () => g.destroy() });
   }
 
+  /** Time released by a break flies up to the clock: the cause and the effect stay connected. */
+  function flyToClock(wx: number, wy: number, amount: number, wait = 0): void {
+    if (amount < 0.01 || !uiLayer) return;
+    const size = Math.round(Math.min(54, 22 + amount * 7));
+    const txt = new Text({ text: `+${amount >= 1 ? amount.toFixed(1) : amount.toFixed(2).replace(/0$/, '')}`, style: { fontFamily: FONT, fontSize: size, fill: C.orange, fontWeight: 'bold', stroke: { color: C.night, width: 5 } } });
+    txt.anchor.set(0.5);
+    txt.alpha = 0;
+    const trail = new Trail(uiLayer, { color: C.orange, width: Math.max(5, size / 4), length: 12, alpha: 0.6 });
+    uiLayer.addChild(txt);
+    pendingFly += amount;
+    flyers.push({ txt, trail, t: -wait, dur: 0.75, x0: wx, y0: wy, amount, size });
+  }
+
   function banner(text: string, color = C.ice, size = 46, sub = ''): void {
     bannerSub.text = sub;
     bannerSub.alpha = 0;
@@ -396,16 +425,17 @@ export function createPrototype(): Prototype {
   }
 
   function trayLayout(): void {
-    trayPlates.forEach((p, i) => p.plate.parent && p.plate.parent.position.set(76, 214 + i * 108));
+    trayPlates.forEach((p, i) => p.plate.parent && p.plate.parent.position.set(640 + (i - 2) * 96, 744));
   }
 
   function fmtHint(): string {
     const t = sim.telemetry();
-    if (t.placed === 0) return `${glyph('a')}  place a spire`;
-    if (t.shatters === 0) return `${glyph('x')}  shatter it: time only moves when something breaks`;
-    if (t.shatters < 4 && sim.s.dawn / sim.s.dawnLen < 0.1) return `${glyph('b')} next spire    ${glyph('rt')} jump to the lead enemy`;
-    if (sim.s.dawn / sim.s.dawnLen < 0.12) return `${glyph('lb')} / ${glyph('rb')}  spire    ${glyph('a')}  place    ${glyph('x')}  shatter`;
-    if (sim.s.snap >= 25 && !sim.s.snapReady && t.snaps === 0 && sim.s.dawn / sim.s.dawnLen < 0.6) return 'chains fill the COLD SNAP meter';
+    const s = sim.s;
+    const f = s.dawn / s.dawnLen;
+    if (t.shatters === 0) return `${glyph('x')}  break a spire: time only moves when something breaks`;
+    if (t.solid <= 1 && s.thaw < 5) return `last solid spire: place more while time runs`;
+    if (t.shatters < 4 && f < 0.1) return s.spires.some((p) => p.queued) && s.thaw <= 0 ? `${glyph('x')}  break a solid spire: queued ones set when the clock starts` : `${glyph('a')}  place a spire    ${glyph('b')}  next spire${getDevice() === 'gamepad' ? `    ${glyph('rt')}  to the lead enemy` : ''}`;
+    if (s.snap >= 25 && !s.snapReady && t.snaps === 0 && f < 0.6) return 'chains fill the COLD SNAP meter';
     return '';
   }
 
@@ -555,6 +585,9 @@ export function createPrototype(): Prototype {
 
       // ---- UI (does not shake)
       const ui = v.ui as Container;
+      uiLayer = ui;
+      markG = new Graphics();
+      world.addChild(markG);
       dim = new Graphics().rect(0, 0, 1280, 800).fill(C.night);
       dim.alpha = 0;
       rim = new Graphics();
@@ -589,8 +622,8 @@ export function createPrototype(): Prototype {
 
       // hint + banner
       hintText = mk(26, C.frost, 'normal');
-      hintText.anchor.set(0, 1);
-      hintText.position.set(40, 770);
+      hintText.anchor.set(0.5, 1);
+      hintText.position.set(640, 708);
       ui.addChild(hintText);
       bannerText = mk(46, C.ice);
       bannerText.anchor.set(0.5);
@@ -614,17 +647,16 @@ export function createPrototype(): Prototype {
         const plate = new Graphics();
         const icon = new Graphics();
         drawSpire(icon, k);
-        icon.scale.set(0.42);
-        icon.position.set(0, 18);
+        icon.scale.set(0.36);
+        icon.position.set(0, 12);
         const cost = mk(22, C.frost);
         cost.anchor.set(0.5);
-        cost.position.set(0, 44);
+        cost.position.set(0, 28);
         slot.addChild(plate, icon, cost);
         trayG.addChild(slot);
         trayPlates.push({ plate, icon, cost, kind: k });
       });
       trayLayout();
-
       // cold snap meter
       snapG = new Graphics();
       snapG.position.set(1170, 705);
@@ -661,6 +693,40 @@ export function createPrototype(): Prototype {
       const flowing = s.thaw > 0 && s.phase === 'play';
       const flowK = Math.min(1, s.thaw / 0.35);
 
+      // --- flying time numbers
+      for (let i = flyers.length - 1; i >= 0; i--) {
+        const f = flyers[i];
+        f.t += dt;
+        if (f.t < 0) continue;
+        const p = Math.min(1, f.t / f.dur);
+        const e = p * p * (3 - 2 * p);
+        const ex = 640;
+        const ey = 62;
+        const cx = (f.x0 + ex) / 2 + (f.x0 < 640 ? -90 : 90);
+        const cy = Math.min(f.y0, ey) - 110;
+        const x = (1 - e) * (1 - e) * f.x0 + 2 * (1 - e) * e * cx + e * e * ex;
+        const y = (1 - e) * (1 - e) * f.y0 + 2 * (1 - e) * e * cy + e * e * ey;
+        f.txt.position.set(x, y);
+        f.txt.alpha = Math.min(1, p * 6);
+        f.txt.scale.set(1.25 - 0.55 * e);
+        f.trail.push(x, y);
+        f.trail.draw();
+        if (p >= 1) {
+          pendingFly = Math.max(0, pendingFly - f.amount);
+          arrivals = arrivalT > 0 ? Math.min(12, arrivals + 1) : 0;
+          arrivalT = 0.5;
+          play('sw-ice', { pitch: wholeTone(arrivals), volume: 0.5 + Math.min(0.4, f.amount / 6) });
+          punch(thawText, Math.min(0.5, 0.12 + f.amount / 10));
+          thawFlash = 1;
+          f.trail.gfx.destroy();
+          f.txt.destroy();
+          flyers.splice(i, 1);
+        }
+      }
+      arrivalT = Math.max(0, arrivalT - dt);
+      thawFlash = Math.max(0, thawFlash - dt * 3);
+      const shownThaw = Math.max(0, s.thaw - pendingFly);
+
       // --- spires
       const live = new Set<number>();
       for (const sp of s.spires) {
@@ -686,6 +752,11 @@ export function createPrototype(): Prototype {
         v.body.y = -46 * fall;
         const sq = dk < 1 ? 1 + 0.25 * fall : 1;
         v.body.scale.set(1 / sq + (sp.kind === 'lantern' && flowing ? 0.03 * Math.sin(timeNow() * 6) : 0), sq);
+        const qp = 0.5 + 0.5 * Math.sin(timeNow() * 5 + sp.id);
+        v.body.alpha = sp.queued ? 0.32 + 0.14 * qp : 1;
+        v.cracks.alpha = v.body.alpha;
+        v.q.visible = sp.queued;
+        v.q.alpha = 0.5 + 0.4 * qp;
         v.body.tint = sp.crack >= 0 ? (Math.floor(timeNow() * 30) % 2 ? C.orange : C.glow) : 0xffffff;
       }
       for (const [id, v] of spireViews) if (!live.has(id)) { v.c.destroy({ children: true }); spireViews.delete(id); }
@@ -811,6 +882,17 @@ export function createPrototype(): Prototype {
           etaG.poly(diamondPts(sx(gx, gy), sy(gx, gy), 30, 16)).stroke({ width: 3, color: C.orange, alpha: 0.5 + 0.3 * Math.sin(timeNow() * 5) });
         }
       }
+      // --- before the first break: bobbing arrows over every spire you can break
+      markG.clear();
+      if (s.phase === 'play' && sim.telemetry().shatters === 0) {
+        for (const sp of s.spires) {
+          if (sp.queued) continue;
+          const bob = Math.sin(timeNow() * 5) * 6;
+          const mx = sx(sp.gx, sp.gy);
+          const my = sy(sp.gx, sp.gy) - 108 + bob;
+          markG.poly([mx - 13, my - 16, mx + 13, my - 16, mx, my + 6]).fill(C.orange).stroke({ width: 3, color: C.glow, join: 'round' });
+        }
+      }
       // --- danger: the closer the lead enemy gets, the harder the beacon's hearts throb
       let lead = 99;
       for (const e of s.enemies) lead = Math.min(lead, e.flier ? Math.hypot(sim.path.beacon[0] - e.x, sim.path.beacon[1] - e.y) : sim.path.len - e.s);
@@ -857,8 +939,8 @@ export function createPrototype(): Prototype {
       nightText.text = s.endless ? `POLAR NIGHT  ${Math.floor(s.polar / 60)}:${String(Math.floor(s.polar % 60)).padStart(2, '0')}` : '';
       thawBar.clear();
       thawBar.roundRect(540, 58, 200, 10, 5).fill({ color: C.night, alpha: 0.7 });
-      if (s.thaw > 0) thawBar.roundRect(540, 58, Math.max(10, 200 * Math.min(1, s.thaw / 12)), 10, 5).fill(s.thaw > 12 ? C.glow : C.orange);
-      thawText.text = s.phase !== 'play' ? '' : s.thaw > 0 ? `TIME  ${s.thaw.toFixed(1)}` : 'FROZEN';
+      if (shownThaw > 0) thawBar.roundRect(540, 58, Math.max(10, 200 * Math.min(1, shownThaw / 12)), 10, 5).fill(shownThaw > 12 || thawFlash > 0.5 ? C.glow : C.orange);
+      thawText.text = s.phase !== 'play' ? '' : s.thaw > 0 ? `TIME  ${shownThaw.toFixed(1)}` : 'FROZEN';
       thawText.style.fill = s.thaw > 0 ? C.orange : C.frost;
       thawText.position.set(640, 70);
 
@@ -867,13 +949,36 @@ export function createPrototype(): Prototype {
         const open = s.unlockedSet.has(p.kind);
         const sel = s.sel === p.kind;
         p.plate.clear();
-        p.plate.roundRect(-49, -34, 98, 94, 12).fill({ color: C.night, alpha: 0.82 }).stroke({ width: sel ? 4 : 2, color: sel ? C.ice : C.deep });
+        p.plate.roundRect(-44, -32, 88, 76, 12).fill({ color: C.night, alpha: 0.82 }).stroke({ width: sel ? 4 : 2, color: sel ? C.ice : C.deep });
         p.icon.alpha = open ? 1 : 0.18;
         p.icon.tint = open ? 0xffffff : 0x5e8fb5;
         p.cost.text = open ? `${SPIRE[p.kind].cost}` : `${Math.round(SPIRE[p.kind].unlock * 100)}%`;
         p.cost.style.fill = !open ? C.deep : s.ice >= SPIRE[p.kind].cost ? C.ice : C.mid;
-        (p.plate.parent as Container).position.set(sel ? 84 : 76, 214 + i * 108);
+        (p.plate.parent as Container).position.set(640 + (i - 2) * 96, sel ? 732 : 744);
       });
+      if (!bumpers.length) {
+        // LB / RB mark the ends of the tray so it reads as something the bumpers cycle
+        for (const side of ['lb', 'rb'] as const) {
+          const pill = new Graphics();
+          const label = new Text({ text: '', style: { fontFamily: FONT, fontSize: 24, fill: C.ice, fontWeight: 'bold' } });
+          label.anchor.set(0.5);
+          const cx = side === 'lb' ? 640 - 2 * 96 - 78 : 640 + 2 * 96 + 78;
+          pill.position.set(cx, 744);
+          label.position.set(cx, 744);
+          trayG.addChild(pill, label);
+          bumpers.push({ side, pill, label, shown: '' });
+        }
+      }
+      for (const b of bumpers) {
+        const txt = glyph(b.side);
+        if (txt !== b.shown) {
+          b.shown = txt;
+          b.label.text = txt;
+          const w = Math.max(54, b.label.width + 26);
+          b.pill.clear().roundRect(-w / 2, -20, w, 40, 14).fill({ color: C.night, alpha: 0.85 }).stroke({ width: 3, color: C.frost });
+        }
+        b.label.alpha = b.pill.alpha = s.unlockedSet.size > 1 ? 1 : 0.55;
+      }
 
       // cold snap meter
       snapG.clear();
@@ -933,14 +1038,28 @@ export function createPrototype(): Prototype {
           sunrise = 0;
           sunG.alpha = 0;
           endC.visible = false;
+          for (const f of flyers) { f.trail.gfx.destroy(); f.txt.destroy(); }
+          flyers = [];
+          pendingFly = 0;
           faultC.removeChildren();
           for (const d of decals) d.g.destroy();
           decals = [];
+      flyers = [];
+      pendingFly = 0;
+      bumpers = [];
           beacon.alpha = 1;
           setBeaconHearts();
           lastPartsKey = '';
           unlockedSeen = 1;
           if (mset) music.play(mset.loop, partsFor({ dawn: 0, flowing: false, snapping: false, over: false }));
+          break;
+        }
+        case 'solidify': {
+          const sp = s.spires.find((p) => p.gx === x && p.gy === y);
+          if (sp) spireView(sp).drop = 0.17;
+          ring(X, Y, C.ice, 60, 360, 3);
+          particles.emit('sparks', X, Y - 20, { count: 8, color: C.ice, speed: 0.8, size: 0.7 });
+          play('sw-solid', { pan, variation: 0.06 });
           break;
         }
         case 'cursor':
@@ -953,6 +1072,7 @@ export function createPrototype(): Prototype {
         case 'deny':
           play('sw-deny', { pan });
           punch(cursorG, 0.12);
+          if (data.why === 'queued') numberPop(view.world as Container, 'queued', X, Y - 60, { color: C.frost, size: 24, rise: 20, ms: 700 });
           if (data.why === 'ice') { punch(iceText, 0.35); iceText.tint = C.orange; tween(iceText, { tint: 0xffffff }, 600, ease.outQuad); }
           break;
         case 'place': {
@@ -990,7 +1110,7 @@ export function createPrototype(): Prototype {
           ring(X, Y, C.ice, 90, 360, 3);
           scorch(x, y, 30 + depth * 4 + (kind === 'lantern' ? 14 : 0));
           flashDiamond(X, Y - 20, C.ice, 160 + depth * 20, 240);
-          numberPop(view.world as Container, `+${Number(data.thaw).toFixed(1)}s`, X, Y - 80, { color: C.orange, size: 28 + Math.min(18, depth * 4), rise: 40, ms: 800 });
+          flyToClock(X, Y - 50, Number(data.thaw), 0.05);
           play('sw-glass', { pitch: 1 + (kind === 'chime' ? 0.2 : 0), pan, volume: 0.7 + big * 0.3 });
           if (melted) { play('sw-melt', { pan }); numberPop(view.world as Container, 'melted', X, Y - 40, { color: C.glow, size: 24, rise: 24, ms: 700 }); }
           if (eaten) { play('sw-eaten', { pan }); numberPop(view.world as Container, 'eaten', X, Y - 40, { color: C.frost, size: 24, rise: 24, ms: 700 }); }
@@ -1069,6 +1189,7 @@ export function createPrototype(): Prototype {
           particles.emit('debris', X, Y - 28, { count: 6, color: C.mid, speed: 0.9, size: 1.1 });
           if (data.blast) particles.emit('sparks', X, Y - 28, { count: 12, color: C.orange, speed: 1.6, size: 0.9 });
           numberPop(view.world as Container, `+${ENEMY[kind].ice}`, X, Y - 56, { color: C.ice, size: 26, rise: 30, ms: 650 });
+          flyToClock(X, Y - 70, Number(data.thaw), vfxRange(0, 0.15));
           play('sw-kill', { pitch: 0.8 + bigK * 0.4, variation: 0.08, pan, volume: 0.6 + bigK * 0.4 });
           // the ice ping climbs in whole tones while kills chain, then falls back
           play('sw-ice', { pitch: wholeTone(streak - 1), pan });
@@ -1085,6 +1206,7 @@ export function createPrototype(): Prototype {
           ring(X, Y, C.ice, 280, 600, 5);
           flashDiamond(X, Y - 30, C.orange, 380, 420);
           flash(beacon, C.orange, 260);
+          flyToClock(X, Y - 90, Number(data.thaw), 0.1);
           setBeaconHearts();
           play('sw-heart');
           play('sw-heart-low');
@@ -1187,7 +1309,7 @@ export function createPrototype(): Prototype {
           play('sw-gift');
           break;
         case 'gameover': {
-          endTitle.text = 'THE BEACON WENT DARK';
+          endTitle.text = data.reason === 'stuck' ? 'NOTHING LEFT TO BREAK' : 'THE BEACON WENT DARK';
           endTitle.style.fill = C.frost;
           endTitle.style.fontSize = 64;
           { const tl = sim.telemetry(); const pn = s.endless ? `held ${Math.floor(s.polar / 60)}:${String(Math.floor(s.polar % 60)).padStart(2, '0')} into the Polar Night` : `${Math.round(Number(data.dawn) * 100)}% of the way to dawn`; endSub.text = `${pn}  ·  ${tl.kills} kills  ·  best chain ${tl.maxChain}\n${glyph('a')}: try again`; }

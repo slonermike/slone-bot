@@ -21,6 +21,13 @@ function fresh(seed = 1, balance: Record<string, number> = {}): Sim {
   return sim;
 }
 const run = (sim: Sim, seconds: number): void => { for (let i = 0; i < seconds * 60; i++) sim.step(1 / 60, blankInput()); };
+const settle = (sim: Sim): void => { for (const p of sim.s.spires) p.queued = false; };
+/** Put the cursor on a solid starting spire and shatter it. */
+function breakStarter(sim: Sim): void {
+  const sp = sim.s.spires.find((p) => !p.queued)!;
+  sim.s.cx = sp.gx; sim.s.cy = sp.gy;
+  sim.step(1 / 60, press('x'));
+}
 /** Place a spike at the first buildable cell and return it. */
 function placeAt(sim: Sim, gx: number, gy: number, kind = 'spike'): void {
   sim.s.cx = gx;
@@ -50,6 +57,32 @@ describe('Stillwinter maps', () => {
 });
 
 describe('Stillwinter core rule: time only moves when something breaks', () => {
+  it('the board starts with solid spires, and spires placed while frozen are queued', () => {
+    const sim = fresh();
+    expect(sim.s.spires.length).toBe(3);
+    expect(sim.s.spires.every((p) => !p.queued)).toBe(true);
+    placeAt(sim, 4, 0);
+    const q = sim.s.spires.find((p) => p.gx === 4 && p.gy === 0)!;
+    expect(q.queued).toBe(true);
+    sim.step(1 / 60, press('x')); // cursor is on the queued spire: denied
+    expect(sim.s.spires.includes(q)).toBe(true);
+    expect(sim.events().some((e) => e.type === 'deny' && e.data?.why === 'queued')).toBe(true);
+    const solid = sim.s.spires.find((p) => !p.queued)!;
+    sim.s.cx = solid.gx; sim.s.cy = solid.gy;
+    sim.step(1 / 60, press('x'));
+    sim.step(1 / 60, blankInput());
+    expect(q.queued).toBe(false); // the clock started: it is real now
+  });
+
+  it('with nothing solid left to break and the clock stopped, the run is lost', () => {
+    const sim = fresh();
+    for (const p of [...sim.s.spires]) p.queued = true;
+    sim.s.thaw = 0;
+    sim.step(1 / 60, blankInput());
+    expect(sim.s.phase).toBe('over');
+    expect(sim.events().some((e) => e.type === 'gameover' && e.data?.reason === 'stuck')).toBe(true);
+  });
+
   it('nothing moves while frozen, however long you wait', () => {
     const sim = fresh();
     placeAt(sim, 4, 0);
@@ -61,8 +94,7 @@ describe('Stillwinter core rule: time only moves when something breaks', () => {
 
   it('shattering releases time, and time runs the clock down to a stop', () => {
     const sim = fresh();
-    placeAt(sim, 4, 0);
-    sim.step(1 / 60, press('x'));
+    breakStarter(sim);
     expect(sim.s.thaw).toBeGreaterThan(2);
     run(sim, 1);
     expect(sim.s.dawn).toBeGreaterThan(0.5);
@@ -79,11 +111,13 @@ describe('Stillwinter core rule: time only moves when something breaks', () => {
     const ice0 = sim.s.ice;
     placeAt(sim, 4, 0);
     expect(sim.s.ice).toBe(ice0 - SPIRE.spike.cost);
+    settle(sim);
+    sim.s.cx = 4; sim.s.cy = 0;
     sim.step(1 / 60, press('x'));
     expect(sim.s.ice).toBeCloseTo(ice0 - SPIRE.spike.cost + Math.floor(SPIRE.spike.cost / 2), 1);
     sim.s.ice = 0;
     run(sim, 20);
-    expect(sim.s.ice).toBeGreaterThanOrEqual(SPIRE.spike.cost);
+    expect(sim.s.ice).toBeGreaterThan(0.5); // passive ice keeps trickling
   });
 
   it('crystals chain through neighbours and give more time for a longer chain', () => {
@@ -91,6 +125,8 @@ describe('Stillwinter core rule: time only moves when something breaks', () => {
     sim.s.unlockedSet.add('crystal');
     sim.s.ice = 50;
     for (const [x, y] of [[4, 0], [5, 0], [6, 0]]) placeAt(sim, x, y, 'crystal');
+    settle(sim);
+    sim.s.spires = sim.s.spires.filter((p) => p.kind === 'crystal');
     sim.s.cx = 4;
     sim.s.cy = 0;
     expect(sim.chainPreview(4, 0).length).toBe(2);
@@ -132,6 +168,7 @@ describe('Stillwinter controls and bots', () => {
     const ice0 = sim.s.ice;
     placeAt(sim, 4, 0);
     placeAt(sim, 5, 0);
+    settle(sim);
     sim.s.cx = 4; sim.s.cy = 0;
     sim.step(1 / 60, press('x'));
     expect(sim.s.ice).toBeGreaterThan(ice0 - SPIRE.spike.cost * 2 + SPIRE.spike.cost - 0.01);
