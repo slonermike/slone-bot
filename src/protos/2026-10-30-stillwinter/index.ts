@@ -338,6 +338,18 @@ export function createPrototype(): Prototype {
   let endTitle!: Text;
   let endSub!: Text;
   let overlayEnd!: Graphics;
+  let winC!: Container;
+  let winSun!: Graphics;
+  let winRays!: Graphics;
+  let winTitle!: Text;
+  let winTier!: Text;
+  let winPanel!: Graphics;
+  let winRows: { label: Text; value: Text }[] = [];
+  let winHearts!: Graphics;
+  let winPrompt!: Text;
+  let winT = 0;
+  let winFlags = 0;
+  let winConfetti = 0;
 
   let curX = 640;
   let curY = 400;
@@ -480,6 +492,79 @@ export function createPrototype(): Prototype {
 
   function trayLayout(): void {
     trayPlates.forEach((p, i) => p.plate.parent && p.plate.parent.position.set(640 + (i - 2) * 96, 744));
+  }
+
+  function updateWin(dt: number): void {
+    const s = sim.s;
+    const tl = sim.telemetry();
+    winC.visible = true;
+    const lost = s.maxHearts - s.hearts;
+    // sun: rises behind the title with slowly turning rays
+    const rise = ease.outCubic(Math.min(1, winT / 1.6));
+    winSun.clear();
+    winSun.circle(0, 0, 120 * rise).fill({ color: C.glow, alpha: 0.35 });
+    winSun.circle(0, 0, 86 * rise).fill({ color: C.glow, alpha: 0.6 });
+    winSun.circle(0, 0, 54 * rise).fill({ color: 0xfff1d6, alpha: 0.95 });
+    winRays.clear();
+    star(winRays, 24, 420 * rise, 140 * rise, winT * 0.15).fill({ color: C.orange, alpha: 0.28 });
+    star(winRays, 12, 300 * rise, 120 * rise, -winT * 0.2).fill({ color: C.glow, alpha: 0.25 });
+    // title slams in
+    const ts = winT < 0.5 ? 0 : ease.outBack(Math.min(1, (winT - 0.5) / 0.45));
+    winTitle.scale.set(Math.max(0.01, 2.6 - 1.6 * ts));
+    winTitle.alpha = Math.min(1, Math.max(0, (winT - 0.5) / 0.15));
+    if (winT >= 0.55 && !(winFlags & 1)) {
+      winFlags |= 1;
+      shake(0.8);
+      hitStop(6);
+      punch(view.world as Container, 0.05);
+      ring(640, 250, C.glow, 700, 900, 8);
+      particles.emit('sparks', 640, 250, { count: 50, color: C.glow, speed: 2.4, size: 1.2 });
+      play('sw-snap', { pitch: 1.2, volume: 0.9 });
+    }
+    winTier.text = lost === 0 ? 'FLAWLESS: not a single heart lost' : lost <= 2 ? 'THE BEACON HELD' : 'THE BEACON HELD, BARELY';
+    winTier.alpha = Math.min(1, Math.max(0, (winT - 1.0) / 0.3));
+    // tally rows count up one after another
+    const rows: [string, number, string][] = [
+      ['Hearts left', s.hearts, ''],
+      ['Enemies broken', tl.kills, ''],
+      ['Best chain', tl.maxChain, 'x'],
+      ['Shatters', tl.shatters, ''],
+      ['Time released', Math.round(tl.thawedSeconds), 's'],
+    ];
+    winPanel.alpha = Math.min(1, Math.max(0, (winT - 1.2) / 0.3));
+    winHearts.clear();
+    rows.forEach(([label, v, suffix], i) => {
+      const start = 1.5 + i * 0.45;
+      const k = Math.min(1, Math.max(0, (winT - start) / 0.5));
+      const r = winRows[i];
+      r.label.text = label;
+      r.label.alpha = r.value.alpha = winT >= start ? 1 : 0;
+      if (i === 0) {
+        r.value.text = '';
+        for (let h = 0; h < s.maxHearts; h++) {
+          const filled = h < s.hearts && winT >= start + (h / Math.max(1, s.maxHearts)) * 0.5;
+          winHearts.poly(diamondPts(818 - (s.maxHearts - 1 - h) * 24 - 10, 428, 16, 24)).fill(filled ? C.orange : C.slate).stroke({ width: 2, color: filled ? C.glow : C.deep });
+        }
+      } else {
+        r.value.text = `${Math.round(v * ease.outCubic(k))}${suffix}`;
+      }
+      if (winT >= start && !(winFlags & (2 << i))) {
+        winFlags |= 2 << i;
+        play('sw-ice', { pitch: wholeTone(i * 1), volume: 0.7 });
+        punch(r.value, 0.25);
+        if (i === 0) particles.emit('sparks', 818, 428, { count: 12, color: C.orange, speed: 1.2, size: 0.9 });
+      }
+    });
+    // prompts, pulsing
+    const pk = Math.min(1, Math.max(0, (winT - 3.9) / 0.4));
+    winPrompt.text = `${glyph('y')}: Polar Night      ${glyph('a')}: again`;
+    winPrompt.alpha = pk * (0.7 + 0.3 * Math.sin(winT * 6));
+    // confetti keeps falling for the first seconds
+    winConfetti -= dt;
+    if (winConfetti <= 0 && winT < 8) {
+      winConfetti = 0.22;
+      particles.emit('confetti', vfxRange(100, 1180), 40, { count: 10, color: winT % 0.4 < 0.2 ? C.glow : C.ice, speed: 0.9, size: 1.2, angle: Math.PI / 2, spread: 0.7 });
+    }
   }
 
   function fmtHint(): string {
@@ -656,9 +741,10 @@ export function createPrototype(): Prototype {
       const iceIcon = new Graphics();
       drawSpire(iceIcon, 'crystal');
       iceIcon.scale.set(0.5);
-      iceIcon.position.set(48, 70);
-      iceText = mk(40, C.ice);
-      iceText.position.set(78, 28);
+      iceIcon.position.set(196, 760);
+      iceText = mk(44, C.ice);
+      iceText.anchor.set(0, 0.5);
+      iceText.position.set(226, 744);
       ui.addChild(iceIcon, iceText);
 
       // dawn bar
@@ -734,6 +820,38 @@ export function createPrototype(): Prototype {
       endSub.style.align = 'center';
       endSub.style.lineHeight = 48;
       endC.addChild(overlayEnd, endTitle, endSub);
+      // the dawn screen: a rising sun, a slammed title, and a tally that counts itself up
+      winC = new Container();
+      winSun = new Graphics();
+      winRays = new Graphics();
+      winSun.position.set(640, 250);
+      winRays.position.set(640, 250);
+      winTitle = new Text({ text: 'DAWN', style: { fontFamily: FONT, fontSize: 132, fill: C.ice, fontWeight: 'bold', letterSpacing: 10, stroke: { color: 0x7a3a10, width: 10 } } });
+      winTitle.anchor.set(0.5);
+      winTitle.position.set(640, 250);
+      winTier = mk(36, C.glow);
+      winTier.anchor.set(0.5);
+      winTier.position.set(640, 336);
+      winPanel = new Graphics().roundRect(430, 392, 420, 262, 20).fill({ color: C.night, alpha: 0.82 }).stroke({ width: 4, color: C.orange });
+      winC.addChild(winRays, winSun, winTitle, winTier, winPanel);
+      for (let i = 0; i < 5; i++) {
+        const label = mk(28, C.frost, 'normal');
+        label.anchor.set(0, 0.5);
+        label.position.set(462, 428 + i * 46);
+        const value = mk(34, C.ice);
+        value.anchor.set(1, 0.5);
+        value.position.set(818, 428 + i * 46);
+        winC.addChild(label, value);
+        winRows.push({ label, value });
+      }
+      winHearts = new Graphics();
+      winC.addChild(winHearts);
+      winPrompt = mk(32, C.ice);
+      winPrompt.anchor.set(0.5);
+      winPrompt.position.set(640, 706);
+      winC.addChild(winPrompt);
+      winC.visible = false;
+      endC.addChild(winC);
       endC.visible = false;
       ui.addChild(endC);
 
@@ -1102,7 +1220,7 @@ export function createPrototype(): Prototype {
         sunG.clear();
         sunG.circle(0, 0, 90 * (0.4 + sunrise * 0.6)).fill({ color: C.glow, alpha: 0.9 });
         star(sunG, 16, 190 * sunrise, 100 * sunrise).fill({ color: C.orange, alpha: 0.5 });
-        sunG.alpha = sunrise;
+        sunG.alpha = 0;
       }
 
       // music follows the game: frozen is a pad, flowing wakes the band, the hook rides the snap and the last stretch
@@ -1113,8 +1231,20 @@ export function createPrototype(): Prototype {
       }
 
       // end screens
+      {
+        const keep = new Set<unknown>([dim, rim, endC, bannerText, bannerSub, chainText]);
+        for (const c of uiLayer.children) if (!keep.has(c)) c.visible = s.phase === 'play';
+      }
       const wasEnd = endC.visible;
       endC.visible = s.phase !== 'play';
+      if (s.phase === 'won') {
+        winT += dt;
+        updateWin(dt);
+      } else {
+        winT = 0;
+        winFlags = 0;
+        winC.visible = false;
+      }
       if (endC.visible && !wasEnd) overlayEnd.alpha = 0;
       if (endC.visible) {
         overlayEnd.alpha = Math.min(0.62, overlayEnd.alpha + dt * 0.8);
@@ -1135,6 +1265,7 @@ export function createPrototype(): Prototype {
           sunrise = 0;
           sunG.alpha = 0;
           endC.visible = false;
+          winC.visible = false;
           for (const f of flyers) { f.trail.gfx.destroy(); f.txt.destroy(); }
           flyers = [];
           pendingFly = 0;
@@ -1460,14 +1591,12 @@ export function createPrototype(): Prototype {
           break;
         }
         case 'complete': {
-          endTitle.text = 'DAWN';
-          endTitle.style.fill = C.glow;
-          endTitle.style.fontSize = 96;
-          { const tl = sim.telemetry(); endSub.text = `${sim.s.hearts} of ${sim.s.maxHearts} hearts left  ·  ${tl.kills} kills  ·  best chain ${tl.maxChain}  ·  ${tl.shatters} shatters\n${glyph('y')}: keep going into the Polar Night      ${glyph('a')}: again`; }
+          endTitle.text = '';
+          endSub.text = '';
           overlayEnd.clear().rect(0, 0, 1280, 800).fill(0x3d2210);
-          shake(0.5);
-          particles.emit('confetti', 640, 300, { count: 60, color: C.glow, speed: 1.6, size: 1.4 });
-          particles.emit('sparks', 640, 300, { count: 60, color: C.orange, speed: 2, size: 1.2 });
+          winT = 0;
+          winFlags = 0;
+          winConfetti = 0;
           if (mset) { music.release(1.0); music.stinger(mset.win, { duck: 0.9 }); }
           play('sw-unlock', { pitch: 1.5, volume: 1 });
           break;
