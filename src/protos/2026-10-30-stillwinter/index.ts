@@ -353,7 +353,10 @@ export function createPrototype(): Prototype {
   let winPanel!: Graphics;
   let winRows: { label: Text; value: Text }[] = [];
   let winHearts!: Graphics;
-  let winPrompt!: Text;
+  let cardsC!: Container;
+  let cards: { plate: Graphics; cap: Graphics; glyph: Text; title: Text; sub: Text }[] = [];
+  let cardsSig = '';
+  let overT = 0;
   let winT = 0;
   let winFlags = 0;
   let winConfetti = 0;
@@ -501,6 +504,39 @@ export function createPrototype(): Prototype {
     trayPlates.forEach((p, i) => p.plate.parent && p.plate.parent.position.set(640 + (i - 2) * 96, 744));
   }
 
+  function showCards(defs: [ButtonName, string, string][], alpha: number, clock: number): void {
+    const sig = JSON.stringify([defs, getDevice()]);
+    const cw = 410;
+    const gap = 20;
+    const total = defs.length * cw + (defs.length - 1) * gap;
+    if (sig !== cardsSig) {
+      cardsSig = sig;
+      cards.forEach((c, i) => {
+        const on = i < defs.length;
+        c.plate.visible = c.cap.visible = c.glyph.visible = c.title.visible = c.sub.visible = on;
+        if (!on) return;
+        const x = -total / 2 + i * (cw + gap);
+        c.glyph.text = glyph(defs[i][0]);
+        c.title.text = defs[i][1];
+        c.sub.text = defs[i][2];
+        const capW = Math.max(52, c.glyph.width + 26);
+        c.cap.clear().roundRect(x + 18, -22, capW, 44, 12).fill(C.ice).stroke({ width: 3, color: C.deep });
+        c.cap.roundRect(x + 21, -18, capW - 6, 7, 3).fill({ color: 0xffffff, alpha: 0.6 });
+        c.glyph.position.set(x + 18 + capW / 2, 1);
+        c.title.position.set(x + 18 + capW + 16, -14);
+        c.sub.position.set(x + 18 + capW + 16, 16);
+        (c.plate as unknown as { x0: number }).x0 = x;
+      });
+    }
+    defs.forEach((_, i) => {
+      const x = (cards[i].plate as unknown as { x0: number }).x0;
+      const hot = i === 0 && defs.length > 1 ? 0.5 + 0.5 * Math.sin(clock * 5) : 0;
+      cards[i].plate.clear().roundRect(x, -40, cw, 80, 18).fill({ color: C.night, alpha: 0.9 }).stroke({ width: 3 + hot * 2, color: i === 0 && defs.length > 1 ? C.orange : C.frost });
+    });
+    cardsC.alpha = alpha;
+    cardsC.position.set(640, 716 + (1 - alpha) * 20);
+  }
+
   function updateWin(dt: number): void {
     const s = sim.s;
     const tl = sim.telemetry();
@@ -564,8 +600,7 @@ export function createPrototype(): Prototype {
     });
     // prompts, pulsing
     const pk = Math.min(1, Math.max(0, (winT - 3.9) / 0.4));
-    winPrompt.text = `${glyph('y')}: Polar Night      ${glyph('a')}: again`;
-    winPrompt.alpha = pk * (0.7 + 0.3 * Math.sin(winT * 6));
+    showCards([['y', 'Endless Night', 'No dawn. Waves never stop.'], ['a', 'Play again', 'A fresh night, new map']], pk, winT);
     // confetti keeps falling for the first seconds
     winConfetti -= dt;
     if (winConfetti <= 0 && winT < 8) {
@@ -876,10 +911,23 @@ export function createPrototype(): Prototype {
       }
       winHearts = new Graphics();
       winC.addChild(winHearts);
-      winPrompt = mk(32, C.ice);
-      winPrompt.anchor.set(0.5);
-      winPrompt.position.set(640, 706);
-      winC.addChild(winPrompt);
+      // choice cards (shared by the win and loss screens): a key cap, a title and one line of explanation
+      cardsC = new Container();
+      cardsC.position.set(640, 716);
+      for (let i = 0; i < 2; i++) {
+        const plate = new Graphics();
+        const cap = new Graphics();
+        const g = mk(26, C.night);
+        g.anchor.set(0.5);
+        const title = mk(32, C.ice);
+        title.anchor.set(0, 0.5);
+        const sub = mk(22, C.frost, 'normal');
+        sub.anchor.set(0, 0.5);
+        cardsC.addChild(plate, cap, g, title, sub);
+        cards.push({ plate, cap, glyph: g, title, sub });
+      }
+      cardsC.alpha = 0;
+      endC.addChild(cardsC);
       winC.visible = false;
       endC.addChild(winC);
       endC.visible = false;
@@ -1189,7 +1237,7 @@ export function createPrototype(): Prototype {
         if (u > 0) dawnBar.poly(diamondPts(bx + bw * u, 38, 10, 16)).fill(f >= u ? C.ice : C.deep).stroke({ width: 2, color: C.slate });
       }
       star(dawnBar, 8, 17, 8, 0, bx + bw + 24, 38).fill(f >= 1 ? C.glow : C.orange);
-      nightText.text = s.endless ? `POLAR NIGHT  ${Math.floor(s.polar / 60)}:${String(Math.floor(s.polar % 60)).padStart(2, '0')}` : '';
+      nightText.text = s.endless ? `ENDLESS NIGHT  ${Math.floor(s.polar / 60)}:${String(Math.floor(s.polar % 60)).padStart(2, '0')}` : '';
       // the clock: a spiky ice crystal while frozen, a round dial with a sweeping hand while time flows
       thawBar.clear();
       const R = 50;
@@ -1330,6 +1378,10 @@ export function createPrototype(): Prototype {
       }
       const wasEnd = endC.visible;
       endC.visible = s.phase === 'over' || s.phase === 'won';
+      if (s.phase === 'over') {
+        overT += dt;
+        showCards([['a', 'Try again', 'Same night, fresh start']], Math.min(1, Math.max(0, (overT - 1.0) / 0.4)), overT);
+      } else if (s.phase !== 'won') overT = 0;
       if (s.phase === 'won') {
         winT += dt;
         updateWin(dt);
@@ -1694,7 +1746,7 @@ export function createPrototype(): Prototype {
           play('sw-dawn-step', { pitch: wholeTone(Number(data.step) - 1) });
           break;
         case 'endless':
-          banner('POLAR NIGHT', C.frost, 64, 'no dawn this time: hold the beacon as long as you can');
+          banner('ENDLESS NIGHT', C.frost, 64, 'no dawn this time: hold the beacon for as long as you can');
           endC.visible = false;
           tween(sunG, { alpha: 0 }, 900, ease.outQuad);
           sunrise = 0;
@@ -1711,7 +1763,7 @@ export function createPrototype(): Prototype {
           endTitle.text = data.reason === 'stuck' ? 'NOTHING LEFT TO BREAK' : 'THE BEACON WENT DARK';
           endTitle.style.fill = C.frost;
           endTitle.style.fontSize = 64;
-          { const tl = sim.telemetry(); const pn = s.endless ? `held ${Math.floor(s.polar / 60)}:${String(Math.floor(s.polar % 60)).padStart(2, '0')} into the Polar Night` : `${Math.round(Number(data.dawn) * 100)}% of the way to dawn`; endSub.text = `${pn}  ·  ${tl.kills} kills  ·  best chain ${tl.maxChain}\n${glyph('a')}: try again`; }
+          { const tl = sim.telemetry(); const pn = s.endless ? `held ${Math.floor(s.polar / 60)}:${String(Math.floor(s.polar % 60)).padStart(2, '0')} into the Endless Night` : `${Math.round(Number(data.dawn) * 100)}% of the way to dawn`; endSub.text = `${pn}  ·  ${tl.kills} kills  ·  best chain ${tl.maxChain}`; overT = 0; }
           overlayEnd.clear().rect(0, 0, 1280, 800).fill(C.night);
           shake(0.9);
           particles.emit('debris', X, Y - 90, { count: 60, color: C.ice, speed: 2.4, size: 1.5 });

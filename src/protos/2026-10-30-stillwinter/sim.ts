@@ -208,7 +208,7 @@ export interface SimState {
   faultsShown: boolean;
   /** A warm front: a row (axis 0) or column (axis 1) that will melt its spires when `t` runs out. */
   front: { axis: 0 | 1; idx: number; t: number; total: number } | null;
-  /** After dawn, the player can keep going into the Polar Night: no end but the beacon going dark. */
+  /** After dawn, the player can keep going into the Endless Night: no end but the beacon going dark. */
   endless: boolean;
   polar: number;
 }
