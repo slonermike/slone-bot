@@ -180,7 +180,7 @@ export function createSim() {
     for (let r = 0; r < s.cfg.reps; r++) {
       for (const c of pass) s.notes.push({ id: nextId++, lane: c.lane, t: r * L + c.t, len: c.len, state: 'live' as NoteState, pair: false, kind: c.kind, midi: c.midi });
     }
-    for (const n of s.notes) n.pair = s.notes.some((m) => m !== n && Math.abs(m.t - n.t) < 1e-6);
+    for (const n of s.notes) n.pair = s.notes.some((m) => m !== n && Math.abs(m.t - n.t) < 0.03);
     s.notesTotal += s.notes.length;
     s.endT = s.cfg.reps * L + 1.2;
     emit({ type: 'set-start', magnitude: 0.6, data: { set: i, bpm: songFor(i).tempo } });

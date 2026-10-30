@@ -15,6 +15,8 @@ export const LANE_LABEL = ['SNARE', 'MELODY', 'KICK', 'BASS'] as const;
 export interface ChartCfg {
   kinds: Kind[];
   holds: boolean;
+  /** Which instruments may become holds (default: melody and bass). */
+  holdKinds?: Kind[];
   /** Most notes allowed to start inside any one second. */
   maxPerSec: number;
   /** Fewest seconds between two notes in one lane, by kind. */
@@ -115,7 +117,7 @@ export function chartFromSong(song: Song, cfg: ChartCfg, loopSeconds: number): S
   if (cfg.holds) {
     let k = 0;
     for (const n of kept) {
-      if (n.kind !== 'lead' && n.kind !== 'bass') continue;
+      if (!(cfg.holdKinds ?? ['lead', 'bass']).includes(n.kind)) continue;
       const next = kept.find((m) => m !== n && m.lane === n.lane && m.t > n.t);
       // the thumb is busy while a button is held: nothing on the opposite button may start until it is released
       const blocker = kept.find((m) => opposite(m.lane, n.lane) && m.t >= n.t - EPS && m.t > n.t - 0.001 && m.t < n.t + 2.2);

@@ -22,7 +22,8 @@ const ARROWS = ['\u2191', '\u2192', '\u2193', '\u2190'];
 const laneGlyph = (lane: number) => (getDevice() === 'keyboard' ? ARROWS[lane]! : glyph(LANE_BUTTON[lane]!));
 const hintFor = (set: number): Parameters<typeof hintPlate>[0] => [
   ['Every note is part of the song. Play it:', { key: laneGlyph(2) }, 'kick', { key: laneGlyph(0) }, 'snare', { key: laneGlyph(1) }, 'melody'],
-  [{ key: laneGlyph(3) }, 'bass joins. Long notes: press, then hold to the tail'],
+  ['Long melody notes: press, then keep holding to the tail'],
+  [{ key: laneGlyph(3) }, 'bass joins. Linked notes are struck together'],
   ['Six-eight: the beat sways in threes. Hold the bass'],
   ['Finale: the whole band. Play it all'],
 ][set]!;
@@ -600,6 +601,7 @@ export function createPrototype(): Prototype {
   function drawNotes(tNow: number): void {
     const ap = bal('approach');
     linkG.clear();
+    let prev: { t: number; x: number; y: number } | null = null;
     for (const n of s.notes) {
       const v0 = noteViews.get(n.id);
       const alive = n.state === 'live' || n.state === 'holding';
@@ -627,6 +629,15 @@ export function createPrototype(): Prototype {
         v.g.scale.set(sc * (holding ? 1 + 0.08 * Math.sin(time * 30) : 1));
         v.g.alpha = Math.min(1, p / 0.08 + 0.1);
       }
+      // notes struck together are tied with a rope (they are always on neighbouring lanes, so the rope never hides under a lane line)
+      if (alive && !v.fading) {
+        if (prev && Math.abs(prev.t - n.t) < 0.03) {
+          linkG.moveTo(prev.x, prev.y).lineTo(pos.x, pos.y).stroke({ width: 14, color: C.ink, cap: 'round' });
+          linkG.moveTo(prev.x, prev.y).lineTo(pos.x, pos.y).stroke({ width: 6, color: C.white, cap: 'round' });
+          linkG.circle((prev.x + pos.x) / 2, (prev.y + pos.y) / 2, 7).fill(C.white).stroke({ width: 4, color: C.ink });
+        }
+        prev = { t: n.t, x: pos.x, y: pos.y };
+      } else prev = null;
       if (v.ribbon && !v.fading) {
         const pt = Math.max(0, 1 - (n.t + n.len - tNow) / ap);
         const a = lanePoint(n.lane, pt);

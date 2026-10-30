@@ -33,7 +33,7 @@ function perfectInput(s: ReturnType<typeof freshSim>['s']) {
 }
 
 describe('the chart is the song', () => {
-  const sets = [0, 1, 2, 3];
+  const sets = [0, 1, 2, 3, 4];
   it('every note the player must hit is a real event in the song', () => {
     for (const i of sets) {
       const song = songFor(i);
@@ -100,14 +100,30 @@ describe('the chart is the song', () => {
       void L;
     }
   });
-  it('the four songs really differ in tempo, key, mode and feel', () => {
+  it('the five songs really differ in tempo, key, mode and feel', () => {
     const songs = sets.map(songFor);
-    expect(new Set(songs.map((s) => s.tempo)).size).toBe(4);
-    expect(new Set(songs.map((s) => s.root)).size).toBe(4);
-    expect(new Set(songs.map((s) => s.scale)).size).toBeGreaterThanOrEqual(3);
+    expect(new Set(songs.map((s) => s.tempo)).size).toBe(5);
+    expect(new Set(songs.map((s) => s.root)).size).toBeGreaterThanOrEqual(4);
+    expect(new Set(songs.map((s) => s.scale)).size).toBeGreaterThanOrEqual(4);
     expect(new Set(songs.map((s) => s.meter)).size).toBeGreaterThanOrEqual(2);
     expect(Math.max(...songs.map((s) => s.tempo)) - Math.min(...songs.map((s) => s.tempo))).toBeGreaterThan(40);
-    expect(barBeats(2)).toBe(3);
+    expect(barBeats(3)).toBe(3);
+    expect(Math.max(...songs.map((s) => s.tempo))).toBeGreaterThanOrEqual(160); // the frantic jam
+  });
+  it('the difficulty ramps in small steps: no set asks for much more than the one before, and the second set adds no lane', () => {
+    const rate = sets.map((i) => chartFor(i).length / loopSeconds(i));
+    const lanes = sets.map((i) => new Set(chartFor(i).map((n) => n.lane)).size);
+    expect(lanes[1]).toBe(lanes[0]);
+    expect(rate[1]! - rate[0]!).toBeLessThanOrEqual(0.6);
+    expect(rate[1]!).toBeLessThanOrEqual(2.1);
+    for (let i = 1; i < sets.length; i++) expect(rate[i]! - rate[i - 1]!, `set ${i} vs ${i - 1}`).toBeLessThanOrEqual(0.7);
+  });
+  it('notes struck together are flagged as a pair (so the screen can tie them), and no other note is', () => {
+    const { s } = freshSim(1);
+    const ns = s.notes;
+    for (const n of ns) expect(n.pair).toBe(ns.some((m) => m !== n && Math.abs(m.t - n.t) < 0.03));
+    // later sets do contain doubles
+    expect(chartFor(2).some((n) => chartFor(2).some((m) => m !== n && Math.abs(m.t - n.t) < 0.03))).toBe(true);
   });
   it('the sim plays the loop through its repetitions on the song clock', () => {
     const { s } = freshSim(3);
@@ -232,7 +248,7 @@ describe('bots', () => {
   it('the greedy bot finishes all four sets and scores far above idle', () => {
     const g = run('greedy');
     expect(g.outcome).toBe('completed');
-    expect(g.metrics.setReached).toBe(4);
+    expect(g.metrics.setReached).toBe(5);
     expect(g.metrics.score).toBeGreaterThan(30000);
   });
   it('mashing every lane and stamp-farming both lose the run and score far below the greedy bot', () => {

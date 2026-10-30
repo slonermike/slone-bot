@@ -28,19 +28,27 @@ export const SET_DEFS: SetDef[] = [
     name: 'Sketch', info: '118 BPM, A minor, driving rock',
     spec: { name: 'Sketch Drive', description: 'Driving minor rock: galloping saw bass, square lead.', style: 'driving rock chase', mood: 'tense', mode: 'minor', root: 57, seed: 9, bpm: 118, meter: '4/4',
       feel: { drums: 'rock', bass: 'gallop', bassVoice: 'saw', leadVoice: 'square', arp: 0.6, arpStep: 0.5, sync: 0.3, density: 0.7, harmony: true } },
-    chart: { kinds: ['kick', 'snare', 'lead', 'bass'], holds: true, maxPerSec: 2.4, minGap: { kick: 0.4, snare: 0.4, lead: 0.28, bass: 0.45 }, maxSimul: 2 }, reps: 3,
+    // a gentle second step: still three lanes (no bass yet), a sparser beat, and long melody notes as the one new thing
+    chart: { kinds: ['kick', 'snare', 'lead'], holds: true, holdKinds: ['lead'], maxPerSec: 1.9, minGap: { kick: 0.55, snare: 0.55, lead: 0.36, bass: 0.6 }, maxSimul: 2 }, reps: 3,
+  },
+  {
+    name: 'Turbo', info: '164 BPM, E harmonic minor, frantic',
+    spec: { name: 'Turbo Jam', description: 'A frantic 90s action-stage jam-out: galloping saw bass, shredding square lead, nonstop sixteenth arps.', style: 'frantic 90s action stage', mood: 'tense', mode: 'harmonic minor', root: 52, seed: 33, bpm: 164, meter: '4/4',
+      feel: { drums: 'rock', bass: 'gallop', bassVoice: 'saw', leadVoice: 'square', arp: 0.9, arpStep: 0.5, sync: 0.5, density: 0.9, harmony: true } },
+    // the bass lane joins here; the song is fast but the chart stays readable
+    chart: { kinds: ['kick', 'snare', 'lead', 'bass'], holds: true, holdKinds: ['lead', 'bass'], maxPerSec: 2.1, minGap: { kick: 0.45, snare: 0.45, lead: 0.32, bass: 0.55 }, maxSimul: 2 }, reps: 4,
   },
   {
     name: 'Scrawl', info: '132 BPM, E dorian, swaying 6/8',
     spec: { name: 'Scrawl Waltz', description: 'A swaying 6/8 march in E dorian with a deep sub bass and a flute hook.', style: 'folk march in six', mood: 'wistful', mode: 'dorian', root: 52, seed: 14, bpm: 132, meter: '6/8',
       feel: { drums: 'march', bass: 'groups', bassVoice: 'sub', leadVoice: 'flute', arp: 0.3, sync: 0.2, density: 0.5, harmony: true } },
-    chart: { kinds: ['kick', 'snare', 'lead', 'bass'], holds: true, maxPerSec: 2.7, minGap: { kick: 0.38, snare: 0.38, lead: 0.26, bass: 0.45 }, maxSimul: 2 }, reps: 5,
+    chart: { kinds: ['kick', 'snare', 'lead', 'bass'], holds: true, holdKinds: ['lead', 'bass'], maxPerSec: 2.3, minGap: { kick: 0.38, snare: 0.38, lead: 0.26, bass: 0.45 }, maxSimul: 2 }, reps: 5,
   },
   {
     name: 'Finale', info: '146 BPM, G lydian, soaring',
     spec: { name: 'Finale Rush', description: 'A fast, bright lydian rush with eighth-note saw bass and a square lead.', style: 'bright arcade rush', mood: 'triumphant', mode: 'lydian', root: 55, seed: 21, bpm: 146, meter: '4/4',
       feel: { drums: 'four', bass: 'eighths', bassVoice: 'saw', leadVoice: 'square', arp: 0.7, arpStep: 0.5, sync: 0.4, density: 0.8, harmony: true } },
-    chart: { kinds: ['kick', 'snare', 'lead', 'bass'], holds: true, maxPerSec: 2.9, minGap: { kick: 0.36, snare: 0.36, lead: 0.25, bass: 0.4 }, maxSimul: 2 }, reps: 4,
+    chart: { kinds: ['kick', 'snare', 'lead', 'bass'], holds: true, holdKinds: ['lead', 'bass'], maxPerSec: 2.7, minGap: { kick: 0.36, snare: 0.36, lead: 0.25, bass: 0.4 }, maxSimul: 2 }, reps: 4,
   },
 ];
 
