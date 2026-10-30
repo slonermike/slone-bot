@@ -638,5 +638,149 @@
       }
     ],
     "used": null
+  },
+  {
+    "id": "t080",
+    "text": "Watching something barren come alive because of you",
+    "type": "feeling",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t081",
+    "text": "Restoring color to somewhere that lost it",
+    "type": "feeling",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t082",
+    "text": "Always one mistake from disaster and one move from glory",
+    "type": "feeling",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t083",
+    "text": "Unashamedly silly, and proud of it",
+    "type": "feeling",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t084",
+    "text": "A surprise you made without trying",
+    "type": "feeling",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t085",
+    "text": "A garden growing out of the ruins",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t086",
+    "text": "A place that is quietly healing itself",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t087",
+    "text": "Every move shows what the world could become",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t088",
+    "text": "A toy that builds things you did not plan",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t089",
+    "text": "One resource, two ways to spend it, and giving up either hurts",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t090",
+    "text": "The bigger you get, the more the world changes",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t091",
+    "text": "A boost that is powerful because it is dangerous",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t092",
+    "text": "One ability, and the world keeps asking it new questions",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t093",
+    "text": "The world has more sides than you can see at once",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t094",
+    "text": "Every challenge ends before it gets old",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t095",
+    "text": "A puzzle with no instructions, only clues you can see",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
   }
 ]
