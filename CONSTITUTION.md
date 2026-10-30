@@ -51,10 +51,10 @@ Every run logs every file it opens outside the allowed set in the post mortem ru
 Each night's brief must be built around: **one theme** (from the theme script's n=3 options), **two random atoms** from the concept library, and **at most one wildcard constraint** (e.g. one button only, camera never moves, 60 seconds max, no player character). The brief must include a "what is different from the last five nights" line, written from the ledger only.
 
 ## 9. Time and cost
-- Budget: 3 hours wrap-up, 3.5 hours pencils-down, measured by wall clock. Stamp the start with `night-state.mjs start`; check elapsed time at every phase boundary and before every long command. Give builds, bot runs, and downloads their own timeouts.
-- **Wrap-up (3:00):** stop starting features. Freeze scope. Bot tests, one fix pass, manifest, feedback sheet, post mortem.
-- **Pencils-down (3:30):** stop editing. Ship the last build that passed the smoke test, or leave the previous prototype as latest. Write the post mortem.
-- Phase times: ideation 20 min, core verb up to 60 (first playable by about 0:45), then iterate in rounds of play, note, change until wrap-up, then wrap 30. These are not targets to beat. Finishing early means the loop did not run: `night-state.mjs checkpoint done` is refused before 2:30 or without 3 rounds and a step-back, unless `--early --reason` explains why (doc 06, "Iterate").
+- Budget: wrap-up at 1:15, pencils-down at 1:30 (the night targets about 90 minutes), measured by wall clock. Stamp the start with `night-state.mjs start`; check elapsed time at every phase boundary and before every long command. Give builds, bot runs, and downloads their own timeouts.
+- **Wrap-up (1:15):** stop starting features. Freeze scope. Bot tests, one fix pass, manifest, feedback sheet, post mortem.
+- **Pencils-down (1:30):** stop editing. Ship the last build that passed the smoke test, or leave the previous prototype as latest. Write the post mortem.
+- Phase times: ideation 10 min, core verb up to 25 (first playable by about 0:30), then iterate in rounds of play, note, change until wrap-up, then wrap 15. These are not targets to beat. Finishing early means the loop did not run: `night-state.mjs checkpoint done` is refused before 1:00 or without 3 rounds and a step-back, unless `--early --reason` explains why (doc 06, "Iterate").
 - Keep context small: short docs read up front, bulky work (bot runs, log parsing, asset hunting) delegated or written to files with summary-only output.
 - Write a checkpoint to `NIGHT_STATE.md` after each phase so a dead or compacted run can resume.
 - If a `PAUSE` file exists on main at start, do nothing and exit.

@@ -5,16 +5,16 @@ How a scheduled nightly agent runs, start to finish. The scheduled task prompt i
 ## Scheduled task prompt (to be set after the scaffold exists)
 "Run tonight's prototype. Read CLAUDE.md, then follow docs/tech/06-nightly-run-protocol.md. Do not ask questions."
 
-## Phases and time (3:30 hard stop)
+## Phases and time (1:30 hard stop)
 Games are made by looping, not by passing through stages once: build, play, note what works and what does not, change it, repeat. The phases below are the arc of the night; the middle of it is a loop.
 | # | Phase | Time | Checkpoint written |
 |---|---|---|---|
-| 0 | Start: `PAUSE` check, preflight, stamp start, read docs, check pending feedback | 10 min | `phase: start` |
-| 1 | Ideation: roll themes, genre and look, pick atoms and wildcard, write the brief | 20 min | `phase: brief` |
-| 2 | Core verb: a bare, ugly, playable build, as fast as you can. First playable by about 0:45 | up to 60 min | `phase: core` |
-| 3 | **Iterate:** rounds of play, note, change (see "Iterate"). Feel, audio, music, pressure, bots and the checklist all happen inside the rounds | until 3:00 | `phase: feel`, then `phase: test` |
-| 4 | Wrap: freeze scope, final bots and checklist, manifest, feedback sheet, post mortem, publish, themes, ledger line | 30 min | `phase: done` |
-These times are not targets to finish under. **The night is about three hours of work. Finishing in twenty minutes is not efficiency, it is a failure signal:** it means the loop never ran. `checkpoint done` is refused before 2:30 elapsed, or without 3 logged rounds and 1 step-back, unless you pass `--early --reason "why"` (the reason goes in the post mortem). Check elapsed time at every phase boundary and before any long command; `node scripts/night-state.mjs check` also shows your round count and how long until wrap-up.
+| 0 | Start: `PAUSE` check, preflight, stamp start, read docs, check pending feedback | 5 min | `phase: start` |
+| 1 | Ideation: roll themes, genre and look, pick atoms and wildcard, write the brief | 10 min | `phase: brief` |
+| 2 | Core verb: a bare, ugly, playable build, as fast as you can. First playable by about 0:30 | up to 25 min | `phase: core` |
+| 3 | **Iterate:** rounds of play, note, change (see "Iterate"). Feel, audio, music, pressure, bots and the checklist all happen inside the rounds | until 1:15 | `phase: feel`, then `phase: test` |
+| 4 | Wrap: freeze scope, final bots and checklist, manifest, feedback sheet, post mortem, publish, themes, ledger line | 15 min | `phase: done` |
+These times are not targets to finish under. **The night is about 90 minutes of work (the target will be tuned from what the first nights show). Finishing in twenty minutes is not efficiency, it is a failure signal:** it means the loop never ran. `checkpoint done` is refused before 1:00 elapsed, or without 3 logged rounds and 1 step-back, unless you pass `--early --reason "why"` (the reason goes in the post mortem). Check elapsed time at every phase boundary and before any long command; `node scripts/night-state.mjs check` also shows your round count and how long until wrap-up.
 
 ## Step 0: start
 1. If `PAUSE` exists on main: write a one-line log and exit.
@@ -40,7 +40,7 @@ These times are not targets to finish under. **The night is about three hours of
 - Reusable tech goes to main only when the smoke test passes, with a `SCAFFOLD_API.md` entry.
 
 ## Iterate (the loop that fills the night)
-Blank pages are hard and okay games are easy to improve: once something is playable, ideas for it come fast. So get to playable quickly, then loop until wrap-up. One round is about 20 to 30 minutes:
+Blank pages are hard and okay games are easy to improve: once something is playable, ideas for it come fast. So get to playable quickly, then loop until wrap-up. One round is about 10 to 15 minutes, so expect three or four of them:
 1. **Play.** You cannot feel it, so look and measure like a player would: run the bots (idle, random, greedy) and read the telemetry timeline; save screenshots at the start, mid, a high-pressure moment and an end screen and **open the images**; for a moving game, take a short sequence (the `capture-media` harness steps frames deterministically) and read several frames in order. Watch for: where nothing is happening, where the screen is unreadable, where the bots all behave the same, where the player has no decision to make.
 2. **Note.** Write down what is working, what is not, and the single weakest thing, in plain words. Ask: what is the dullest ten seconds? what would I want to do here that I cannot? what would make a player try one more run? what is the one thing to cut?
 3. **Change.** Fix the weakest thing, plus one idea that adds something (a new decision, a juicier consequence, a surprise, a layer of pressure). Small, testable changes; one commit each.
@@ -56,13 +56,13 @@ A flat game that shipped on plan is worse than a different game that works. When
 - **Signs:** the idle, random and greedy bots all do roughly the same thing after the core phase; you cannot name what is fun in the first minute; the suite keeps flagging the same problem after a fix pass; you are polishing to hide a flat verb; you have been surprised by nothing.
 - **What you may change:** the core verb, the pressure source, the genre (`node scripts/night-state.mjs genre ... --reroll --reason "why"` for a fresh random pick from a new list), the structure of the game, even the question and target feeling if the build points somewhere better. Throw away the core and start the core over if that is faster than rescuing it. Keep the theme unless the theme itself is the problem, and keep the look.
 - **How:** decide quickly (an hour of doubt is worse than a restart). Write what is not working in `runs/<slug>/surprises.md`, then add a `PIVOT:` line to the brief (what changed and why; the old text stays below it). Checkpoint with a note (`node scripts/night-state.mjs checkpoint core "pivot: ..."`).
-- **Limits:** the night is still time-boxed. A pivot must start before 2:00 elapsed so there is time for the feel pass and bots; after that, cut scope instead. Two pivots is plenty. A broken build at pencils-down is still published as broken, and the post mortem says what you tried.
+- **Limits:** the night is still time-boxed. A pivot must start before 0:50 elapsed so there is time for the feel pass and bots; after that, cut scope instead. Two pivots is plenty. A broken build at pencils-down is still published as broken, and the post mortem says what you tried.
 - Say in the post mortem what you changed, what was not working, and whether the pivot helped.
 - A pivot is a round like any other: log it and keep looping.
 
-## Wrap-up (3:00) and pencils-down (3:30)
-- At 3:00: freeze scope (the last step-back should already be behind you). Remaining work: final bots and checklist, a fix pass, manifest, feedback sheet, post mortem. Do not stop before wrap-up because things look finished.
-- At 3:30: stop editing. If the build passes the smoke test and self-review, publish. If not, set `buildStatus: broken`, leave the previous prototype as latest, and log why.
+## Wrap-up (1:15) and pencils-down (1:30)
+- At 1:15: freeze scope (the last step-back should already be behind you). Remaining work: final bots and checklist, a fix pass, manifest, feedback sheet, post mortem. Do not stop before wrap-up because things look finished.
+- At 1:30: stop editing. If the build passes the smoke test and self-review, publish. If not, set `buildStatus: broken`, leave the previous prototype as latest, and log why.
 
 ## Post mortem (about 10 lines; template in doc 04)
 Written to `runs/<slug>/postmortem.md`, copied to the manifest card and the top of the feedback sheet. Facts first (telemetry), beliefs labeled, no self-congratulation, run-health line separate.

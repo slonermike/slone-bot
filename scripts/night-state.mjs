@@ -8,10 +8,10 @@ import { fileURLToPath } from 'node:url';
 import { formatLook, parseLedgerLooks, pickLook } from './looks.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const WRAP_MIN = 180;
-export const PENCILS_MIN = 210;
+export const WRAP_MIN = 75;
+export const PENCILS_MIN = 90;
 // Finishing early is a failure signal: `checkpoint done` needs this much time and this much iteration, or an explicit --early --reason.
-export const MIN_DONE_MIN = 150;
+export const MIN_DONE_MIN = 60;
 export const MIN_ROUNDS = 3;
 const STATE_FILE = () => process.env.NIGHT_STATE_FILE || path.join(ROOT, 'NIGHT_STATE.md');
 const PHASES = ['start', 'brief', 'core', 'feel', 'test', 'done'];
@@ -160,7 +160,7 @@ function main(argv) {
     }
     const s = { night: opt('night') ?? 'tbd', started: now.toISOString(), phase: 'start', branch: 'none', brief: 'none', lastGoodBuild: 'none', notes: [`${now.toISOString()} started`] };
     writeState(s);
-    console.log(`started ${s.started}. Soft wrap-up at 3:00, pencils-down at 3:30.`);
+    console.log(`started ${s.started}. Soft wrap-up at 1:15, pencils-down at 1:30 (target about 90 minutes).`);
   } else if (cmd === 'checkpoint') {
     const s = readState();
     if (!s) throw new Error('no NIGHT_STATE.md; run `start` first');

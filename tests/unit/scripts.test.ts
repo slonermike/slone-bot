@@ -28,17 +28,17 @@ describe('check-secrets', () => {
 });
 
 describe('night-state', () => {
-  it('gates at 3:00 and 3:30', () => {
-    expect(gate(179)).toBe('OK');
-    expect(gate(180)).toBe('WRAP-UP');
-    expect(gate(210)).toBe('PENCILS-DOWN');
+  it('gates at 1:15 and 1:30', () => {
+    expect(gate(74)).toBe('OK');
+    expect(gate(75)).toBe('WRAP-UP');
+    expect(gate(90)).toBe('PENCILS-DOWN');
   });
   it('counts rounds and step-backs, and blocks finishing early without them', () => {
-    const notes = ['0:10 phase=brief', '0:50 round 1: played | boring start | added a ramp', '1:20 round 2: a | b | c', '1:45 stepback 1: arc is flat | cut X'];
+    const notes = ['0:10 phase=brief', '0:20 round 1: played | boring start | added a ramp', '0:35 round 2: a | b | c', '0:50 stepback 1: arc is flat | cut X'];
     expect(countRounds(notes)).toEqual({ rounds: 2, stepbacks: 1 });
-    expect(doneBlockers(20, [])).toEqual(['only 0:20 elapsed (need 2:30)', '0 of 3 rounds logged', 'no step-back logged']);
-    expect(doneBlockers(160, notes)).toEqual(['2 of 3 rounds logged']);
-    expect(doneBlockers(160, [...notes, '2:00 round 3: x | y | z'])).toEqual([]);
+    expect(doneBlockers(20, [])).toEqual(['only 0:20 elapsed (need 1:00)', '0 of 3 rounds logged', 'no step-back logged']);
+    expect(doneBlockers(70, notes)).toEqual(['2 of 3 rounds logged']);
+    expect(doneBlockers(70, [...notes, '1:00 round 3: x | y | z'])).toEqual([]);
   });
   it('round-trips the state file', () => {
     const s = { night: 'n', started: '2030-01-01T00:00:00.000Z', phase: 'core', branch: 'proto/n', brief: 'b.md', lastGoodBuild: 'abc', notes: ['one', 'two'] };
