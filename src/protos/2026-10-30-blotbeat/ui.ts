@@ -134,6 +134,11 @@ export function stickerIcon(id: string): Container {
       sheet(g, 50, 60, C.white, false);
       drop(g, 30).fill(C.lime).stroke({ width: 4, color: C.ink, join: 'round' });
       break;
+    case 'siphon':
+      drop(g, 44).fill(C.lime).stroke(outline);
+      g.poly([22, -2, 34, -2, 28, -14]).fill(C.ink);
+      g.moveTo(28, -4).lineTo(28, 22).stroke({ width: 5, color: C.ink, cap: 'round' });
+      break;
     case 'spare':
       sheet(g, 50, 62, C.white, true);
       c.addChild(Object.assign(label('+1', 30, C.ink, { weight: '900' }), { y: 14 }));

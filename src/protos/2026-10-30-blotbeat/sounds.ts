@@ -31,6 +31,7 @@ export function defineBlotSounds(): void {
   defineSound('feverEnd', { wave: 'sine', freq: 700, slide: -1.4, attack: 0.002, sustain: 0.05, decay: 0.32, volume: 0.3 });
   defineSound('comboUp', { wave: 'sine', freq: 660, attack: 0.002, sustain: 0.05, decay: 0.3, volume: 0.3 });
   defineSound('holdDone', [{ wave: 'sine', freq: 1318, attack: 0.002, sustain: 0.1, decay: 0.45, volume: 0.35 }]);
+  defineSound('holdHum', { wave: 'triangle', freq: 440, vibratoDepth: 0.25, vibratoSpeed: 6, attack: 0.03, sustain: 0.8, decay: 0.2, lowpass: 2400, volume: 0.28 });
   defineSound('holdDrop', { wave: 'triangle', freq: 400, slide: -1.2, attack: 0.002, sustain: 0.03, decay: 0.2, volume: 0.3 });
   defineSound('tickLo', { wave: 'square', freq: 900, attack: 0.001, sustain: 0.01, decay: 0.05, lowpass: 3000, volume: 0.22 });
   defineSound('tickHi', { wave: 'square', freq: 1500, attack: 0.001, sustain: 0.01, decay: 0.06, lowpass: 4000, volume: 0.28 });

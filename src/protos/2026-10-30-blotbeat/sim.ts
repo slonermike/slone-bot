@@ -30,6 +30,7 @@ export const STICKERS = [
   { id: 'thrift', name: 'Thrifty Stamp', text: 'Stamping costs 1 blot less' },
   { id: 'long', name: 'Long Fever', text: 'Fever lasts 3 beats longer' },
   { id: 'blotter', name: 'Blotter', text: 'Every 6 perfects dry half a blot' },
+  { id: 'siphon', name: 'Ink Siphon', text: 'Every 8 perfects in a row draw a blot: clean play charges the stamp' },
   { id: 'spare', name: 'Spare Page', text: 'One extra page right now' },
 ] as const;
 export type StickerId = (typeof STICKERS)[number]['id'];
@@ -154,6 +155,7 @@ export interface SimState {
   dripAt: number;
   drips: number;
   perfectRun: number;
+  siphonRun: number;
   stickers: StickerId[];
   options: StickerId[];
   cursor: number;
@@ -206,7 +208,7 @@ export function createSim() {
     s.score = 0; s.displayScore = 0; s.combo = 0; s.maxCombo = 0; s.mult = 1;
     s.ink = 0; s.inkBand = 0;
     s.pagesMax = Math.round(bal('pages')); s.pages = s.pagesMax;
-    s.feverT = 0; s.feverMax = 0; s.restUntil = -1; s.graceUntil = -1; s.strayInk = 0; s.strayAt = -9; s.stampLock = -1; s.dripAt = 0; s.drips = 0; s.perfectRun = 0;
+    s.feverT = 0; s.feverMax = 0; s.restUntil = -1; s.graceUntil = -1; s.strayInk = 0; s.strayAt = -9; s.stampLock = -1e9; s.dripAt = 0; s.drips = 0; s.perfectRun = 0; s.siphonRun = 0;
     s.stickers = []; s.options = []; s.cursor = 0;
     s.laneDown = [false, false, false, false]; s.laneHold = [-1, -1, -1, -1];
     s.endT2 = 0;
@@ -223,7 +225,7 @@ export function createSim() {
     s.setT = -4 * s.beatDur;
     s.lastBeat = -5;
     s.phase = 'play';
-    s.ink = 0; s.inkBand = 0; s.feverT = 0; s.restUntil = -1; s.graceUntil = -1; s.strayInk = 0; s.strayAt = -9; s.stampLock = -1; s.dripAt = 0;
+    s.ink = 0; s.inkBand = 0; s.feverT = 0; s.restUntil = -1; s.graceUntil = -1; s.strayInk = 0; s.strayAt = -9; s.stampLock = -1e9; s.dripAt = 0;
     s.stampLastSet = 0;
     s.laneHold = [-1, -1, -1, -1];
     const chart = makeChart(ctx.rng.fork(), s.cfg);
@@ -263,6 +265,7 @@ export function createSim() {
     s.combo = 0;
     s.mult = 1;
     s.perfectRun = 0;
+    s.siphonRun = 0;
   }
 
   function setBand() {
@@ -367,11 +370,16 @@ export function createSim() {
     const grade: Grade = bestD <= WIN.perfect * w ? 'perfect' : bestD <= WIN.good * w ? 'good' : 'ok';
     const early = best.t - jt();
     s.hits++;
-    if (grade === 'perfect') { s.perfects++; s.perfectRun++; } else if (grade === 'good') { s.goods++; s.perfectRun = 0; } else { s.oks++; s.perfectRun = 0; }
+    if (grade === 'perfect') { s.perfects++; s.perfectRun++; s.siphonRun++; } else if (grade === 'good') { s.goods++; s.perfectRun = 0; s.siphonRun = 0; } else { s.oks++; s.perfectRun = 0; s.siphonRun = 0; }
     if (grade !== 'ok') addCombo();
     else if (s.combo === 0) addCombo();
     const pts = award(BASE[grade], p.x, p.y);
     if (best.len > 0) { best.state = 'holding'; s.laneHold[lane] = best.id; } else best.state = 'hit';
+    if (has('siphon') && s.siphonRun >= 8) {
+      s.siphonRun = 0;
+      emit({ type: 'siphon', magnitude: 0.5, x: p.x, y: p.y, data: { lane } });
+      addInk(1, lane);
+    }
     if (st.blotter && s.perfectRun >= 6) {
       s.perfectRun = 0;
       if (s.ink > 0) { s.ink = Math.max(0, s.ink - 0.5); emit({ type: 'dry', magnitude: 0.4, x: p.x, y: p.y, data: { ink: s.ink } }); setBand(); }

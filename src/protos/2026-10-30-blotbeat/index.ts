@@ -569,7 +569,7 @@ export function createPrototype(): Prototype {
       const pos = lanePoint(n.lane, p);
       v.g.position.set(pos.x, pos.y);
       if (!v.fading) {
-        const sc = 0.4 + 0.7 * Math.min(1, Math.max(0, p));
+        const sc = 0.6 + 0.55 * Math.min(1, Math.max(0, p));
         v.g.scale.set(sc * (holding ? 1 + 0.08 * Math.sin(time * 30) : 1));
         v.g.alpha = Math.min(1, p / 0.08 + 0.1);
       }
@@ -835,7 +835,11 @@ export function createPrototype(): Prototype {
         break;
       }
       case 'hit': laneHit(e, String(dd.grade), Boolean(dd.auto)); break;
-      case 'hold-start': laneHit(e, String(dd.grade), false); break;
+      case 'hold-start': {
+        laneHit(e, String(dd.grade), false);
+        play('holdHum', { pitch: 2 ** ((LANE_MIDI[Number(dd.lane)]! - 69) / 12) * 0.5, pan: D()[Number(dd.lane)]!.x * 0.3 });
+        break;
+      }
       case 'hold-done': {
         const lane = Number(dd.lane);
         play('holdDone', { pan: D()[lane]!.x * 0.3 });
@@ -900,6 +904,12 @@ export function createPrototype(): Prototype {
       }
       case 'combo-break': numberPop(world, 'combo lost', CX, CY + 130, { size: 22, color: C.tint, stroke: C.ink, ms: 520, rise: 20, font: FONT }); break;
       case 'dry': play('dry'); break;
+      case 'siphon': {
+        play('glug', { pitch: 1.3 });
+        particles.emit('sparks', e.x ?? CX, e.y ?? CY, { count: 14, color: C.lime, speed: 1.4 });
+        numberPop(world, 'SIPHON', (e.x ?? CX), (e.y ?? CY) - 40, { size: 24, color: C.lime, stroke: C.ink, ms: 700, font: FONT });
+        break;
+      }
       case 'stamp': {
         const m = e.magnitude ?? 0.7;
         play('stampBoom'); play('stampCrack'); play('stampRise');

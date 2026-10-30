@@ -134,6 +134,21 @@ describe('sim rules', () => {
     expect(s.combo).toBe(0);
     expect(s.setT).toBeLessThan(s.graceUntil);
   });
+  it('Ink Siphon: eight perfects in a row draw a blot, a miss of the streak resets it', () => {
+    const { s, step } = freshSim();
+    s.stickers.push('siphon');
+    let guard = 0;
+    const btn = ['y', 'b', 'a', 'x'] as const;
+    while (s.ink < 1 && guard++ < 60 * 100 && s.phase === 'play') {
+      const n = s.notes.find((m) => m.state === 'live' && m.len === 0);
+      const input = blankInput();
+      if (n && Math.abs(n.t - s.setT) < 1 / 120) input.buttons[btn[n.lane]!] = { down: true, pressed: true, released: false, value: 1 };
+      step(input);
+    }
+    expect(s.perfects).toBeGreaterThanOrEqual(8);
+    expect(s.ink).toBeGreaterThanOrEqual(1);
+    expect(s.misses).toBeLessThan(3);
+  });
   it('balance knobs change the sim', () => {
     expect(BALANCE.length).toBeGreaterThanOrEqual(3);
     expect(BALANCE.length).toBeLessThanOrEqual(8);
