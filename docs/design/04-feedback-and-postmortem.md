@@ -85,6 +85,6 @@ After assessment, Slone updates the verdict.
 ## <date> <slug>
 - Lesson: <one line>   Status: one data point | repeated (<n> nights)
 - Evidence: <telemetry or Slone's words>
-- Proposed Bible change: <section and wording> (Slone decides)
+- Proposed Bible change: <section and wording, genre-neutral: no prototype names, no genre vocabulary> (Slone decides)
 - Proposed atoms: <id: description> (optional)
 ```

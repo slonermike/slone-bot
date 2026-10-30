@@ -2,7 +2,7 @@
 
 The ONLY design file nightly runs may append to (besides the ledger). Lessons wait here until Slone's assessment promotes them into the Bible. Every lesson starts as **one data point** and becomes "repeated (n nights)" only when a later night's evidence matches. Do not edit or delete other nights' entries.
 
-Entry template is in `docs/design/04-feedback-and-postmortem.md` section 5.
+Entry template is in `docs/design/04-feedback-and-postmortem.md` section 5. Evidence may be specific to the prototype; the proposed Bible wording must be genre-neutral (it has to make sense for any kind of game).
 
 ## Proposed atoms
 (none yet)
@@ -61,3 +61,10 @@ Entry template is in `docs/design/04-feedback-and-postmortem.md` section 5.
 - Lesson: Loops cover nearly everything because ongoing player action cannot be mapped to a length of time. A one-shot is a stinger of a couple of measures that accents an event (level beaten, you died), not a short song.   Status: one data point
 - Evidence: Slone: "We need loops for most scenarios because ongoing player action is not mappable to a length of time. One shots would typically just be a couple measures meant to accent a big thing having happened. You beat the level. You died. Etc."
 - Applied to the music generator (loops for songs; `composeStinger` for events) in `docs/design/06-music-craft.md`. Earlier in the same session: not every song should be an earworm, and a vibe can be any tempo (frantic included). Both one data point.
+
+## 2026-10-29 first nightly prototype (first play)
+- Lesson: A build with lots of activity and juice can still be "not fun" when control is indirect, activity has no clear meaning, good play is not obviously rewarded, and progress is hidden.   Status: one data point (promoted to Bible v4, section 12)
+- Evidence: Slone: "The game isn't fun. The user doesn't have enough agency. they affect things too indirectly. There's a lot of motion, but not a lot of clarity around what it means or what the user can do with it. It feels a bit like trying to do fine tuned things with mittens on.. Doing the right thing should have clear, positive feedback and it should be obvious to the user without any written explanation. I'm getting [things] through [the objective], i think, but it's not clear to me that it's a good thing. The sense of progression is hidden behind layers of just stuff happening. There needs to be a clear sense of purpose and causality."
+- Telemetry context: bots found the build "worked" (the idle bot lost, the competent bot did well), which is exactly the gap the Bible's honesty section warns about: bots cannot see clarity.
+- Bible change (applied in v4, section 12); feel checklist section J added. Related to existing entries: "every reward cue must mean something" (v2) is the audio-and-UI cousin of this; no contradiction found.
+- Proposed atoms (Slone decides): f-legible-progress: the goal's progress is the clearest thing on screen; f-explicit-cause: every outcome visibly points back to the action that caused it.
