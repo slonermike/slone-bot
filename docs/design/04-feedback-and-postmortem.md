@@ -20,6 +20,7 @@ Recovery loop: what a soft failure looks like and how it generates a story
 Different from the last five nights (from the ledger only): one line
 Scope cut line: what is in, what is explicitly out
 Feel plan: sound and juice on main verb, feedback events, pressure state
+Music plan (chosen to fit this game, not rolled; `night-state.mjs sound` prints the menu): three options weighed from across the spectrum and why one won (role, tempo, meter, mode, texture). Then: the arc (start, peak, end), the gauge (what the music says about state, and how), the quiet (where it thins or stops), the stingers (3 to 5 moments), the contrast (the second loop or phase), and how it differs from the last games' music
 Screens and UI plan: how the prompts are anchored, where each meter and currency sits, how the win and the loss are shown and named, what each unit type's one job is and how its look and animation say it
 Balance knobs (3 to 8): id, default, range, what it changes (exposed in the pause menu's Balance screen)
 Telemetry plan: metrics and bots
