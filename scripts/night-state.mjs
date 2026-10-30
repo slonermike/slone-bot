@@ -16,7 +16,7 @@ export const MIN_DONE_MIN = 60;
 export const MIN_ROUNDS = 3;
 const STATE_FILE = () => process.env.NIGHT_STATE_FILE || path.join(ROOT, 'NIGHT_STATE.md');
 const PHASES = ['start', 'brief', 'core', 'feel', 'test', 'done'];
-const KEYS = ['night', 'started', 'phase', 'branch', 'brief', 'lastGoodBuild', 'genre', 'genreOptions', 'pausedMin', 'checkinAt'];
+const KEYS = ['night', 'started', 'phase', 'branch', 'brief', 'lastGoodBuild', 'genre', 'genreOptions', 'workStart', 'checkinAt'];
 
 export function parseState(text) {
   const s = { notes: [] };
@@ -49,12 +49,10 @@ function writeState(s) {
   fs.writeFileSync(STATE_FILE(), formatState(s));
 }
 
-/** Minutes of work so far. Time spent waiting for the human (the check-in) is not counted against the night. */
+/** Minutes of work so far. The night's clock starts at the check-in answer (`resume`), not at launch; before that it counts from `started`. */
 export function elapsedMinutes(s, now = Date.now()) {
-  const t = Date.parse(s.started);
-  if (!Number.isFinite(t)) return NaN;
-  const waiting = s.checkinAt && Number.isFinite(Date.parse(s.checkinAt)) ? Math.max(0, now - Date.parse(s.checkinAt)) / 60000 : 0;
-  return Math.max(0, (now - t) / 60000 - (Number(s.pausedMin) || 0) - waiting);
+  const t = Date.parse(s.workStart || s.started);
+  return Number.isFinite(t) ? Math.max(0, (now - t) / 60000) : NaN;
 }
 export function gate(min) {
   return min >= PENCILS_MIN ? 'PENCILS-DOWN' : min >= WRAP_MIN ? 'WRAP-UP' : 'OK';
@@ -205,22 +203,22 @@ function main(argv) {
   } else if (cmd === 'checkin') {
     const s = readState();
     if (!s) throw new Error('no NIGHT_STATE.md; run `start` first');
-    if (s.checkinAt) { console.log(`already waiting on the human since ${s.checkinAt}; run \`resume\` when they answer or you give up.`); return; }
+    if (s.checkinAt) { console.log(`already asked at ${s.checkinAt}; run \`resume\` when they answer or you give up.`); return; }
     s.checkinAt = now.toISOString();
-    s.notes.push(`${fmt(elapsedMinutes(s, now.getTime()))} check-in: asked the human for input (clock paused)`);
+    s.notes.push(`${fmt(elapsedMinutes(s, now.getTime()))} check-in: asked the human for input`);
     writeState(s);
-    console.log('clock paused. Ask the question now (see doc 06, "Check in"), then run `resume "<their input, or no input>"`.');
+    console.log('Ask the question now (see doc 06, "Check in"), then run `resume "<their input, or no input>"`. The night\'s clock starts when you resume.');
   } else if (cmd === 'resume') {
     const s = readState();
     if (!s) throw new Error('no NIGHT_STATE.md; run `start` first');
     if (!s.checkinAt) throw new Error('no check-in is open; run `checkin` first');
     const waited = Math.max(0, now.getTime() - Date.parse(s.checkinAt)) / 60000;
-    s.pausedMin = String(Math.floor(((Number(s.pausedMin) || 0) + waited) * 1000) / 1000);
+    s.workStart = now.toISOString();
     s.checkinAt = '';
     const text = rest.join(' ').trim() || 'no input';
-    s.notes.push(`${fmt(elapsedMinutes(s, now.getTime()))} check-in answered after ${waited.toFixed(1)} min: ${text}`);
+    s.notes.push(`0:00 clock started (check-in answered after ${waited.toFixed(1)} min): ${text}`);
     writeState(s);
-    console.log(`resumed; ${waited.toFixed(1)} min of waiting is not counted. Put the human's input in the brief ("Human input:") and follow it.`);
+    console.log(`clock started now: wrap-up at ${fmt(WRAP_MIN)}, pencils-down at ${fmt(PENCILS_MIN)}. Put the human's input in the brief ("Human input:") and follow it.`);
   } else if (cmd === 'set') {
     const s = readState();
     if (!s) throw new Error('no NIGHT_STATE.md; run `start` first');

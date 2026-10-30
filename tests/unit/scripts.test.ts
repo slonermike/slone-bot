@@ -28,15 +28,14 @@ describe('check-secrets', () => {
 });
 
 describe('check-in', () => {
-  it('does not count time spent waiting for the human', () => {
+  it('starts the night\'s clock at the answer, not at launch', () => {
     const start = Date.parse('2030-01-01T00:00:00Z');
     const at = (min: number) => start + min * 60000;
-    const s: any = { started: '2030-01-01T00:00:00.000Z', pausedMin: '' };
-    expect(night.elapsedMinutes(s, at(30))).toBeCloseTo(30);
-    s.checkinAt = '2030-01-01T00:30:00.000Z'; // asked at 0:30
-    expect(night.elapsedMinutes(s, at(50))).toBeCloseTo(30); // still waiting at 0:50: clock frozen
-    s.checkinAt = ''; s.pausedMin = '20'; // answered after 20 minutes
-    expect(night.elapsedMinutes(s, at(60))).toBeCloseTo(40);
+    const s: any = { started: '2030-01-01T00:00:00.000Z' };
+    expect(night.elapsedMinutes(s, at(8))).toBeCloseTo(8); // ideation before the check-in counts from launch
+    s.workStart = '2030-01-01T02:00:00.000Z'; // the human answered two hours in
+    expect(night.elapsedMinutes(s, at(120))).toBeCloseTo(0);
+    expect(night.elapsedMinutes(s, at(165))).toBeCloseTo(45);
   });
 });
 
