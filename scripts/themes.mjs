@@ -73,16 +73,18 @@ export function citesTheme(r) {
 
 // ---------- commands ----------
 export function roll({ dir = path.join(ROOT, 'themes'), today = todayUTC(), n = 3 } = {}) {
-  const { f, pool, state } = load(dir);
+  const { f, pool, graveyard, state } = load(dir);
   if (state.lastRollDate === today) throw new ThemeError(`already rolled for this run (${today}). One roll per run.`);
   let source = pool;
   const notes = [];
   if (pool.length < n) {
-    const fb = read(f.fallback, []);
-    if (fb.length < n) throw new ThemeError('theme pool and fallback pool are both too small to roll');
-    notes.push(`WARNING: pool has ${pool.length} themes (< ${n}). Falling back to fallback-pool.json.`);
+    // Never bring back a theme that was already built or retired: refill only with fallback themes that are new.
+    const spent = [...state.used, ...graveyard];
+    const fb = read(f.fallback, []).filter((t) => !pool.some((p) => p.id === t.id) && !spent.some((u) => u.id === t.id || similarity(u.text, t.text) >= 0.7));
+    if (pool.length + fb.length < n) throw new ThemeError('theme pool and unused fallback themes are both too small to roll. Add themes (human: `themes.mjs add --source human`).');
+    notes.push(`WARNING: pool has ${pool.length} themes (< ${n}). Refilling from the unused fallback themes.`);
     state.events.push({ date: today, event: 'fallback-pool-used', poolSize: pool.length });
-    source = structuredClone(fb);
+    source = [...pool, ...structuredClone(fb)];
     write(f.pool, source);
   } else if (pool.length < MIN_POOL) {
     notes.push(`WARNING: theme pool has only ${pool.length} themes (minimum ${MIN_POOL}).`);

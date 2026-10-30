@@ -49,8 +49,18 @@ describe('roll', () => {
     expect(themes.roll({ dir, today: '2030-03-01' }).text).toMatch(/WARNING.*minimum 15/);
     fs.writeFileSync(path.join(dir, 'pool.json'), JSON.stringify(pool().slice(0, 2)));
     const r = themes.roll({ dir, today: '2030-03-02' });
-    expect(r.text).toMatch(/Falling back/);
-    expect(pool().length).toBe(FALLBACK_SIZE);
+    expect(r.text).toMatch(/Refilling/);
+    expect(pool().length).toBeGreaterThanOrEqual(3);
+  });
+  it('never brings a used theme back when the pool is refilled from the fallback', () => {
+    const fb = JSON.parse(fs.readFileSync(path.join(dir, 'fallback-pool.json'), 'utf8')) as { id: string; text: string; type: string }[];
+    const spent = fb.slice(0, 5);
+    fs.writeFileSync(path.join(dir, 'pool.json'), JSON.stringify([]));
+    fs.writeFileSync(path.join(dir, 'state.json'), JSON.stringify({ ...JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8')), used: spent.map((t) => ({ ...t, date: '2030-01-01' })) }));
+    themes.roll({ dir, today: '2030-08-01' });
+    const ids = pool().map((t: { id: string }) => t.id);
+    for (const t of spent) expect(ids).not.toContain(t.id);
+    expect(ids.length).toBe(FALLBACK_SIZE - 5);
   });
 });
 
