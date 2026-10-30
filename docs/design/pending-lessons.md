@@ -107,3 +107,23 @@ Entry template is in `docs/design/04-feedback-and-postmortem.md` section 5.
 - Evidence: Slone: "Replace one of the tower types with one that has a healing AOE. Make the shape language say that. A heart or plus ... have it 'send' health to friendly towers in range. In fact do an overhaul of the tower types. They should be meaningfully different and the way they look, animate, behave should make their 'thing' obvious after you've played with it a bit."
 - Proposed atoms (Slone decides): v-heal-allies: a unit sends health to hurt friendly units in range; f-role-readable-units: each unit type's one job is stated by shape, idle animation and behaviour.
 - Process note: Slone's feedback came as short chat messages while the game was open; each was applied to the game directly (his requests are the answer to the update-or-not question) and the lesson recorded here.   Status: one data point
+
+## 2026-10-29 2026-10-29-unjam
+- Lesson: A jam needs a cooldown after it is cleared. Without it the freed blobs re-wedge in the same step and the verb feels like whack-a-mole; with a short clear window the pile floods through and the release is the payoff.   Status: one data point
+- Evidence: bots (sim): before the clear window greedy delivered about 85 blobs in 120 s with a jam every 3 s; after it, about 360 with 33 floods on two of three seeds.
+- Proposed Bible change: section 6, "release needs room": when a game's verb is clearing an obstruction, make the moment right after the clear generous, so tension turns into visible relief. (Slone decides)
+- Lesson: A curator choice (two generated options, risk for reward) is cheap to build as a short pause between waves, and gives the speed-ramp a human hand on the dial.   Status: one data point
+- Evidence: built, not yet played; whether the choice mattered is feedback question 3.
+- Proposed atoms: v-clear-obstruction: the main verb removes a blockage and the backed-up flow rushes through as the reward.
+
+## 2026-10-30 2026-10-30-blotbeat
+- Lesson: When failure produces the player's power resource, the economy needs a relief valve cost (a lock after spending, a halved gain while powered) or a bot that never plays can survive by cashing in on reflex; a second pressure that punishes hoarding (a leak while the store is over half full) is what makes "cash in now or carry more" a real decision.   Status: one data point
+- Evidence: the stamp-only bot survived all four sets with the first economy; with a six-beat lock and half ink in fever it fails at about 79 s, and the "hold or cash in" choice appeared only once the leak existed (runs/2026-10-30-blotbeat/surprises.md).
+- Proposed Bible change: section 6 (stakes), add "if failure feeds the player's power, make spending it cost something and give hoarding a price, or the loop collapses to cashing in" (Slone decides).
+- Lesson: Anything that freezes simulation time (a hit pause) breaks timing against a fixed-time external clock such as music; use shake, flash and particles there instead.   Status: one data point
+- Evidence: reasoning from the build (the stamp used no hit-stop on purpose); not yet confirmed by play.
+- Lesson: Reward clean play with something that mirrors what mistakes buy, or the skilled player has no forward pressure of their own (here a clean set returns a page, and one sticker lets perfect streaks charge the power moment).   Status: one data point
+- Evidence: greedy bot stamped 5 times a run while a 70% bot stamped 18 times, so the power moment belonged to the sloppy player until the Tidy Set reward and Ink Siphon sticker existed.
+- Proposed atoms (Slone decides): v-spend-your-failures: misses become a resource you spend; p-leak-while-rich: a store leaks into the pressure meter while it is over half full; l-clean-run-restores: a clean stretch returns something lost.
+- Process note: `themes.mjs roll` allows one roll per calendar date, so a second night on the same date (this one followed `2026-10-30-stillwinter`) got no rolled theme and the agent had to write its own, which defeats the injected randomness. Suggest keying the guard to the night id rather than the date.   Status: one data point
+- Tech note: the juice tween manager replaces a tween on the same property, so `tween(x, {alpha: 1})` followed by a delayed `tween(x, {alpha: 0}, ..., {delay})` silently cancels the fade-in (every prompt plate was invisible until a screenshot showed it). A line in `SCAFFOLD_API.md` would save the next night the hour.

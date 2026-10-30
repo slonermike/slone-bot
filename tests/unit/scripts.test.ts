@@ -179,13 +179,27 @@ describe('genre roll', () => {
   });
 });
 
-describe('sync-themes', () => {
+describe('appendAdded', () => {
+  it('appends only what a run added, keeps other runs\' entries, and is idempotent', async () => {
+    const { appendAdded } = await import('../../scripts/sync-main.mjs');
+    const base = '# L\n\n## Nights\nn1\n';
+    const mine = '# L\n\n## Nights\nn1\nn-mine\n';
+    const main = '# L\n\n## Nights\nn1\nn-other\n';
+    const merged = appendAdded(base, mine, main);
+    expect(merged).toBe('# L\n\n## Nights\nn1\nn-other\nn-mine\n');
+    expect(appendAdded(base, mine, merged)).toBe(merged);
+    const lessons = appendAdded('## A\n- x\n', '## A\n- x\n\n## B\n- y\n', '## A\n- x\n');
+    expect(lessons).toBe('## A\n- x\n\n## B\n- y\n');
+  });
+});
+
+describe('sync-main', () => {
   it('pushes themes/ to main from another branch and pulls it back', async () => {
     const fs = await import('node:fs');
     const os = await import('node:os');
     const path = await import('node:path');
     const { execFileSync } = await import('node:child_process');
-    const { push, pull } = await import('../../scripts/sync-themes.mjs');
+    const { push, pull } = await import('../../scripts/sync-main.mjs');
     const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
     const g = (cwd: string, ...a: string[]) => execFileSync('git', a, { cwd, env, encoding: 'utf8' }).trim();
     const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sync-'));

@@ -19,13 +19,13 @@ These times are not targets to finish under. **The night is about 90 minutes of 
 ## Step 0: start
 1. If `PAUSE` exists on main: write a one-line log and exit.
 2. `node scripts/preflight.mjs`. It reports: headless Chromium works, Node version, network probe results (npm ok, others?), skills visible (design skills, `frontend-design`), artifact types visible. Log the output in the run log. If Chromium does not work, continue with sim-only bots and note it.
-3. `node scripts/night-state.mjs start` stamps the start time in `NIGHT_STATE.md`. Then `node scripts/sync-themes.mjs pull` takes the theme pool from the latest main, so you roll from the real pool and never get a theme an earlier run used.
+3. `node scripts/night-state.mjs start` stamps the start time in `NIGHT_STATE.md`. Then `node scripts/sync-main.mjs pull` takes the theme pool from the latest main, so you roll from the real pool and never get a theme an earlier run used.
 4. Check for unprocessed feedback: if a `feedback/` folder on main has files marked `processed: false`, process them first (see "Feedback processing").
 5. Read: `CONSTITUTION.md`, `docs/tech/SCAFFOLD_API.md`, Bible, feel checklist, taste cards, concept library, ledger, `pending-lessons.md`.
 
 ## Step 1: ideation (greenfield)
 1. `node scripts/themes.mjs roll` returns three options. Pick one.
-2. `node scripts/themes.mjs resolve ...` with a reason for each rejection (see doc 07). Then at once `node scripts/sync-themes.mjs push`: your pick is used up on main now, even if this run dies later. Do the same after adding themes at wrap-up.
+2. `node scripts/themes.mjs resolve ...` with a reason for each rejection (see doc 07). Then at once `node scripts/sync-main.mjs push`: your pick is used up on main now, even if this run dies later. Do the same after adding themes at wrap-up.
 3. Roll the genre: list 3 to 5 genres that would fit the chosen theme (be honest and varied: not all variations of one idea), then run `node scripts/night-state.mjs genre "<g1>" "<g2>" "<g3>" ...`. It picks one at random (skipping genres used in the last three nights) and records it in `NIGHT_STATE.md`. You do not choose. Build a game that is recognizably that genre, reinterpreted freely for the theme and the atoms; the brief names the genre and the options you listed. Do not re-run it to fish for a better pick: a second call just prints the first result. The only exception is a drastic change (see "When it is not working").
 4. Roll the look: `node scripts/night-state.mjs look` returns a seeded visual identity (palette, shapes, rendering, framing, UI) that avoids the last three nights' looks and the demo's. Follow it; you may override one dimension if the core verb needs it, and the brief says which and why. Do not open any earlier prototype for reference (other nights' branches, including the original demo `proto/2026-10-29-demo-ball`): copying an earlier game's look or structure is the failure mode this roll exists to prevent. `docs/tech/SCAFFOLD_API.md` is the whole contract.
 5. Draw two atoms at random from the concept library (use `scripts/night-state.mjs atoms` for a seeded pick that avoids recent pairings in the ledger) and at most one wildcard constraint.
@@ -62,6 +62,7 @@ A flat game that shipped on plan is worse than a different game that works. When
 - A pivot is a round like any other: log it and keep looping.
 
 ## Wrap-up (1:15) and pencils-down (1:30)
+- Once the ledger line and the pending-lessons entry are written: `node scripts/sync-main.mjs notes` (and `push` again if you added themes). It appends only what your run added to main's copies and pushes, so the next run sees them; do it before pencils-down, not as an afterthought.
 - At 1:15: freeze scope (the last step-back should already be behind you). Remaining work: final bots and checklist, a fix pass, manifest, feedback sheet, post mortem. Do not stop before wrap-up because things look finished.
 - At 1:30: stop editing. If the build passes the smoke test and self-review, publish. If not, set `buildStatus: broken`, leave the previous prototype as latest, and log why.
 

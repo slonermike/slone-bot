@@ -8,4 +8,6 @@ The `genre:` tag lets the genre roll skip genres used in the last three nights. 
 
 ## Nights
 2026-10-29 | 2026-10-29-demo-ball | systemic | atoms: f-juice-forward, p-rising-tide | theme: scaffold smoke test (the original demo, now its own branch) | wildcard: none | genre: arcade survival | look: ember/circles and blobs/glow on dark | verdict: assessed (Slone: it was fun)
+2026-10-29 | 2026-10-29-unjam | systemic | atoms: p-speed-ramp, d-curator-mode | theme: things get stuck, unsticking is the fun | wildcard: none | look: sunset/hard polygons/flat fills | verdict: pending
 2026-10-30 | 2026-10-30-stillwinter | content | atoms: v-place-build, l-recoverable-setback | theme: Time only moves when something breaks | wildcard: none | genre: tower defense | look: arctic/stars and spikes/dithered | verdict: pending
+2026-10-30 | 2026-10-30-blotbeat | content | atoms: f-juice-forward, l-roguelite-run | theme: Every mistake leaves a mark that later becomes a tool (self-authored: roll guard) | wildcard: none | genre: rhythm action | look: mono-plus-one/thin lines/thick outlines | verdict: pending
