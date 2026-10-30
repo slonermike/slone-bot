@@ -48,6 +48,10 @@ A prototype answers one question quickly. The big three questions: Is it fun? Is
 - **Single player, self-paced, offline, controller-first.**
 - Avoid gritty or violent theming. Remove the skin and judge the loop.
 
+- **Show the rule, do not describe it.** A novel core rule must be legible through nonverbal cause and effect. Whatever a cause releases should visibly travel to the thing it feeds (numbers fly from a dying enemy to the meter they refill, and the meter only fills when they arrive), states should look different (a placed-but-not-yet-real object is ghosted and pops solid when it becomes real), and the first action should be pointed at (markers on what to press). A player who needs several turns of play to understand the rule has been told too little by the screen. (v4, one data point: `2026-10-30-stillwinter`.)
+- **If a resource drives play, running out of its source can be the fail state.** When a theme makes one thing the engine of the game (time that only moves when something breaks), having nothing left to feed it is a real, readable loss. Start the player with some, and guard the loop with a queued state so the source cannot be conjured and spent in the same breath. (v4, one data point: `2026-10-30-stillwinter`.)
+- **A familiar genre with its central tension flipped can win over a genre-sceptic.** Slone is usually ambivalent about tower defense and was intrigued once the central rule changed. Hook plus anchor (section 9) applies to genres too. (v4, one data point: `2026-10-30-stillwinter`.)
+
 ## 7. Game feel essentials
 See `01-feel-checklist.md`. The headline rules: respond to every input right away (in real-time play, within one frame), give the main interaction personality, make sound a first-class part of the loop, and where the game has feedback events, stack small effects and scale them with the size of the event. Items that assume an avatar, a camera, real-time input or collisions apply only to games that have them.
 
@@ -81,6 +85,7 @@ A game can have plenty of activity (motion, numbers, events, effects, systems) a
 - **Test:** show a new player ten seconds of play with no text. Could they say what the goal is, what they control, and whether the last action was good? If not, fix clarity before polishing feel.
 
 ## Revision log
+- v4, 2026-10-30: from Slone's first play of `2026-10-30-stillwinter`: show the rule through nonverbal cause and effect, running out of the engine resource as a fail state with a queued guard, flipped genres (6). Selection lists must show their bumper glyphs (feel checklist). All one data point.
 - v6, 2026-10-30: iteration is the method (4). Prompted by nightly agents declaring themselves done after about 20 minutes instead of looping play, note, change, and stepping back.
 - v5, 2026-10-30: drastic changes are reasonable and encouraged when a prototype is not working (4). Prompted by Slone's guidance for the nightly agent, together with the new genre roll (a random pick from 3 to 5 genres that fit the theme).
 - v4, 2026-10-29: agency, clarity and causality (12). From Slone's first play of a nightly prototype: "the game isn't fun"; indirect control, lots of activity without meaning, good play not obviously rewarded, progression hidden. One data point. Also reworded earlier rules (loop template, back pressure, power moments, verb first, discovery, failure effects) and the feel checklist so they state the principle for any kind of game, with avatar-, camera- and real-time-specific items made conditional; intent unchanged.

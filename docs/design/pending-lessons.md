@@ -82,3 +82,14 @@ Entry template is in `docs/design/04-feedback-and-postmortem.md` section 5.
 - Lesson: nightly agents quit early (done after about 20 minutes) because they treat the phases as a single pass. Slone: game development is iterative; you build, play, note what works and what does not, iterate, repeat, and when time runs out or the rough edges are sanded down you step back and look at it from a high level, and with time left you repeat the whole thing. Related, earlier: once an okay game exists he has a million ideas, while blank pages are paralyzing.   Status: one data point (promoted to Bible v6, section 4)
 - Evidence: Slone: "It keeps quitting early. Like it's done after 20 minutes or so. But game development is iterative. You build, play, note what's working, what isn't, iterate, repeat."
 - Applied: the run protocol's middle phases became an "Iterate" loop with a round template and step-backs; `night-state.mjs round` logs them; `checkpoint done` is refused before the minimum time (first set at 2:30, then 1:00 for a 90 minute night) or without 3 rounds and a step-back unless `--early --reason`; `check` shows the round count; post mortem gets a Rounds line.
+
+## 2026-10-30 2026-10-30-stillwinter (Slone's first play)
+- Lesson: Linking a cause to its effect in nonverbal ways is powerful.   Status: one data point (promoted to Bible v4, feel checklist F2)
+- Evidence: Slone: "It took several turns before I understood what was happening but once I did I found the idea really interesting." and, on the fix he asked for: numbers should come off dying entities and fly to the timer.
+- Lesson: A queued state for newly placed things (not real until the clock starts) closes the place-and-break exploit and makes running out of breakable things a fail state.   Status: one data point (promoted to Bible v4)
+- Evidence: Slone: "you shouldn't be able to destroy things that were placed during the same pause time ... running out of things to destroy is a fail state. Great. It also means the game needs to start with some things on the board."
+- Lesson: A selector the player can cycle must show the button that cycles it, laid out horizontally; a vertical list hid that LB and RB choose the tower.   Status: one data point (feel checklist F2)
+- Evidence: Slone: "I didn't realize I could choose among the towers to place for a while. Having them vertical made it unclear that it was a bumpers thing ... LB and RB indication." (He asked for no explanation text.)
+- Lesson: A genre he is usually ambivalent about (tower defense) hooked him once the central rule was flipped.   Status: one data point
+- Evidence: Slone: "I typically am ambivalent toward tower defense but this has me intrigued."
+- Proposed atoms: v-queue-then-commit: placed things are ghosted until a trigger makes them real; p-fuel-is-the-fail-state: running out of what powers the clock ends the run.
