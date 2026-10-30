@@ -158,3 +158,7 @@ Entry template is in `docs/design/04-feedback-and-postmortem.md` section 5.
 - Evidence: Slone: "the second level is a huge leap in difficulty. Make it have less difficult note patterns." Set 2 had gone from 1.5 to 2.8 notes per second, 3 to 4 lanes and introduced holds.
 - Lesson: Things that must be done together should be visibly tied on screen.   Status: one data point
 - Evidence: Slone: "When two notes are simultaneous, link them together visually somehow."
+
+## 2026-10-30 2026-10-30-blotbeat (lane colours)
+- Lesson: Direction or lane identity should be carried by colour as well as position, everywhere the lane appears, so upcoming inputs stay readable when the pace rises; the standard pad colours are a good basis, adapted to the game's palette.   Status: one data point (in `07-rhythm-game-lessons.md`)
+- Evidence: Slone: "It's still difficult to grok what's next when things speed up. Having different colors for each direction would help a lot." and "You could use the standard abxy controller button colors. Or your own flavor if it's better for theming."
