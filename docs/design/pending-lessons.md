@@ -61,3 +61,13 @@ Entry template is in `docs/design/04-feedback-and-postmortem.md` section 5.
 - Lesson: Loops cover nearly everything because ongoing player action cannot be mapped to a length of time. A one-shot is a stinger of a couple of measures that accents an event (level beaten, you died), not a short song.   Status: one data point
 - Evidence: Slone: "We need loops for most scenarios because ongoing player action is not mappable to a length of time. One shots would typically just be a couple measures meant to accent a big thing having happened. You beat the level. You died. Etc."
 - Applied to the music generator (loops for songs; `composeStinger` for events) in `docs/design/06-music-craft.md`. Earlier in the same session: not every song should be an earworm, and a vibe can be any tempo (frantic included). Both one data point.
+
+## 2026-10-30 2026-10-30-stillwinter
+- Lesson: When time is frozen between decisions, execution difficulty disappears (a bot with no hands wins), so all pressure has to come from scarcity and from threats that advance on a clock the player controls.   Status: one data point
+- Evidence: greedy bot won with 0 hearts lost at first tuning; difficulty only appeared after ice scarcity and telegraphed warm fronts were added (runs/2026-10-30-stillwinter/surprises.md).
+- Proposed Bible change: section 6, add "no clock means no skill wall: tune by scarcity and layered threats, not by speed" (Slone decides)
+- Lesson: A spend-to-act economy snowballs into a win-or-collapse cliff unless failure refunds materials (a lost heart melts into ice).   Status: one data point
+- Evidence: bimodal bot outcomes (win with 0 lost or lose with 5) vanished after a lost heart gave +4 ice.
+- Lesson: One object with several reasons to break it (turret, mine, clock-winder) gave the most meaningful decisions in the build.   Status: one data point
+- Proposed atoms: v-sacrifice-for-time: break your own defenses to release time; p-time-as-currency: simulation time itself is the spendable resource; l-failure-refunds: a failure melts into the materials to rebuild.
+- Process note (night had an extra instruction from Slone): a seeded "genre roll" over five candidate genres chose tower defense for the theme; it took a few minutes and decided a question the agent would otherwise have defaulted. Worth considering as a standing step.   Status: one data point

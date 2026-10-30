@@ -179,5 +179,32 @@
       }
     ],
     "used": null
+  },
+  {
+    "id": "t021",
+    "text": "A failure that melts into the materials to rebuild",
+    "type": "system",
+    "source": "postmortem",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t022",
+    "text": "One object with three reasons to break it",
+    "type": "system",
+    "source": "postmortem",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
+  },
+  {
+    "id": "t023",
+    "text": "Perfect information and no clock: only scarcity pushes back",
+    "type": "constraint",
+    "source": "postmortem",
+    "strikes": 0,
+    "reasons": [],
+    "used": null
   }
 ]

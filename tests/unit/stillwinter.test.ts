@@ -162,3 +162,31 @@ describe('Stillwinter music parts follow the game', () => {
     expect(partsFor({ dawn: 0.5, flowing: true, snapping: true, over: true })).toEqual(['pad']);
   });
 });
+
+describe('Stillwinter sounds', () => {
+  it('every sound is audible and never clips', async () => {
+    const { defineSounds, SOUND_NAMES } = await import('../../src/protos/2026-10-30-stillwinter/index.ts');
+    const { audio, peakOf, rmsOf } = await import('../../src/audio/index.ts');
+    defineSounds();
+    for (const name of SOUND_NAMES) {
+      const variants = audio.samples(name);
+      expect(variants.length, name).toBeGreaterThan(0);
+      for (const s of variants) {
+        expect(peakOf(s), `${name} peak`).toBeLessThanOrEqual(1);
+        expect(rmsOf(s), `${name} rms`).toBeGreaterThan(0.002);
+      }
+    }
+  });
+});
+
+describe('Stillwinter balance knobs', () => {
+  it('each knob changes what the sim does', () => {
+    const base = runSim(createPrototype, bots[0], { seed: 4, maxSimSeconds: 400 });
+    for (const spec of BALANCE) {
+      const lo = runSim(createPrototype, bots[0], { seed: 4, maxSimSeconds: 400, balance: { [spec.id]: spec.min } });
+      const hi = runSim(createPrototype, bots[0], { seed: 4, maxSimSeconds: 400, balance: { [spec.id]: spec.max } });
+      const key = (r: typeof base) => JSON.stringify([r.telemetry.outcome, r.telemetry.simSeconds, r.telemetry.metrics]);
+      expect(key(lo) !== key(base) || key(hi) !== key(base), spec.id).toBe(true);
+    }
+  });
+});

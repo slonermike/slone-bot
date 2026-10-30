@@ -4,7 +4,7 @@
   "bot": "idle",
   "mode": "content",
   "simSeconds": 120,
-  "wallMs": 123,
+  "wallMs": 143,
   "timescale": 20,
   "outcome": "timeout",
   "metrics": {
@@ -27,6 +27,9 @@
     "hearts": 5,
     "longestFrozenSec": 120,
     "spiresEaten": 0,
+    "fronts": 0,
+    "frontMelts": 0,
+    "faultShatters": 0,
     "snaps": 0,
     "deniedPlace": 0,
     "maxEnemies": 0,

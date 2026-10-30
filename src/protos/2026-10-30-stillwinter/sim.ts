@@ -497,6 +497,7 @@ export function createSim(ctx: Ctx): Sim {
     for (const k of KINDS) {
       if (!s.unlockedSet.has(k) && f >= SPIRE[k].unlock) {
         s.unlockedSet.add(k);
+        s.sel = k; // a new verb is put in your hand
         emit('unlock', s.cx, s.cy, 0.8, { kind: k });
       }
     }

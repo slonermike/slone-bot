@@ -3,7 +3,7 @@ import { Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { glyph } from '../../core/index.ts';
 import { play, defineSound } from '../../audio/index.ts';
 import { music } from '../../audio/music.ts';
-import { tween, ease, shake, hitStop, flash, punch, Particles, numberPop, chaseDt } from '../../juice/index.ts';
+import { tween, ease, shake, hitStop, flash, punch, Particles, numberPop, chaseDt, vfxRange } from '../../juice/index.ts';
 import type { Prototype, SimEvent, View, Ctx, InputState } from '../../core/types.ts';
 import { createSim, BALANCE, SPIRE, KINDS, N, ENEMY, ENEMY_BLURB, type Kind, type EnemyKind, type Sim, type Spire, type Enemy } from './sim.ts';
 import { bots } from './bots.ts';
@@ -159,6 +159,13 @@ function drawEnemy(g: Graphics, kind: EnemyKind): Graphics {
   return g;
 }
 
+const UNLOCK_BLURB: Record<Kind, string> = {
+  spike: 'shoots while time flows',
+  crystal: 'brittle: it cracks every neighbour. Chains pay out more time',
+  lantern: 'shatter it for two and a half times the time',
+  chime: 'rings out damage all around it',
+  prism: 'its beam pierces everything in a line',
+};
 const eyeY: Record<EnemyKind, number> = { drift: -2, ram: -2, glider: 0, wisp: -1, thaw: -4 };
 
 interface SpireView { c: Container; body: Graphics; cracks: Graphics; lastHp: number; kind: Kind; drop: number }
@@ -166,7 +173,8 @@ interface EnemyView { c: Container; body: Graphics; eyes: Graphics; bar: Graphic
 
 // ---------------------------------------------------------------- sound
 let soundsDefined = false;
-function defineSounds(): void {
+export const SOUND_NAMES = ['sw-place', 'sw-place-thud', 'sw-deny', 'sw-select', 'sw-move', 'sw-glass', 'sw-crunch', 'sw-thaw', 'sw-crack', 'sw-tick', 'sw-tock', 'sw-freeze', 'sw-shot', 'sw-pulse', 'sw-kill', 'sw-ice', 'sw-eaten', 'sw-heart', 'sw-heart-low', 'sw-unlock', 'sw-snap-ready', 'sw-snap', 'sw-dawn-step', 'sw-boss', 'sw-spawn', 'sw-warn', 'sw-front', 'sw-melt', 'sw-wind', 'sw-gift'];
+export function defineSounds(): void {
   if (soundsDefined) return;
   soundsDefined = true;
   defineSound('sw-place', { wave: 'triangle', freq: 440, slide: 1.1, attack: 0.002, sustain: 0.02, decay: 0.13, transient: 0.3, volume: 0.45 });
@@ -206,6 +214,7 @@ function defineSounds(): void {
   ]);
   defineSound('sw-front', { wave: 'noise', freq: 700, lowpass: 2200, slide: 0.9, attack: 0.05, sustain: 0.25, decay: 0.7, volume: 0.5 });
   defineSound('sw-melt', { wave: 'noise', freq: 1500, highpass: 900, slide: -1.2, sustain: 0.05, decay: 0.25, volume: 0.3 });
+  defineSound('sw-wind', { wave: 'noise', freq: 500, lowpass: 700, highpass: 120, slide: 0.5, attack: 0.9, sustain: 0.6, decay: 1.4, volume: 0.12 });
   defineSound('sw-gift', { wave: 'sine', freq: 700, slide: 0.8, sustain: 0.05, decay: 0.3, volume: 0.3 });
 }
 const wholeTone = (i: number, cap = 6): number => Math.pow(2, (Math.min(i, cap) * 2) / 12);
@@ -235,6 +244,8 @@ export function createPrototype(): Prototype {
   let snow: { g: Graphics; x: number; y: number; v: number; d: number }[] = [];
   let sunG!: Graphics;
   let faultC!: Container;
+  let glowG!: Graphics;
+  let windT = 6;
   let frontG!: Graphics;
   let faultTex!: Texture;
 
@@ -245,6 +256,7 @@ export function createPrototype(): Prototype {
   let dawnBar!: Graphics;
   let hintText!: Text;
   let bannerText!: Text;
+  let bannerSub!: Text;
   let snapG!: Graphics;
   let snapText!: Text;
   let trayG!: Container;
@@ -324,7 +336,13 @@ export function createPrototype(): Prototype {
     tween(g, { alpha: 0, scale: 1.6 }, ms, ease.outQuad, { onComplete: () => g.destroy() });
   }
 
-  function banner(text: string, color = C.ice, size = 46): void {
+  function banner(text: string, color = C.ice, size = 46, sub = ''): void {
+    bannerSub.text = sub;
+    bannerSub.alpha = 0;
+    if (sub) {
+      tween(bannerSub, { alpha: 1 }, 300, ease.outQuad, { delay: 120 });
+      tween(bannerSub, { alpha: 0 }, 500, ease.inQuad, { delay: 2300 });
+    }
     bannerText.text = text;
     bannerText.style.fill = color;
     bannerText.style.fontSize = size;
@@ -357,6 +375,7 @@ export function createPrototype(): Prototype {
     if (t.placed === 0) return `${glyph('a')}  place a spire`;
     if (t.shatters === 0) return `${glyph('x')}  shatter it: time only moves when something breaks`;
     if (sim.s.dawn / sim.s.dawnLen < 0.12) return `${glyph('lb')} / ${glyph('rb')}  spire    ${glyph('a')}  place    ${glyph('x')}  shatter`;
+    if (sim.s.snap >= 25 && !sim.s.snapReady && t.snaps === 0 && sim.s.dawn / sim.s.dawnLen < 0.6) return 'chains fill the COLD SNAP meter';
     return '';
   }
 
@@ -388,6 +407,11 @@ export function createPrototype(): Prototype {
       const bg = new Sprite(backdrop());
       bg.position.set(-60, -50);
       world.addChild(bg);
+      // the dawn glow: a warm horizon that grows with every thawed second
+      glowG = new Graphics();
+      for (let i = 0; i < 7; i++) glowG.ellipse(640, 470, 760 - i * 90, 280 - i * 34).fill({ color: i < 3 ? C.orange : C.glow, alpha: 0.05 });
+      glowG.alpha = 0;
+      world.addChild(glowG);
 
       // twinkling big stars (stars and spikes)
       for (let i = 0; i < 16; i++) {
@@ -536,7 +560,11 @@ export function createPrototype(): Prototype {
       bannerText.anchor.set(0.5);
       bannerText.position.set(640, 128);
       bannerText.alpha = 0;
-      ui.addChild(bannerText);
+      bannerSub = mk(28, C.frost, 'normal');
+      bannerSub.anchor.set(0.5);
+      bannerSub.position.set(640, 178);
+      bannerSub.alpha = 0;
+      ui.addChild(bannerText, bannerSub);
 
       // spire tray
       trayG = new Container();
@@ -573,7 +601,9 @@ export function createPrototype(): Prototype {
       endTitle.position.set(640, 330);
       endSub = mk(32, C.ice, 'normal');
       endSub.anchor.set(0.5);
-      endSub.position.set(640, 430);
+      endSub.position.set(640, 440);
+      endSub.style.align = 'center';
+      endSub.style.lineHeight = 48;
       endC.addChild(overlayEnd, endTitle, endSub);
       endC.visible = false;
       ui.addChild(endC);
@@ -706,13 +736,21 @@ export function createPrototype(): Prototype {
         }
       }
 
+      // --- danger: the closer the lead enemy gets, the harder the beacon's hearts throb
+      let lead = 99;
+      for (const e of s.enemies) lead = Math.min(lead, e.flier ? Math.hypot(sim.path.beacon[0] - e.x, sim.path.beacon[1] - e.y) : sim.path.len - e.s);
+      const danger = s.phase === 'play' ? Math.max(0, 1 - lead / 6) : 0;
+      heartsC.scale.set(1 + danger * 0.16 * Math.abs(Math.sin(timeNow() * (6 + danger * 8))));
       // --- beacon breath
       const bp = 0.5 + 0.5 * Math.sin(timeNow() * (flowing ? 5 : 1.6));
       beaconCore.scale.set(0.92 + bp * 0.12);
       beaconCore.alpha = s.phase === 'over' ? 0.15 : 0.75 + bp * 0.25;
 
+      glowG.alpha = s.phase === 'won' ? 1 : Math.min(1, (s.dawn / s.dawnLen) * 1.1);
+      windT -= dt;
+      if (windT <= 0 && !flowing && s.phase === 'play') { windT = vfxRange(7, 13); play('sw-wind', { pan: vfxRange(-0.5, 0.5), volume: 0.5 }); }
       // --- ambience: frozen is cool and dim, flowing is warm-rimmed and alive
-      for (const t of twinkle) { t.g.alpha = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(timeNow() * (flowing ? 3.2 : 0.9) + t.ph)); t.g.rotation = Math.sin(timeNow() * 0.4 + t.ph) * 0.2; }
+      for (const t of twinkle) { t.g.alpha = (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(timeNow() * (flowing ? 3.2 : 0.9) + t.ph))) * (1 - 0.7 * Math.min(1, s.dawn / s.dawnLen)); t.g.rotation = Math.sin(timeNow() * 0.4 + t.ph) * 0.2; }
       const fall = flowing ? 3.2 : 0.55;
       for (const o of snow) {
         o.y += o.v * dt * fall;
@@ -820,6 +858,7 @@ export function createPrototype(): Prototype {
           sunG.alpha = 0;
           endC.visible = false;
           faultC.removeChildren();
+          beacon.alpha = 1;
           setBeaconHearts();
           lastPartsKey = '';
           unlockedSeen = 1;
@@ -962,7 +1001,7 @@ export function createPrototype(): Prototype {
         case 'unlock': {
           const k = data.kind as Kind;
           unlockedSeen++;
-          banner(`NEW: ${SPIRE[k].label}`, C.ice, 52);
+          banner(`NEW: ${SPIRE[k].label}`, C.ice, 52, UNLOCK_BLURB[k]);
           const tp = trayPlates.find((p) => p.kind === k);
           if (tp) { punch(tp.plate.parent as Container, 0.35); flash(tp.icon, C.ice, 260); }
           play('sw-unlock');
@@ -996,12 +1035,12 @@ export function createPrototype(): Prototype {
             particles.emit('sparks', sx(gx, gy), sy(gx, gy), { count: 10, color: C.orange, speed: 0.8, size: 0.8 });
             ring(sx(gx, gy), sy(gx, gy), C.orange, 70, 600, 3);
           }
-          banner('FAULT LINES: shatter on them for double time', C.orange, 32);
+          banner('FAULT LINES', C.orange, 46, 'shatter a spire on them for double time');
           play('sw-unlock', { pitch: 0.75 });
           break;
         }
         case 'front-warn':
-          banner('WARM FRONT: it melts what it crosses', C.orange, 34);
+          banner('WARM FRONT', C.orange, 46, 'it melts every spire in its line: shatter them first, or let it');
           play('sw-warn');
           shake(0.12);
           break;
@@ -1032,10 +1071,10 @@ export function createPrototype(): Prototype {
           play('sw-melt', { pan, variation: 0.1 });
           break;
         case 'new-enemy':
-          banner(ENEMY_BLURB[data.kind as EnemyKind], C.frost, 34);
+          banner(ENEMY_BLURB[data.kind as EnemyKind], C.ice, 44);
           break;
         case 'dawn-step':
-          play('sw-dawn-step', { pitch: wholeTone(Number(data.step) - 1, 12) });
+          play('sw-dawn-step', { pitch: wholeTone(Number(data.step) - 1) });
           break;
         case 'ice-gift':
           banner('the beacon lends you ice', C.frost, 32);
@@ -1045,7 +1084,7 @@ export function createPrototype(): Prototype {
           endTitle.text = 'THE BEACON WENT DARK';
           endTitle.style.fill = C.frost;
           endTitle.style.fontSize = 64;
-          endSub.text = `${Math.round(Number(data.dawn) * 100)}% of the way to dawn      ${glyph('a')}: try again`;
+          { const tl = sim.telemetry(); endSub.text = `${Math.round(Number(data.dawn) * 100)}% of the way to dawn  ·  ${tl.kills} kills  ·  best chain ${tl.maxChain}\n${glyph('a')}: try again`; }
           overlayEnd.clear().rect(0, 0, 1280, 800).fill(C.night);
           shake(0.9);
           particles.emit('debris', X, Y - 90, { count: 60, color: C.ice, speed: 2.4, size: 1.5 });
@@ -1058,7 +1097,7 @@ export function createPrototype(): Prototype {
           endTitle.text = 'DAWN';
           endTitle.style.fill = C.glow;
           endTitle.style.fontSize = 96;
-          endSub.text = `the beacon held      ${glyph('a')}: again`;
+          { const tl = sim.telemetry(); endSub.text = `${sim.s.hearts} of ${sim.s.maxHearts} hearts left  ·  ${tl.kills} kills  ·  best chain ${tl.maxChain}  ·  ${tl.shatters} shatters\n${glyph('a')}: again`; }
           overlayEnd.clear().rect(0, 0, 1280, 800).fill(0x3d2210);
           shake(0.5);
           particles.emit('confetti', 640, 300, { count: 60, color: C.glow, speed: 1.6, size: 1.4 });
