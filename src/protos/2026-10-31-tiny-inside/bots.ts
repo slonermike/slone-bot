@@ -12,10 +12,10 @@ export const bots: Bot[] = [
       const x = n(o, 'x'), y = n(o, 'y'), cx = n(o, 'cx'), cy = n(o, 'cy'), tx = n(o, 'tx'), ty = n(o, 'ty');
       const grounded = n(o, 'grounded') > 0;
       // angle of target from current centre; angle of me
-      const want = Math.atan2(ty - cy, tx - cx), me = Math.atan2(y - cy, x - cx);
+      const ma = n(o, 'ma'); const want = ma > -90 ? ma : Math.atan2(ty - cy, tx - cx), me = Math.atan2(y - cy, x - cx);
       let diff = want - me; while (diff > Math.PI) diff -= 2 * Math.PI; while (diff < -Math.PI) diff += 2 * Math.PI;
       if (grounded) {
-        const aligned = Math.abs(diff) < 0.06;
+        const aligned = Math.abs(diff) < 0.06 && ma <= -90;
         // run in the direction that reduces diff: tangent is (-sin, cos) of angle
         const dir = Math.sign(diff);
         const t = { x: -Math.sin(me) * dir, y: Math.cos(me) * dir };

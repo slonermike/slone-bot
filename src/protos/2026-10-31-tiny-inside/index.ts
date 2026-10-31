@@ -24,12 +24,13 @@ export function createPrototype(): Prototype {
   let view: View; let W: Container, U: Container;
   let cam: Container, body: Container, bodyG: Graphics, glintG: Graphics, playerC: Container, halo: Graphics, eyeG: Graphics;
   let parts: Particles, ss: SquashStretch;
-  let windG: Graphics, uiGlow: Graphics, uiTier: Graphics, uiTierTxt: Text, hint: Text, veil: Graphics;
+  let moteG: Graphics, bloomG: Graphics, windG: Graphics, uiGlow: Graphics, uiTier: Graphics, uiTierTxt: Text, hint: Text, veil: Graphics;
   let zoom = 0.6, zlog = Math.log(0.6), fx = 0, fy = 0, t = 0, eyeOpen = 0;
   const eye = { open: 0 };
+  const bloomAmt: number[] = [];
   let song: ReturnType<typeof makeMusic>;
   let mode: 'calm' | 'tense' = 'calm';
-  let moved = 0;
+  let moved = 0; let doneT = 0;
 
   const zoomFor = (i: number) => { const b = sim.bodies[i]; return 330 / (b.r + 2.2 * b.gap); };
 
@@ -74,7 +75,7 @@ export function createPrototype(): Prototype {
   return {
     meta: { slug: '2026-10-31-tiny-inside', title: 'Speck', question: 'Does the camera pulling back on every landing make a simple planet-hopper feel wonderful?', targetFeeling: 'awe and tenderness at being very small in a very large thing', mode: 'content' },
     balance: BALANCE,
-    init(c: Ctx) { ctx = c; sim.init(c); const T = Number(c.params.tier ?? 0); if (T > 0) { sim.best = T; sim.spawn(T); } if (c.params.eye === '1') eye.open = 1; const b = sim.bodies[0]; zoom = zoomFor(0); zlog = Math.log(zoom); fx = b.x; fy = b.y; },
+    init(c: Ctx) { ctx = c; sim.init(c); const T = Number(c.params.tier ?? 0); if (T > 0) { sim.best = T; sim.spawn(T); } if (c.params.eye === '1') eye.open = 1; if (c.params.done === '1') sim.done = true; const b = sim.bodies[0]; zoom = zoomFor(0); zlog = Math.log(zoom); fx = b.x; fy = b.y; },
     step(dt: number, input: InputState) { sim.step(dt, input); },
     events() { return sim.events(); },
 
@@ -87,7 +88,8 @@ export function createPrototype(): Prototype {
       const dot = new Graphics().circle(0, 0, PR).fill(CORAL).stroke({ width: 3, color: INK });
       const gleam = new Graphics().circle(-4, -5, 4).fill(0xffffff);
       playerC.addChild(halo, dot, gleam);
-      body.addChild(bodyG, eyeG, glintG);
+      bloomG = new Graphics(); moteG = new Graphics();
+      body.addChild(bodyG, bloomG, eyeG, moteG, glintG);
       cam.addChild(body, playerC);
       W.addChild(cam);
       parts = new Particles(W, { confettiColors: [CORAL, INK, 0xffc94a, 0x6fb3a6] });
@@ -107,10 +109,21 @@ export function createPrototype(): Prototype {
       const dt = view.frame.dt; t += dt;
       const px = sim.px + (sim.x - sim.px) * alpha, py = sim.py + (sim.y - sim.py) * alpha;
       // camera: zoom to the nearest world, centre between that world and the player
-      zlog = chaseDt(zlog, Math.log(zoomFor(sim.cur)), 0.9, dt);
+      let zt = Math.log(zoomFor(sim.cur));
+      let ox = 0, oy = 0, wide = 0;
+      if (sim.done) {
+        doneT += dt;
+        if (doneT > 2.6) { // the pull-back: the whole constellation, every world a freckle
+          const bs = sim.bodies; let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+          for (const q of bs) { x0 = Math.min(x0, q.x - q.r); x1 = Math.max(x1, q.x + q.r); y0 = Math.min(y0, q.y - q.r); y1 = Math.max(y1, q.y + q.r); }
+          zt = Math.log(Math.min(1100 / (x1 - x0), 700 / (y1 - y0))); ox = (x0 + x1) / 2; oy = (y0 + y1) / 2; wide = 1;
+          if (doneT < 2.7) { shake(0.5); play('tier', { pitch: 0.5, volume: 0.6 }); }
+        }
+      }
+      zlog = chaseDt(zlog, zt, wide ? 0.35 : 0.9, dt);
       zoom = Math.exp(zlog);
       const b = sim.bodies[sim.cur];
-      fx = chaseDt(fx, b.x * 0.6 + px * 0.4, 0.9, dt); fy = chaseDt(fy, b.y * 0.6 + py * 0.4, 0.9, dt);
+      fx = chaseDt(fx, wide ? ox : b.x * 0.6 + px * 0.4, wide ? 0.35 : 0.9, dt); fy = chaseDt(fy, wide ? oy : b.y * 0.6 + py * 0.4, wide ? 0.35 : 0.9, dt);
       cam.scale.set(zoom); cam.position.set(640 - fx * zoom, 400 - fy * zoom);
       // player
       const up = Math.atan2(py - b.y, px - b.x) + Math.PI / 2;
@@ -127,6 +140,15 @@ export function createPrototype(): Prototype {
         glintG.star(g.x, g.y + bob, 4, 10 * gs, 4 * gs, t).fill(0xffc94a).stroke({ width: 1.5 * gs, color: INK });
       }
       if (sim.best >= TIERS - 2 || eye.open > 0) drawEye(); else eyeG.clear();
+      moteG.clear(); bloomG.clear();
+      sim.bodies.forEach((bb, i) => { const a = (bloomAmt[i] = chaseDt(bloomAmt[i] ?? (sim.bloomed[i] ? 1 : 0), sim.bloomed[i] ? 1 : 0, 0.9, dt)); if (a > 0) { bloomG.circle(bb.x, bb.y, bb.r * a).fill({ color: CORAL, alpha: 0.22 }); bloomG.circle(bb.x, bb.y, bb.r * 0.5 * a).fill({ color: 0xffc94a, alpha: 0.25 }); } });
+      for (const m of sim.motes) {
+        if (!m.on) continue;
+        const bb = sim.bodies[m.body], mx = bb.x + Math.cos(m.a) * (bb.r + PR * 0.4), my = bb.y + Math.sin(m.a) * (bb.r + PR * 0.4);
+        const sz = Math.max(12 * bb.f, 6 / zoom) * (1 + 0.15 * Math.sin(t * 6 + m.a));
+        moteG.circle(mx, my, sz).fill(CORAL).stroke({ width: Math.max(2 * bb.f, 1.5 / zoom), color: INK });
+        moteG.circle(mx - sz * 0.3, my - sz * 0.3, sz * 0.25).fill(0xffffff);
+      }
       // ambient dust trail
       moved += Math.hypot(sim.vx, sim.vy) * dt;
       if (!sim.grounded && ctx.vfxRng.next() < 0.5) parts.emit('dust', px, py, { count: 1, color: CORAL, size: 5 / zoom, speed: 30 / zoom });
@@ -186,6 +208,13 @@ export function createPrototype(): Prototype {
           if (e.type === 'finale') tween(eye, { open: 1 }, 2200, ease.outCubic);
           break;
         }
+        case 'mote': { const l = Number(e.data?.left ?? 0); play('glint', { pitch: SEMI(7 + (sim.motes.filter((q) => q.body === sim.cur).length - l) % 8), volume: 0.4 }); parts.emit('sparks', x, y, { count: 7, color: CORAL, size: 6 * s, speed: 140 * s }); break; }
+        case 'bloom': {
+          const bi = Number(e.data?.body ?? 0); bloomAmt[bi] = 0;
+          play('tier', { pitch: SEMI(4 + bi), volume: 0.45 }); shake(0.3); hitStop(4);
+          parts.emit('confetti', x, y, { count: 36, size: 8 * s, speed: 260 * s });
+          music.stinger(song.glint, { duck: 0.5 } as never); break;
+        }
         case 'gust': play('lowwarn', { pitch: 1.6, volume: 0.3 }); break;
         case 'low': play('lowwarn'); setMode('tense'); break;
         case 'recover': if (mode === 'tense') setMode('calm'); break;
@@ -196,10 +225,11 @@ export function createPrototype(): Prototype {
       }
     },
 
-    telemetry: () => ({ tier: sim.cur, best: sim.best, glints: sim.glints_got, deaths: sim.deaths, glow: Math.max(0, sim.glow), scoreOrProgress: sim.best * 100 + sim.glints_got }),
+    telemetry: () => ({ blooms: sim.blooms, tier: sim.cur, best: sim.best, glints: sim.glints_got, deaths: sim.deaths, glow: Math.max(0, sim.glow), scoreOrProgress: sim.best * 100 + sim.glints_got }),
     getState: () => {
       const b = sim.bodies[sim.cur], n = sim.bodies[Math.min(sim.cur + 1, TIERS - 1)];
-      return { x: sim.x, y: sim.y, cx: b.x, cy: b.y, tx: n.x, ty: n.y, grounded: sim.grounded ? 1 : 0 };
+      let ma = -99, bd = 9; for (const m of sim.motes) if (m.on && m.body === sim.cur) { let d = Math.atan2(sim.y - b.y, sim.x - b.x) - m.a; d = Math.abs(Math.atan2(Math.sin(d), Math.cos(d))); if (d < bd) { bd = d; ma = m.a; } }
+      return { ma, x: sim.x, y: sim.y, cx: b.x, cy: b.y, tx: n.x, ty: n.y, grounded: sim.grounded ? 1 : 0 };
     },
     dispose() { music.stop(); },
   };

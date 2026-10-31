@@ -4,7 +4,7 @@
   "bot": "idle",
   "mode": "content",
   "simSeconds": 120,
-  "wallMs": 43,
+  "wallMs": 48,
   "timescale": 20,
   "outcome": "timeout",
   "metrics": {
@@ -17,6 +17,7 @@
     "idleSurvivalSec": 0,
     "scoreOrProgress": 0,
     "variance": 0,
+    "blooms": 0,
     "tier": 0,
     "best": 0,
     "glints": 0,
@@ -33,6 +34,7 @@
     "inputToVisualMs": 0,
     "inputToAudioMs": 0,
     "eventsFired": {
+      "mote": 1,
       "low": 5,
       "faded": 4
     },

@@ -11,3 +11,8 @@ Built short on purpose (low weekly tokens, pencils down early). Genre: explorati
 - Knob to try first: `drain` (Glow loss per second); then `jumpPower`.
 - Debug: `?tier=N&eye=1` starts on world N, optionally with the eye open.
 - Next ideas: a second layer (wind that pushes you off, or sleepy creatures on bigger worlds), glints that must be chained to unlock the next hop, something living on each world that reacts to you.
+
+## Iteration after the first pass (brutal round)
+- Critique: a straight line of nine hops with nothing to do on a world, no choice and no cost; a quiet peak.
+- Changed: surface motes (3 + tier per world). Collect them all to bloom the world (coral flood, glow back); hopping on without blooming refills glow only partly, so skipping costs something. Finale now pulls the camera back to the whole constellation. Fewer glints on the arcs.
+- Greedy run is now about 38 s (was 15 s). Still untested by a human. Debug: `?done=1` jumps to the end state.

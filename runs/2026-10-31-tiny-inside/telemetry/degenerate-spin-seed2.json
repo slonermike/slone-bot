@@ -4,7 +4,7 @@
   "bot": "degenerate-spin",
   "mode": "content",
   "simSeconds": 120,
-  "wallMs": 43,
+  "wallMs": 74,
   "timescale": 20,
   "outcome": "timeout",
   "metrics": {
@@ -15,11 +15,12 @@
     "mainVerbCount": 0,
     "decisionsPerMinute": 0,
     "idleSurvivalSec": 0,
-    "scoreOrProgress": 18,
+    "scoreOrProgress": 16,
     "variance": 0,
+    "blooms": 0,
     "tier": 0,
     "best": 0,
-    "glints": 18,
+    "glints": 16,
     "glow": 0.3040833333332962
   },
   "perf": {
@@ -34,8 +35,9 @@
     "inputToAudioMs": 0,
     "eventsFired": {
       "jump": 80,
-      "glint": 18,
+      "glint": 16,
       "land": 78,
+      "mote": 2,
       "low": 3,
       "faded": 3
     },

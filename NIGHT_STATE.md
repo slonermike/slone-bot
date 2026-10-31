@@ -23,4 +23,6 @@ notes: one line per checkpoint
 - 0:07 stepback 1: arc: toy -> glints -> zoom reveals -> eye pays off | weaknesses: no second pressure source, little to do on a world besides run, greedy beats it in 15s | cut for budget, note in post mortem; knob drain first
 - 0:07 round 3: bots after adding gusts | greedy unaffected, random slightly worse | added telegraphed gust (second pressure source from tier 2, knob 'wind')
 - 0:07 phase=done finished early (only 0:07 elapsed (need 1:00)) because user asked for pencils down around 1h with low weekly tokens; playable build with 4 rounds logged
+- 0:12 round 4: bots: greedy 15s, one straight line of hops | BRUTAL: nothing to do on a world, no choice, no cost; random bot reaches tier 3 | added surface motes (3+tier per world): bloom the world for glow, skipping costs refill (choice with a cost)
+- 0:13 stepback 2: arc now toy -> motes/bloom -> reveals -> gusts -> eye + pull-back | BRUTAL: peak was a quiet eye; glint arcs clutter; hop feel unverified by a human; worlds still uniform | added finale pull-back to the whole constellation with shake and low swell; next: fewer arc glints, per-world personality
 ```

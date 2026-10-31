@@ -4,7 +4,7 @@
   "bot": "random",
   "mode": "content",
   "simSeconds": 120,
-  "wallMs": 55,
+  "wallMs": 83,
   "timescale": 20,
   "outcome": "timeout",
   "metrics": {
@@ -15,12 +15,13 @@
     "mainVerbCount": 0,
     "decisionsPerMinute": 0,
     "idleSurvivalSec": 0,
-    "scoreOrProgress": 268,
+    "scoreOrProgress": 255,
     "variance": 0,
-    "tier": 2,
+    "blooms": 2,
+    "tier": 0,
     "best": 2,
-    "glints": 68,
-    "glow": 0.8811166666666653
+    "glints": 55,
+    "glow": 0.7276166666666659
   },
   "perf": {
     "avgFrameMs": 0,
@@ -33,13 +34,16 @@
     "inputToVisualMs": 0,
     "inputToAudioMs": 0,
     "eventsFired": {
-      "glint": 68,
-      "jump": 67,
-      "land": 63,
+      "mote": 8,
+      "glint": 55,
+      "jump": 74,
+      "land": 73,
+      "bloom": 2,
       "tier": 2,
-      "low": 3,
+      "low": 7,
       "faded": 3,
-      "gust": 8
+      "gust": 7,
+      "recover": 4
     },
     "shakePeak": 0,
     "hitStopFrames": 0

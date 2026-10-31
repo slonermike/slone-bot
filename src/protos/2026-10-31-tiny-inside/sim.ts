@@ -50,8 +50,8 @@ export function makeWorld(rng: { range(a: number, b: number): number }): { bodie
       const a = Math.atan2(n.y - b.y, n.x - b.x);
       const sx = b.x + Math.cos(a) * b.r, sy = b.y + Math.sin(a) * b.r;
       const ex = n.x - Math.cos(a) * n.r, ey = n.y - Math.sin(a) * n.r;
-      for (let k = 1; k <= 4; k++) {
-        const t = k / 5;
+      for (let k = 1; k <= 3; k++) {
+        const t = k / 4;
         const lift = Math.sin(t * Math.PI) * 40 * b.f;
         glints.push({ x: sx + (ex - sx) * t + Math.cos(a) * 0, y: sy + (ey - sy) * t - lift * 0, on: true, body: i });
       }
@@ -60,9 +60,14 @@ export function makeWorld(rng: { range(a: number, b: number): number }): { bodie
   return { bodies, glints };
 }
 
+export interface Mote { body: number; a: number; on: boolean }
+
 export class Sim {
   bodies: Body[] = [];
   glints: Glint[] = [];
+  motes: Mote[] = [];
+  bloomed: boolean[] = [];
+  blooms = 0;
   x = 0; y = 0; px = 0; py = 0; vx = 0; vy = 0;
   grounded = true;
   cur = 0; // body the player is nearest to
@@ -82,6 +87,9 @@ export class Sim {
     const w = makeWorld(ctx.rng);
     this.bodies = w.bodies;
     this.glints = w.glints;
+    this.bloomed = this.bodies.map(() => false);
+    this.motes = [];
+    this.bodies.forEach((_, i) => { const n = 3 + i; const o = this.ctx.rng.range(0, 6.28); for (let k = 0; k < n; k++) this.motes.push({ body: i, a: o + (k / n) * Math.PI * 2, on: true }); });
     this.spawn(0);
   }
   bal(k: string, d: number) { return this.ctx.balance[k] ?? d; }
@@ -157,7 +165,7 @@ export class Sim {
           this.out.push({ type: 'land', magnitude: Math.min(1, -vr / (900 * b.f)), x: this.x, y: this.y });
           if (this.cur > this.best) {
             this.best = this.cur;
-            this.glow = 1;
+            this.glow = this.bloomed[this.cur - 1] ? 1 : Math.min(1, this.glow + 0.35);
             this.out.push({ type: this.cur === TIERS - 1 ? 'finale' : 'tier', magnitude: 0.4 + 0.6 * (this.cur / TIERS), x: this.x, y: this.y, data: { tier: this.cur } });
             if (this.cur === TIERS - 1) { this.done = true; this.out.push({ type: 'complete', magnitude: 1, x: this.x, y: this.y }); }
           }
@@ -174,6 +182,19 @@ export class Sim {
         this.combo++; this.comboT = 1.6;
         this.glow = Math.min(1, this.glow + this.bal('glintGain', 0.12));
         this.out.push({ type: 'glint', magnitude: Math.min(1, 0.3 + this.combo * 0.1), x: gl.x, y: gl.y, data: { combo: this.combo } });
+      }
+    }
+    if (this.grounded) {
+      const b = this.bodies[this.cur];
+      for (const m of this.motes) {
+        if (!m.on || m.body !== this.cur) continue;
+        const mx = b.x + Math.cos(m.a) * (b.r + PR), my = b.y + Math.sin(m.a) * (b.r + PR);
+        if (Math.hypot(mx - this.x, my - this.y) < 36 * b.f + PR) {
+          m.on = false; this.glow = Math.min(1, this.glow + 0.06);
+          const left = this.motes.filter((q) => q.body === this.cur && q.on).length;
+          this.out.push({ type: 'mote', magnitude: 0.5, x: mx, y: my, data: { left } });
+          if (left === 0) { this.bloomed[this.cur] = true; this.blooms++; this.glow = Math.min(1, this.glow + 0.3); this.out.push({ type: 'bloom', magnitude: 0.6 + 0.4 * this.cur / TIERS, x: b.x, y: b.y, data: { body: this.cur } }); }
+        }
       }
     }
     // glow drain
