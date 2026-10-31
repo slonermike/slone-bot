@@ -20,6 +20,12 @@ Nightly agents must not see other nights' rejection reasons or strike counts (th
 ```
 Themes are sparks, not specs. "Limited space" suggests something to play with; "pirates" is a costume. A theme should hint at a verb or a pressure, never dictate a system: the run reads it loosely, picks the reading that gives the best toy, and expresses it in the look, the names and mood, and at most one mechanical twist (Bible, "A theme is a spark, not a spec"). Earlier games bent whole systems to prove their theme and lost the fun of the verb.
 
+## What makes a good theme
+A theme is a short, open spark: an image, a feeling, a tension or a small constraint, in about one to five words, that a designer can read ten ways. It hints at a verb or a pressure and leaves the design to the toy.
+- **Good:** "Limited space", "No brakes", "A tiny planet", "Chain reactions", "Barely holding it together", "A cozy emergency".
+- **Too specific:** it contains a mechanism ("every success makes the next problem bigger, and ..."), a story ("a lighthouse that guides something that is not a ship"), or two clauses that must both be honored. Agents bend the whole game into a narrative to serve it, which makes the game confusing (an ink-and-pages rhythm game came from "Every mistake leaves a mark that later becomes a tool").
+- Nightly additions are capped at 7 words by `add`.
+
 ## Commands
 - `node scripts/themes.mjs roll [--n 3]`
   Prints only `id`, `text`, and `type` for n options drawn without replacement. No strike counts, no reasons. Rolls are seeded by the run's start stamp (from `night-state.mjs start`), so several runs on one day each get their own roll. A theme is not re-offered in a trio identical to a previous roll. One roll per run; a second roll in the same run fails.

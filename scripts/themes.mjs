@@ -174,6 +174,7 @@ export function add({ dir = path.join(ROOT, 'themes'), today = todayUTC(), text,
   if (!['postmortem', 'human', 'seed'].includes(source)) throw new ThemeError('--source must be postmortem|human|seed.');
   if (env.NIGHT_RUN === '1' && source !== 'postmortem') throw new ThemeError('nightly runs must use --source postmortem.');
   if ((state.adds[today] ?? 0) >= MAX_ADDS_PER_NIGHT && source === 'postmortem') throw new ThemeError(`at most ${MAX_ADDS_PER_NIGHT} themes may be added per night.`);
+  if (source === 'postmortem' && text.trim().split(/\s+/).length > 7) throw new ThemeError('a theme is a short open spark (7 words at most): one image, feeling or tension that can be read many ways, not a mechanism or a story.');
   const existing = [...pool, ...graveyard, ...state.used];
   if (existing.some((t) => similarity(t.text, text) >= 0.7)) throw new ThemeError('too similar to an existing or retired theme. Write a different design prompt.');
   const nums = [...existing, ...read(f.fallback, [])].map((t) => Number(/\d+/.exec(t.id)?.[0] ?? 0));

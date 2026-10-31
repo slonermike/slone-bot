@@ -7,12 +7,14 @@ import * as themesModule from '../../scripts/themes.mjs';
 
 const themes = themesModule as any;
 
-const SEED = path.resolve(__dirname, '../../themes');
-// the real pool grows every night (agents add themes), so tests must not hard-code its size or next id
-const POOL_SIZE = JSON.parse(fs.readFileSync(path.join(SEED, 'pool.json'), 'utf8')).length as number;
-const FALLBACK_SIZE = JSON.parse(fs.readFileSync(path.join(SEED, 'fallback-pool.json'), 'utf8')).length as number;
-// ids are never reused: the script issues max(id in pool and fallback) + 1, and nights remove themes as they use them
-const maxId = Math.max(...[...JSON.parse(fs.readFileSync(path.join(SEED, 'pool.json'), 'utf8')), ...JSON.parse(fs.readFileSync(path.join(SEED, 'fallback-pool.json'), 'utf8'))].map((x: { id: string }) => Number(/\d+/.exec(x.id)?.[0] ?? 0)));
+// Synthetic pools, never the live ones: the real pool changes every night and by hand, and tests must not depend on its ids or texts.
+const WORDS = ['amber','basalt','cobalt','dune','ember','fjord','glacier','harbor','indigo','juniper','kelp','lagoon','mesa','nectar','obsidian','prairie','quartz','reef','saffron','tundra','umber','vortex','willow','xenon','yarrow','zephyr','alder','birch','cedar','dahlia','elm','fennel','ginger','hazel','iris','jasmine','kale','lilac','maple','nettle','oak','pine','quince','rowan','sage','thyme','upland','violet','walnut','yucca','anvil','bellows','cinder','dynamo','easel','forge','gantry','hinge','inkwell','jetty','kiln','lantern'];
+const mk = (start: number, n: number) => Array.from({ length: n }, (_, i) => ({ id: `t${String(start + i).padStart(3, '0')}`, text: `${WORDS[(i * 2) % WORDS.length]} ${WORDS[(i * 2 + 1) % WORDS.length]} ${i}`, type: ['constraint', 'feeling', 'system', 'world'][i % 4], source: 'seed', strikes: 0, reasons: [], used: null }));
+const POOL = mk(1, 30);
+const FALLBACK = mk(31, 20);
+const POOL_SIZE = POOL.length;
+const FALLBACK_SIZE = FALLBACK.length;
+const maxId = 50;
 const nextId = `t${String(maxId + 1).padStart(3, '0')}`;
 let dir: string;
 const pool = () => JSON.parse(fs.readFileSync(path.join(dir, 'pool.json'), 'utf8'));
@@ -20,7 +22,8 @@ const grave = () => JSON.parse(fs.readFileSync(path.join(dir, 'graveyard.json'),
 
 beforeEach(() => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'themes-'));
-  for (const f of ['pool.json', 'fallback-pool.json']) fs.copyFileSync(path.join(SEED, f), path.join(dir, f));
+  fs.writeFileSync(path.join(dir, 'pool.json'), JSON.stringify(POOL));
+  fs.writeFileSync(path.join(dir, 'fallback-pool.json'), JSON.stringify(FALLBACK));
   fs.writeFileSync(path.join(dir, 'graveyard.json'), '[]');
   fs.writeFileSync(path.join(dir, 'state.json'), JSON.stringify({ lastRollDate: null, lastResolveDate: null, rollHistory: [] }));
 });
@@ -91,7 +94,7 @@ describe('resolve', () => {
   it('moves a theme to the graveyard at 3 strikes only if a reason cites the theme itself', () => {
     const target = 't001';
     const setup = (reasons: string[]) => {
-      fs.copyFileSync(path.join(SEED, 'pool.json'), path.join(dir, 'pool.json'));
+      fs.writeFileSync(path.join(dir, 'pool.json'), JSON.stringify(POOL));
       const p = pool();
       const t = p.find((x: any) => x.id === target);
       t.strikes = 2;
@@ -120,7 +123,7 @@ describe('add', () => {
     expect(pool().at(-1).source).toBe('postmortem');
   });
   it('rejects near-duplicates, bad types, and more than 3 per night', () => {
-    expect(() => themes.add({ dir, text: 'Limited space!', type: 'constraint', env: {} })).toThrow(/too similar/);
+    expect(() => themes.add({ dir, text: `${POOL[0].text}!`, type: 'constraint', env: {} })).toThrow(/too similar/);
     expect(() => themes.add({ dir, text: 'A brand new idea', type: 'skin', env: {} })).toThrow(/--type/);
     for (const t of ['Moss grows over your mistakes', 'Echoes that carry orders', 'A leaky boat of promises']) themes.add({ dir, today: '2030-07-01', text: t, type: 'system', env: {} });
     expect(() => themes.add({ dir, today: '2030-07-01', text: 'Fourth unrelated glimmer', type: 'system', env: {} })).toThrow(/at most 3/);
@@ -160,5 +163,10 @@ describe('remove', () => {
     expect(pool().find((x: { id: string }) => x.id === t.id).strikes).toBe(0);
     expect(grave().some((x: { id: string }) => x.id === t.id)).toBe(false);
     expect(() => themes.restore({ dir, which: t.id, env: {} })).toThrow(/no theme in the graveyard/);
+  });
+  it('caps nightly additions at seven words so themes stay short and open', () => {
+    expect(() => themes.add({ dir, today: '2030-10-01', text: 'A garden that grows only while you are looking away from it', type: 'world', env: {} })).toThrow(/7 words/);
+    expect(themes.add({ dir, today: '2030-10-01', text: 'A tiny planet', type: 'world', env: {} }).text).toMatch(/added/);
+    expect(themes.add({ dir, today: '2030-10-01', text: 'A garden that grows only while you are looking away from it', type: 'world', source: 'human', env: {} }).text).toMatch(/added/);
   });
 });
