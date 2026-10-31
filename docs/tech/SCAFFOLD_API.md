@@ -196,6 +196,8 @@ All respect the juice dial: if a layer is off, the helper does nothing.
 | `dial` | the juice dial: `dial.enabled('shake')`, `dial.scale('shake', amount)`, `dial.toggle(layer)`, `dial.setIntensity(0.5)`, `dial.activeLayers()`. Layers: `shake, particles, hitStop, squashStretch, flash, trails, eyes, audio`. |
 | `vfx()`, `vfxRange(a, b)` | visual-only randomness (seeded from `ctx.vfxRng`) |
 
+**Tween pitfall:** a new tween on a property replaces the running one on that property, even one that has not started yet (a delay does not reserve it). `tween(x, {alpha: 1}, 250)` followed by `tween(x, {alpha: 0}, 400, ease, { delay: 4000 })` cancels the fade-in and the object stays invisible. Schedule the second one from the first's `onComplete`, or run the delay on a dummy target: `tween({ v: 0 }, { v: 1 }, ms, ease.linear, { onComplete: () => tween(x, { alpha: 0 }, 400) })`. Do not destroy an object from one tween while another tween on it is still running.
+
 **Effect stacking rule:** every main-verb action gets at least a motion response, a flash or squash, a sound, and a particle or shake. Scale with `e.magnitude`; do not use one strength for everything.
 
 ## 4. Audio (`src/audio`)
@@ -311,3 +313,24 @@ powerup = composeStinger({ root: ROOT, seed: 13, name, description, style, mood,
 - Loops, because ongoing action has no length: a loop has no ending and leads back into itself. Stingers, because events do: two to four bars. `form: 'loop'` with `layout: 'groove-8'` is hook all the time (for games that gate the hook behind an earned moment); the other layouts are in `docs/tech/10-music-and-jukebox.md`.
 - Keep `root` (the tonic) the same across the game's loops and stingers so they sit together. The mode may change on purpose between a calm and a tense loop (a parallel mode on the same root is a strong way to signal relief or dread); a stinger takes the mode of the state it punctuates. `seed` makes it deterministic; change it for a different tune.
 - Wiring pattern: the sim emits events (`run-start`, `layer`, `power-start`, `power-ready`, `gameover`, ...) and `onEvent` calls `music`: start the loop on the run-start event, `setParts` when pressure layers arrive, bring the hook (`lead`, `harmony`) in only for an earned moment, a stinger for the big events, thin the parts out when pressure resets, `music.stop()` in `dispose`. Put the choice of parts in a pure function (`partsFor(pressure, powerMoment)`) with a unit test.
+
+
+### Music-driven games (chart from a song, clock lock)
+For rhythm and other music-driven builds (lessons: `docs/design/07-rhythm-game-lessons.md`):
+```ts
+import { chartFromSong, ghostBacking, loopSecondsOf } from '../../music/chart.ts';
+import { clockLockStep, newClockLock } from '../../core/index.ts';
+import { music } from '../../audio/music.ts';
+
+const chart = chartFromSong(song, {                       // PURE: one pass of the loop; repeat it for each time through
+  maxPerSec: 2.6, maxSimul: 2, conflict: (a, b) => (a + 2) % 4 === b,   // e.g. opposite face buttons cannot be pressed together
+  voices: [{ id: 'kick', lane: 2, match: (inst, n) => (inst === 'drums' && n === 36 ? 36 : null), share: 0.25, minGap: 0.4 }, /* snare, bass, lead ... */],
+});
+music.play(ghostBacking(song, chart));                    // charted notes become a quiet ghost; play the player's hit as the same sound at the same pitch
+// each render frame, while playing and not paused:
+const el = music.elapsed;                                 // seconds of the loop so far, never wrapped; null when nothing is audible
+if (el !== null) { const a = clockLockStep(el - simSeconds, lock); if (a.resync) jumpTo(el); else simSeconds += a.nudge; }
+```
+- `chartFromSong(song, opts)`: each voice says which song notes it takes (`match` returns a pitch or null), its lane, its `share` of the per-second allowance, its `minGap` and whether it may hold. Selection is time-ordered with a leaky bucket per voice and ties given to the least-represented voice; no one-second window (checked around the loop seam too) exceeds `maxPerSec`, at most `maxSimul` notes start together, and `conflict(laneA, laneB)` forbids lanes that cannot be pressed (or held across) together. Returns `ChartNote { voice, lane, t, len, pitch, src }` in seconds from the start of one pass. `ghostBacking(song, chart, ghost = 0.28)` returns the song with exactly the charted notes turned down. `loopSecondsOf(song)` is the length of one pass.
+- `music.elapsed` / `SongPlayer.elapsed`: the loop's audio-clock position in seconds, unwrapped (negative just before the song starts, `null` when stopped or muted).
+- `newClockLock()`, `clockLockStep(err, state, options?)`: `err` is audio seconds minus game seconds. Eases small errors (25% per frame, at most 12 ms), jumps (`resync: true`) after an error over 0.2 s lasts more than 6 frames. Do not call it while paused, and turn it off in capture mode (virtual time outruns the audio's wall clock).
