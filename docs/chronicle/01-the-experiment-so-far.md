@@ -51,7 +51,7 @@ The feedback recorded in `pending-lessons.md` falls into six groups. Each became
 
 ## 5. What the experiment is teaching about the process
 
-**Agents build blind and add the renderer last.** All three nightly post mortems say the sim was proven with bots "before any render code existed". It is a sensible reading of the architecture (sim and render are separate, bots run headless) and it produces games whose rules work and whose communication is an afterthought. Nearly all of Slone's feedback on Stillwinter and Blot Beat is about legibility: unanchored text, invisible bullets, a resource story spread over the screen. The visual layer was designed last, and it showed. Slone saw it too: the agent decides the art style only after the headless version feels good.
+**Agents build the game headless first, which a human almost never would.** All three nightly post mortems say the simulation was proven with bots "before any render code existed", and Slone noticed the same pattern: the agent builds the whole game with no renderer, then decides the art style and builds the renderer once the headless version feels good. It is a sensible reading of the architecture (sim and render are separate, bots run headless), and it has real strengths: the rules are testable from the first hour, and degenerate strategies get found early. It is interesting mostly because no human designer works this way. The cost shows up in the feedback: nearly all of Slone's notes on Stillwinter and Blot Beat are about legibility (unanchored text, invisible bullets, a resource story spread across the screen), because the visual layer was designed last. That makes it an observation to understand, not a mistake to fix.
 
 **Bots measure "works", not "fun".** Unjam's telemetry looked healthy: an idle bot died, a competent bot did well. The human result was "not fun". The Bible's honesty rule had predicted exactly this gap. Bots are good at finding exploits (they did, repeatedly: place-and-shatter, stamp-only farming, hold-A-forever) and bad at clarity, humour and feel.
 
@@ -107,7 +107,7 @@ Problems and the mechanisms that now exist for them:
 
 1. **Will the v11 tenets change what the next nightly game looks like?** That is the real test of a document-only learning system. It will take a few nights to know.
 2. **Should the project generate several games a night and cull?** It fits the evidence: the best game came from iteration, and most single-pass games fell short. It changes the economics (more builds, more of Slone's time reviewing) and may reduce how much each build is polished.
-3. **Can renderer-last be fixed?** If the toy has to be judged on screen, the verb may need a rendered first pass early, with real visuals and feel, before the systems around it grow.
+3. **Should the toy be rendered early?** Headless-first works well for rules, and it may still be worth a rendered first pass of the main verb, with real visuals and feel, before the systems around it grow, because the toy cannot be judged without being seen.
 4. **How can the agent get closer to feel?** It can screenshot, read telemetry and storyboard, and it cannot play. Some of what the demo had came from a human feeling the surge and saying "faster, more chaotic".
 5. **Is the Bible reaching diminishing returns?** Each new rule was correct, and together they risk burying the ones that matter. The core tenets are a first answer. Whether it is enough is open.
 
