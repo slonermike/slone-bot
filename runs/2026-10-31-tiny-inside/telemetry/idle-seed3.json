@@ -4,7 +4,7 @@
   "bot": "idle",
   "mode": "content",
   "simSeconds": 120,
-  "wallMs": 38,
+  "wallMs": 59,
   "timescale": 20,
   "outcome": "timeout",
   "metrics": {
@@ -15,13 +15,13 @@
     "mainVerbCount": 0,
     "decisionsPerMinute": 0,
     "idleSurvivalSec": 0,
-    "scoreOrProgress": 0,
+    "scoreOrProgress": 5,
     "variance": 0,
     "blooms": 0,
     "tier": 0,
     "best": 0,
-    "glints": 0,
-    "glow": 0.020416666666655755
+    "glints": 5,
+    "glow": 0.20333333333331652
   },
   "perf": {
     "avgFrameMs": 0,
@@ -34,6 +34,7 @@
     "inputToVisualMs": 0,
     "inputToAudioMs": 0,
     "eventsFired": {
+      "glint": 5,
       "low": 5,
       "faded": 4
     },
@@ -42,13 +43,13 @@
   },
   "errors": [],
   "balance": {
-    "drain": 0.035,
-    "drainRamp": 0.012,
-    "glintGain": 0.12,
+    "drain": 0.05,
+    "drainRamp": 0.008,
+    "glintGain": 0.1,
     "jumpPower": 1,
     "runSpeed": 1,
     "blot": 0.5,
-    "wind": 1,
+    "wind": 1.5,
     "gravity": 1
   }
 }

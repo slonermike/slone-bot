@@ -4,13 +4,13 @@ import type { BalanceSpec, Ctx, InputState, SimEvent } from '../../core/types.ts
 export const TIERS = 9;
 export const PR = 14; // player radius, constant: the worlds grow, you do not
 export const BALANCE: BalanceSpec[] = [
-  { id: 'drain', label: 'Glow loss per second', min: 0, max: 0.12, step: 0.005, default: 0.035 },
-  { id: 'drainRamp', label: 'Extra loss per tier', min: 0, max: 0.04, step: 0.002, default: 0.012 },
-  { id: 'glintGain', label: 'Glow from a glint', min: 0.02, max: 0.3, step: 0.01, default: 0.12 },
+  { id: 'drain', label: 'Glow loss per second', min: 0, max: 0.12, step: 0.005, default: 0.05 },
+  { id: 'drainRamp', label: 'Extra loss per tier', min: 0, max: 0.04, step: 0.002, default: 0.008 },
+  { id: 'glintGain', label: 'Glow from a glint', min: 0.02, max: 0.3, step: 0.01, default: 0.1 },
   { id: 'jumpPower', label: 'Hop power', min: 0.7, max: 1.4, step: 0.05, default: 1 },
   { id: 'runSpeed', label: 'Run speed', min: 0.6, max: 1.6, step: 0.05, default: 1 },
   { id: 'blot', label: 'Ink chase speed (x your run)', min: 0, max: 1.2, step: 0.05, default: 0.5 },
-  { id: 'wind', label: 'Gust strength (from tier 2)', min: 0, max: 2, step: 0.1, default: 1 },
+  { id: 'wind', label: 'Gust strength (from tier 2)', min: 0, max: 2, step: 0.1, default: 1.5 },
   { id: 'gravity', label: 'Gravity', min: 0.6, max: 1.6, step: 0.05, default: 1 },
 ];
 
@@ -106,7 +106,7 @@ export class Sim {
     this.startBlot();
   }
   startBlot() {
-    this.blotBody = this.cur; this.blotDelay = 2.2;
+    this.blotBody = this.cur; this.blotDelay = 1.0;
     this.blotOn = !this.bloomed[this.cur] && this.cur >= 1; // tier 0 is a pure toy
     this.blots = [this.angle + Math.PI];
     if (this.cur >= 4) this.blots.push(this.angle + Math.PI * 0.5); // pincer: a second ink from the side
@@ -157,7 +157,7 @@ export class Sim {
       const rising = this.vx * -dx / d + this.vy * -dy / d > 0;
       const gm = rising && !input.buttons.a.down ? 2.3 : 1;
       this.vx += (dx / d) * G * gm * dt; this.vy += (dy / d) * G * gm * dt;
-      if (this.windOn > 0 && this.windOn < 1.4) { const w = (500 + 60 * this.best) * b.f * this.bal('wind', 1); this.vx += Math.cos(this.windA) * w * dt; this.vy += Math.sin(this.windA) * w * dt; }
+      if (this.windOn > 0 && this.windOn < 1.4) { const w = (500 + 60 * this.best) * b.f * this.bal('wind', 1.5); this.vx += Math.cos(this.windA) * w * dt; this.vy += Math.sin(this.windA) * w * dt; }
       this.vx += sx * 900 * b.f * dt; this.vy += sy * 900 * b.f * dt;
       const sp = Math.hypot(this.vx, this.vy), cap = 1700 * b.f;
       if (sp > cap) { this.vx *= cap / sp; this.vy *= cap / sp; }
@@ -185,17 +185,18 @@ export class Sim {
         }
       }
     }
-    if (this.blotOn && this.grounded && this.blotBody === this.cur) {
-      const b = this.bodies[this.cur];
+    if (this.blotOn && this.blotBody >= 0) {
+      const b = this.bodies[this.blotBody];
+      const pa = Math.atan2(this.y - b.y, this.x - b.x);
       if (this.blotDelay > 0) this.blotDelay -= dt;
       else {
         const sp = (this.bal('blot', 0.5) + 0.04 * this.best) * 420 * this.bal('runSpeed', 1) * b.f;
-        const om = sp / (b.r + PR), hw = (70 * b.f) / (b.r + PR);
+        const om = sp / (b.r + PR), hw = ((70 + 8 * this.blotBody) * b.f) / (b.r + PR);
         let touching = false;
         for (let i = 0; i < this.blots.length; i++) {
-          let d = this.angle - this.blots[i]; d = Math.atan2(Math.sin(d), Math.cos(d));
+          let d = pa - this.blots[i]; d = Math.atan2(Math.sin(d), Math.cos(d));
           this.blots[i] += Math.sign(d) * Math.min(Math.abs(d), om * dt * (i ? 0.8 : 1));
-          if (Math.abs(d) < hw) touching = true;
+          if (Math.abs(d) < hw && this.grounded && this.cur === this.blotBody) touching = true;
         }
         this.blotA = this.blots[0];
         if (touching) {
@@ -205,17 +206,17 @@ export class Sim {
       }
     }
     // glints
-    const pr = 46 * this.bodies[this.cur].f;
+    const pr = 52 * this.bodies[this.cur].f;
     for (const gl of this.glints) {
       if (!gl.on) continue;
       if (Math.hypot(gl.x - this.x, gl.y - this.y) < pr + PR) {
         gl.on = false; this.glints_got++;
         this.combo++; this.comboT = 1.6;
-        this.glow = Math.min(1, this.glow + this.bal('glintGain', 0.12));
+        this.glow = Math.min(1, this.glow + this.bal('glintGain', 0.1));
         this.out.push({ type: 'glint', magnitude: Math.min(1, 0.3 + this.combo * 0.1), x: gl.x, y: gl.y, data: { combo: this.combo } });
       }
     }
-    for (const m of this.motes) if (m.on && m.body >= 6) m.a += (m.body % 2 ? 1 : -1) * 0.12 * (m.body - 5) * dt;
+    for (const m of this.motes) if (m.on && m.body >= 6) m.a += (m.body % 2 ? 1 : -1) * 0.2 * (m.body - 5) * 420 * this.bodies[m.body].f / (this.bodies[m.body].r + PR) * dt;
     if (this.grounded) {
       const b = this.bodies[this.cur];
       for (const m of this.motes) {
@@ -232,7 +233,7 @@ export class Sim {
     // glow drain
     if (this.grace > 0) this.grace -= dt;
     else {
-      const r = this.bal('drain', 0.035) + this.bal('drainRamp', 0.012) * this.best;
+      const r = this.bal('drain', 0.05) + this.bal('drainRamp', 0.008) * this.best;
       this.glow -= r * dt;
     }
     const low = this.low ? this.glow < 0.5 : this.glow < 0.3;
@@ -241,7 +242,7 @@ export class Sim {
       this.deaths++;
       this.out.push({ type: 'faded', magnitude: 0.8, x: this.x, y: this.y });
       this.spawn(Math.max(0, this.best - 1)); this.cur = Math.max(0, this.best - 1);
-      this.glow = 0.7; this.low = false;
+      this.glow = 1; this.grace = 3; this.low = false; this.combo = 0; this.comboT = 0; this.windOn = 0; this.buf = 0;
       for (const gl of this.glints) gl.on = true;
     }
   }
