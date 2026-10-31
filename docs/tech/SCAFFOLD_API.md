@@ -293,6 +293,8 @@ Reusable helpers go in `src/core` or `src/juice` with a unit test and a short en
 ## Capture mode (smooth media)
 `window.__scaffold.captureMode(true)` parks the real-time loop; time then moves only when `stepFrames(n)` is called, n exact frames of 1/60 s (`draw`: `'last'` renders only the final frame, the default; `'none'` renders nothing, for fast-forwarding; `'all'` renders every frame). The sim, juice and tweens all see the same fixed steps they would at 60 fps, so footage is smooth and identical on every machine, however slow its renderer. `npm run media -- <slug> [--fps 20] [--seconds 4]` uses it: pass 1 plays the greedy bot without drawing at all to find the busiest window, pass 2 replays to it (still without drawing) and renders only the frames it screenshots. Rendering every frame in a software-GL browser builds a GPU backlog that makes screenshots time out, so only draw what you capture. Prototypes need nothing special, but must be deterministic for a given `?seed=` (anything visual that uses `Math.random` or wall-clock time will differ between passes).
 
+`npm run media -- <slug> --query level=4` appends extra URL params to the page URL, so the capture can start from a richer state (a later level, a debug start). The clip must show player agency (Bible section 10): pick the start state and the search window so that an input and its consequence are in view, and open the thumb and a few frames before publishing.
+
 ## Music (v4)
 Each prototype writes its own music to match its game. A song is plain data (`src/music/`); compose it at start-up with the generator and drive it from render-side code with `music` (`src/audio/music.ts`). Never call it from sim code (the sim emits events; `onEvent` reacts).
 

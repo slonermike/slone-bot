@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Capture launcher media for a prototype: a short GIF of it being played, and the thumbnail from the same footage.
-//   npm run media -- <slug> [--seconds 4] [--fps 20] [--search 45] [--width 420] [--no-thumb]
+//   npm run media -- <slug> [--seconds 4] [--fps 20] [--search 45] [--width 420] [--no-thumb] [--query k=v&k=v]
 // Plays the prototype's greedy bot through the shell's capture mode, which moves time one exact frame at a time
 // (see stepFrames in src/core/shell.ts), so the footage is a smooth, fixed frame rate no matter how slow the
 // browser's renderer is. Pass 1 plays without drawing to find the busiest window (most sim events); pass 2 replays
@@ -18,8 +18,9 @@ const opt = (name, def) => {
   const i = args.indexOf(`--${name}`);
   return i >= 0 ? Number(args[i + 1]) : def;
 };
-if (!slug) { console.error('usage: npm run media -- <slug> [--seconds 4] [--fps 20] [--search 45] [--width 420] [--no-thumb]'); process.exit(1); }
+if (!slug) { console.error('usage: npm run media -- <slug> [--seconds 4] [--fps 20] [--search 45] [--width 420] [--no-thumb] [--query k=v&k=v]'); process.exit(1); }
 const WINDOW = opt('seconds', 4);
+const qi = args.indexOf('--query'); const QUERY = qi >= 0 ? args[qi + 1] : ''; // extra URL params, e.g. --query level=4
 const SEARCH = opt('search', 45);
 const WIDTH = opt('width', 420);
 const FPS = Math.max(5, Math.min(30, opt('fps', 20)));
@@ -42,7 +43,7 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mgb-media-'));
 /** A fresh page in capture mode with the bot reset; `tick()` plays one captured frame and returns the events seen so far. */
 async function session() {
   const { page } = await newPage(browser);
-  await page.goto(`${srv.url}/p/${slug}/?seed=1`);
+  await page.goto(`${srv.url}/p/${slug}/?seed=1${QUERY ? '&' + QUERY : ''}`);
   await page.waitForFunction(() => window.__scaffold, null, { timeout: 15000 });
   await page.evaluate(() => { window.__scaffold.start(); window.__scaffold.captureMode(true); });
   bot.reset(1);
