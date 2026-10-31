@@ -235,7 +235,7 @@ export class Sim {
       const r = this.bal('drain', 0.035) + this.bal('drainRamp', 0.012) * this.best;
       this.glow -= r * dt;
     }
-    const low = this.glow < 0.3;
+    const low = this.low ? this.glow < 0.5 : this.glow < 0.3;
     if (low !== this.low) { this.low = low; this.out.push({ type: low ? 'low' : 'recover', magnitude: 0.5, x: this.x, y: this.y }); }
     if (this.glow <= 0) {
       this.deaths++;
