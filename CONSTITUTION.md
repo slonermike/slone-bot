@@ -32,6 +32,7 @@ Slone dislikes: mastery-by-humiliation ("git gud"), online multiplayer, gritty t
 | Scaffold code and `SCAFFOLD_API.md` | Yes |
 | Ledger (atoms/pairings used, one line per night) | Yes, as a constraint |
 | Distilled lessons (Bible, pending-lessons) | Yes |
+| `docs/chronicle/` (the experiment's history, with details of earlier games; written for humans) | **No.** |
 | Source code and full designs of earlier prototypes | **No.** Do not open other `proto/*` branches or `src/protos/*` of other nights |
 | Theme pool, strike counts, rejection reasons | **No direct access.** Only via `scripts/themes.mjs` |
 Reason: reading old prototypes causes copy-and-tweak anchoring. Variety comes from injected randomness (section 8), not from hoping the agent is creative.
