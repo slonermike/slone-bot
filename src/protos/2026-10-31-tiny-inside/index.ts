@@ -179,7 +179,7 @@ export function createPrototype(): Prototype {
       playerC.position.set(px, py); playerC.rotation = up;
       halo.scale.set(Math.max(1, 9 / (PR * zoom)) * (1 + 0.08 * Math.sin(t * 5)));
       ss.update(dt, 0, sim.grounded ? 0 : -Math.hypot(sim.vx, sim.vy) / 600);
-      if (!sim.grounded && ctx.vfxRng.next() < 0.5) parts.emit('dust', px, py, { count: 1, color: CORAL, size: 5 / zoom, speed: 30 / zoom });
+      if (!sim.grounded && ctx.vfxRng.next() < 0.5) parts.emit('dust', px, py, { count: 1, color: CORAL, size: 0.62 * (1 / zoom), speed: 0.50 * (1 / zoom) });
       void w;
       // offscreen goal pointer
       const home = sim.ws.find((q) => q.type === 'home')!;
@@ -200,37 +200,37 @@ export function createPrototype(): Prototype {
     onEvent(e: SimEvent) {
       const m = e.magnitude ?? 0.5, x = e.x ?? 0, y = e.y ?? 0, s = 1 / zoom;
       switch (e.type) {
-        case 'jump': play('hop', { variation: 0.05 }); ss.pop(0.35, 'y'); parts.emit('puff', x, y, { count: 6, color: PAPER, size: 7 * s, speed: 90 * s }); break;
-        case 'land': play('land', { volume: 0.3 + 0.7 * m, pitch: 0.9 + 0.2 * m, variation: 0.05 }); ss.pop(0.2 + 0.4 * m, 'y'); parts.emit('dust', x, y, { count: 4 + Math.floor(8 * m), color: SHADE, size: 6 * s, speed: 120 * s }); if (m > 0.5) shake(0.12 * m); break;
-        case 'bounce': play('boing', { variation: 0.08 }); ss.pop(0.6, 'x'); shake(0.12); parts.emit('sparks', x, y, { count: 10, color: CORAL, size: 6 * s, speed: 200 * s }); break;
+        case 'jump': play('hop', { variation: 0.05 }); ss.pop(0.35, 'y'); parts.emit('puff', x, y, { count: 6, color: PAPER, size: 0.45 * s, speed: 0.41 * s }); break;
+        case 'land': play('land', { volume: 0.3 + 0.7 * m, pitch: 0.9 + 0.2 * m, variation: 0.05 }); ss.pop(0.2 + 0.4 * m, 'y'); parts.emit('dust', x, y, { count: 4 + Math.floor(8 * m), color: SHADE, size: 0.75 * s, speed: 0.55 * s }); if (m > 0.5) shake(0.12 * m); break;
+        case 'bounce': play('boing', { variation: 0.08 }); ss.pop(0.6, 'x'); shake(0.12); parts.emit('sparks', x, y, { count: 10, color: CORAL, size: 0.75 * s, speed: 0.91 * s }); break;
         case 'sling': {
           play('whoosh', { pitch: 1.8, volume: 0.5 }); play('chime', { pitch: 1.5, volume: 0.4 }); hitStop(4); shake(0.15);
-          parts.emit('sparks', x, y, { count: 24, color: GOLD, size: 7 * s, speed: 360 * s });
+          parts.emit('sparks', x, y, { count: 24, color: GOLD, size: 0.88 * s, speed: 1.30 * s });
           const tx = label('SLINGSHOT', 30, GOLD); tx.anchor.set(0.5); tx.position.set(640, 200); tx.alpha = 0; U.addChild(tx);
           tween(tx, { alpha: 1 }, 120, ease.outCubic); tween(tx, { alpha: 0 }, 400, ease.linear, { delay: 700, onComplete: () => tx.destroy() });
           break;
         }
         case 'charge': play('warn', { pitch: 0.7, volume: 0.55 }); shake(0.08); break;
         case 'spit': play('whoosh', { pitch: 1.4, volume: 0.35 }); break;
-        case 'splat': play('tick', { pitch: 0.5 }); parts.emit('dust', x, y, { count: 5, color: INK, size: 4 * s, speed: 90 * s }); break;
-        case 'bossHit': play('burn'); shake(0.45); hitStop(5); parts.emit('sparks', x, y, { count: 30, color: GOLD, size: 8 * s, speed: 320 * s }); break;
+        case 'splat': play('tick', { pitch: 0.5 }); parts.emit('dust', x, y, { count: 5, color: INK, size: 0.50 * s, speed: 0.41 * s }); break;
+        case 'bossHit': play('burn'); shake(0.45); hitStop(5); parts.emit('sparks', x, y, { count: 30, color: GOLD, size: 1.00 * s, speed: 1.30 * s }); break;
         case 'dropped': play('whoosh'); ss.pop(0.4, 'x'); break;
         case 'tick': play('tick', { pitch: 1 + 0.2 * Math.random() * 0 }); break;
-        case 'vanish': play('land', { pitch: 0.6, volume: 0.6 }); shake(0.2); parts.emit('puff', x, y, { count: 24, color: SHADE, size: 12 * s, speed: 160 * s }); break;
+        case 'vanish': play('land', { pitch: 0.6, volume: 0.6 }); shake(0.2); parts.emit('puff', x, y, { count: 24, color: SHADE, size: 0.9 * s, speed: 0.73 * s }); break;
         case 'blinkoff': play('tick', { pitch: 0.6, volume: 0.5 }); break;
         case 'return': play('chime', { pitch: 1.5, volume: 0.15 }); break;
-        case 'shatter': play('shatter'); shake(0.35); parts.emit('debris', x, y, { count: 30, color: 0xd8c79d, size: 9 * s, speed: 260 * s }); break;
-        case 'burn': play('burn'); shake(0.4); hitStop(3); parts.emit('sparks', x, y, { count: 30, color: CORAL, size: 8 * s, speed: 320 * s }); break;
+        case 'shatter': play('shatter'); shake(0.35); parts.emit('debris', x, y, { count: 30, color: 0xd8c79d, size: 1.12 * s, speed: 1.18 * s }); break;
+        case 'burn': play('burn'); shake(0.4); hitStop(3); parts.emit('sparks', x, y, { count: 30, color: CORAL, size: 1.00 * s, speed: 1.30 * s }); break;
         case 'die':
           if (e.data?.cause === 'lost') play('whoosh', { pitch: 0.6 });
-          veil.clear().rect(0, 0, 1280, 800).fill(CORAL); veil.alpha = 0.25; tween(veil, { alpha: 0 }, 450, ease.outCubic); parts.emit('puff', x, y, { count: 10, color: INK, size: 8 * s, speed: 200 * s });
+          veil.clear().rect(0, 0, 1280, 800).fill(CORAL); veil.alpha = 0.25; tween(veil, { alpha: 0 }, 450, ease.outCubic); parts.emit('puff', x, y, { count: 10, color: INK, size: 0.5 * s, speed: 0.91 * s });
           music.stinger(song.lose, { duck: 0.7 } as never); setMode('calm');
           break;
-        case 'respawn': play('chime', { pitch: 1.2, volume: 0.3 }); parts.emit('puff', x, y, { count: 12, color: CORAL, size: 8 * s, speed: 120 * s }); break;
+        case 'respawn': play('chime', { pitch: 1.2, volume: 0.3 }); parts.emit('puff', x, y, { count: 12, color: CORAL, size: 0.6 * s, speed: 0.55 * s }); break;
         case 'danger': if (mode === 'calm') { play('warn'); setMode('tense'); } safeT = 0; break;
         case 'clear':
           play('chime', { pitch: SEMI(sim.level) * 0.8 }); play('boom', { volume: 0.3 + 0.03 * sim.level });
-          shake(0.3 + 0.03 * sim.level); hitStop(7); parts.emit('confetti', x, y, { count: 50, size: 9 * s, speed: 320 * s });
+          shake(0.3 + 0.03 * sim.level); hitStop(7); parts.emit('confetti', x, y, { count: 50, size: 1.12 * s, speed: 1.30 * s });
           veil.clear().rect(0, 0, 1280, 800).fill(0xffffff); veil.alpha = 0.6; tween(veil, { alpha: 0 }, 800, ease.outCubic);
           music.stinger(sim.level === LEVEL_COUNT - 1 ? song.win : song.tier, { duck: 0.6 } as never);
           break;
@@ -242,7 +242,7 @@ export function createPrototype(): Prototype {
           zlog += 0.35; // swoop in from a little closer
           break;
         }
-        case 'complete': music.stinger(song.win, { duck: 0.5 } as never); parts.emit('confetti', x, y, { count: 60, size: 12 * s, speed: 400 * s }); break;
+        case 'complete': music.stinger(song.win, { duck: 0.5 } as never); parts.emit('confetti', x, y, { count: 60, size: 1.40 * s, speed: 1.30 * s }); break;
       }
     },
 
