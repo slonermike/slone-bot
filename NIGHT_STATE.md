@@ -26,4 +26,5 @@ notes: one line per checkpoint
 - 0:12 round 4: bots: greedy 15s, one straight line of hops | BRUTAL: nothing to do on a world, no choice, no cost; random bot reaches tier 3 | added surface motes (3+tier per world): bloom the world for glow, skipping costs refill (choice with a cost)
 - 0:13 stepback 2: arc now toy -> motes/bloom -> reveals -> gusts -> eye + pull-back | BRUTAL: peak was a quiet eye; glint arcs clutter; hop feel unverified by a human; worlds still uniform | added finale pull-back to the whole constellation with shake and low swell; next: fewer arc glints, per-world personality
 - 0:17 round 5: idle/spin bots linger on one world, nothing pushed them off | user asked for urgency to leave a world | added creeping ink that chases you round the surface after landing (starts after 2.2s, speed scales with tier, blooming the world clears it, knob 'blot'); idle deaths 4->23, greedy unchanged
+- 0:19 round 6: bots + tier-5 screenshot with two inks | difficulty was flat after tier 2 | layer schedule: tier0 pure toy, tier1 ink, 2 gusts (more frequent/stronger each tier), 4 second ink from the side, 6 drifting seeds; each announced with a sticker label
 ```

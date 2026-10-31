@@ -76,7 +76,7 @@ export class Sim {
   glow = 1; low = false;
   vt = 0; // tangential speed when grounded
   angle = -Math.PI / 2;
-  blotBody = -1; blotA = 0; blotOn = false; blotDelay = 0; blotHit = 0;
+  blotBody = -1; blots: number[] = []; blotA = 0; blotOn = false; blotDelay = 0; blotHit = 0;
   windT = 6; windOn = 0; windA = 0;
   coyote = 0; buf = 0; combo = 0; comboT = 0;
   grace = 12; // seconds without drain at the start
@@ -105,7 +105,12 @@ export class Sim {
     this.px = this.x; this.py = this.y;
     this.startBlot();
   }
-  startBlot() { this.blotOn = !this.bloomed[this.cur]; this.blotBody = this.cur; this.blotA = this.angle + Math.PI; this.blotDelay = 2.2; }
+  startBlot() {
+    this.blotBody = this.cur; this.blotDelay = 2.2;
+    this.blotOn = !this.bloomed[this.cur] && this.cur >= 1; // tier 0 is a pure toy
+    this.blots = [this.angle + Math.PI];
+    if (this.cur >= 4) this.blots.push(this.angle + Math.PI * 0.5); // pincer: a second ink from the side
+  }
   nearest(): number {
     let bi = 0, bd = Infinity;
     for (let i = 0; i < this.bodies.length; i++) {
@@ -129,7 +134,7 @@ export class Sim {
     const sx = input.left.x, sy = input.left.y;
     if (this.best >= 2) {
       if (this.windOn > 0) this.windOn -= dt;
-      else { this.windT -= dt; if (this.windT <= 0) { this.windOn = 2.2; this.windA = this.ctx.rng.range(0, Math.PI * 2); this.windT = this.ctx.rng.range(7, 11); this.out.push({ type: 'gust', magnitude: 0.5, x: this.x, y: this.y, data: { a: this.windA } }); } }
+      else { this.windT -= dt; if (this.windT <= 0) { this.windOn = 2.2; this.windA = this.ctx.rng.range(0, Math.PI * 2); this.windT = this.ctx.rng.range(7, 11) * Math.max(0.45, 1 - 0.07 * this.best); this.out.push({ type: 'gust', magnitude: 0.5, x: this.x, y: this.y, data: { a: this.windA } }); } }
     }
 
     if (this.grounded) {
@@ -152,7 +157,7 @@ export class Sim {
       const rising = this.vx * -dx / d + this.vy * -dy / d > 0;
       const gm = rising && !input.buttons.a.down ? 2.3 : 1;
       this.vx += (dx / d) * G * gm * dt; this.vy += (dy / d) * G * gm * dt;
-      if (this.windOn > 0 && this.windOn < 1.4) { const w = 700 * b.f * this.bal('wind', 1); this.vx += Math.cos(this.windA) * w * dt; this.vy += Math.sin(this.windA) * w * dt; }
+      if (this.windOn > 0 && this.windOn < 1.4) { const w = (500 + 60 * this.best) * b.f * this.bal('wind', 1); this.vx += Math.cos(this.windA) * w * dt; this.vy += Math.sin(this.windA) * w * dt; }
       this.vx += sx * 900 * b.f * dt; this.vy += sy * 900 * b.f * dt;
       const sp = Math.hypot(this.vx, this.vy), cap = 1700 * b.f;
       if (sp > cap) { this.vx *= cap / sp; this.vy *= cap / sp; }
@@ -171,6 +176,8 @@ export class Sim {
           if (this.cur > this.best) {
             this.best = this.cur;
             this.glow = this.bloomed[this.cur - 1] ? 1 : Math.min(1, this.glow + 0.35);
+            const L = ({ 1: 'ink', 2: 'gusts', 4: 'pincer', 6: 'drifters' } as Record<number, string>)[this.cur];
+            if (L) this.out.push({ type: 'layer', magnitude: 0.5, x: this.x, y: this.y, data: { name: L } });
             this.out.push({ type: this.cur === TIERS - 1 ? 'finale' : 'tier', magnitude: 0.4 + 0.6 * (this.cur / TIERS), x: this.x, y: this.y, data: { tier: this.cur } });
             if (this.cur === TIERS - 1) { this.done = true; this.out.push({ type: 'complete', magnitude: 1, x: this.x, y: this.y }); }
           }
@@ -183,11 +190,15 @@ export class Sim {
       if (this.blotDelay > 0) this.blotDelay -= dt;
       else {
         const sp = (this.bal('blot', 0.5) + 0.04 * this.best) * 420 * this.bal('runSpeed', 1) * b.f;
-        let d = this.angle - this.blotA; d = Math.atan2(Math.sin(d), Math.cos(d));
-        const om = sp / (b.r + PR);
-        this.blotA += Math.sign(d) * Math.min(Math.abs(d), om * dt);
-        const hw = (70 * b.f) / (b.r + PR);
-        if (Math.abs(d) < hw) {
+        const om = sp / (b.r + PR), hw = (70 * b.f) / (b.r + PR);
+        let touching = false;
+        for (let i = 0; i < this.blots.length; i++) {
+          let d = this.angle - this.blots[i]; d = Math.atan2(Math.sin(d), Math.cos(d));
+          this.blots[i] += Math.sign(d) * Math.min(Math.abs(d), om * dt * (i ? 0.8 : 1));
+          if (Math.abs(d) < hw) touching = true;
+        }
+        this.blotA = this.blots[0];
+        if (touching) {
           this.glow -= 0.4 * dt; this.blotHit -= dt;
           if (this.blotHit <= 0) { this.blotHit = 0.45; this.out.push({ type: 'ink', magnitude: 0.5, x: this.x, y: this.y }); }
         }
@@ -204,6 +215,7 @@ export class Sim {
         this.out.push({ type: 'glint', magnitude: Math.min(1, 0.3 + this.combo * 0.1), x: gl.x, y: gl.y, data: { combo: this.combo } });
       }
     }
+    for (const m of this.motes) if (m.on && m.body >= 6) m.a += (m.body % 2 ? 1 : -1) * 0.12 * (m.body - 5) * dt;
     if (this.grounded) {
       const b = this.bodies[this.cur];
       for (const m of this.motes) {

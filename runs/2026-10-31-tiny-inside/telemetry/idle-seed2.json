@@ -4,12 +4,12 @@
   "bot": "idle",
   "mode": "content",
   "simSeconds": 120,
-  "wallMs": 57,
+  "wallMs": 78,
   "timescale": 20,
   "outcome": "timeout",
   "metrics": {
     "runLength": 120,
-    "deaths": 23,
+    "deaths": 4,
     "firstPressureSimSec": 0,
     "restartDelaySimSec": 0,
     "mainVerbCount": 0,
@@ -21,7 +21,7 @@
     "tier": 0,
     "best": 0,
     "glints": 0,
-    "glow": 0.0012499999999899892
+    "glow": 0.020416666666655755
   },
   "perf": {
     "avgFrameMs": 0,
@@ -35,9 +35,8 @@
     "inputToAudioMs": 0,
     "eventsFired": {
       "mote": 1,
-      "ink": 72,
-      "low": 24,
-      "faded": 23
+      "low": 5,
+      "faded": 4
     },
     "shakePeak": 0,
     "hitStopFrames": 0

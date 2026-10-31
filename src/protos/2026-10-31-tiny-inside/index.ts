@@ -146,8 +146,10 @@ export function createPrototype(): Prototype {
       if (sim.blotOn) {
         const bb = sim.bodies[sim.blotBody], rr = bb.r + 2 * bb.f, hw = (70 * bb.f) / (bb.r + PR);
         const wait = sim.blotDelay > 0, al = wait ? 0.3 + 0.25 * Math.sin(t * 12) : 0.92;
-        arcPath(bloomG, bb.x, bb.y, rr, sim.blotA - hw, sim.blotA + hw); bloomG.stroke({ width: 46 * bb.f, color: INK, alpha: al, cap: 'round', join: 'round' });
-        for (let k = -2; k <= 2; k++) { const a = sim.blotA + k * hw * 0.5; bloomG.circle(bb.x + Math.cos(a) * (rr - 30 * bb.f - Math.abs(k) * 8 * bb.f), bb.y + Math.sin(a) * (rr - 30 * bb.f - Math.abs(k) * 8 * bb.f), (14 - Math.abs(k) * 3) * bb.f).fill({ color: INK, alpha: al }); }
+        for (const ba of sim.blots) {
+          arcPath(bloomG, bb.x, bb.y, rr, ba - hw, ba + hw); bloomG.stroke({ width: 46 * bb.f, color: INK, alpha: al, cap: 'round', join: 'round' });
+          for (let k = -2; k <= 2; k++) { const a = ba + k * hw * 0.5; bloomG.circle(bb.x + Math.cos(a) * (rr - 30 * bb.f - Math.abs(k) * 8 * bb.f), bb.y + Math.sin(a) * (rr - 30 * bb.f - Math.abs(k) * 8 * bb.f), (14 - Math.abs(k) * 3) * bb.f).fill({ color: INK, alpha: al }); }
+        }
       }
       for (const m of sim.motes) {
         if (!m.on) continue;
@@ -223,6 +225,12 @@ export function createPrototype(): Prototype {
           music.stinger(song.glint, { duck: 0.5 } as never); break;
         }
         case 'ink': play('lowwarn', { pitch: 0.55, volume: 0.4 }); shake(0.12); parts.emit('dust', x, y, { count: 5, color: INK, size: 4 * s, speed: 80 * s }); break;
+        case 'layer': {
+          const nm = { ink: 'INK RISES', gusts: 'GUSTS', pincer: 'INK FROM BOTH SIDES', drifters: 'DRIFTING SEEDS' }[String(e.data?.name)] ?? '';
+          const tx = label(nm, 34, CORAL); tx.anchor.set(0.5); tx.position.set(640, 170); tx.alpha = 0; U.addChild(tx);
+          tween(tx, { alpha: 1 }, 250, ease.outCubic); tween(tx, { alpha: 0 }, 500, ease.linear, { delay: 2200, onComplete: () => tx.destroy() });
+          break;
+        }
         case 'gust': play('lowwarn', { pitch: 1.6, volume: 0.3 }); break;
         case 'low': play('lowwarn'); setMode('tense'); break;
         case 'recover': if (mode === 'tense') setMode('calm'); break;
