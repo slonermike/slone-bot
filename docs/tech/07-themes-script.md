@@ -18,7 +18,7 @@ Nightly agents must not see other nights' rejection reasons or strike counts (th
 { "id": "t001", "text": "Limited space", "type": "constraint|feeling|system|world",
   "source": "seed|postmortem|human", "strikes": 0, "reasons": [], "used": null }
 ```
-Themes are design prompts, not skins. "Limited space" is a mechanical spark; "pirates" is a costume. Write themes so they generate mechanics.
+Themes are sparks, not specs. "Limited space" suggests something to play with; "pirates" is a costume. A theme should hint at a verb or a pressure, never dictate a system: the run reads it loosely, picks the reading that gives the best toy, and expresses it in the look, the names and mood, and at most one mechanical twist (Bible, "A theme is a spark, not a spec"). Earlier games bent whole systems to prove their theme and lost the fun of the verb.
 
 ## Commands
 - `node scripts/themes.mjs roll [--n 3]`

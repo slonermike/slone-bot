@@ -13,6 +13,10 @@ A factory for small, playable 2D game prototypes, built unattended one per night
 - **One question and one target feeling per prototype,** written before building.
 - **Open source (MIT), public repo.** Only truly free assets (see `docs/tech/08`). Every third-party asset goes in `ATTRIBUTION.md`. No ripped assets, no secrets, no personal data.
 
+## Core tenets (full list and reasons: Bible section 1)
+1. **Iterate.** Playable fast, then play, note, change, repeat; step back often. 2. **Flush the turds.** Never polish a flat core: throw it out and try something else. 3. **One great idea beats three good ones.** 4. **Verb first, theme second.** One to three plain verbs, the main one a toy that is fun alone; the theme is seasoning, not a spec. 5. **Build to a peak:** a signature moment worth earning (spectacle, absurdity, power). 6. **Show, don't tell:** understood with every word hidden. 7. **Player in control, game readable.** 8. **Layer complexity with intention:** one layer at a time, each legible at a glance. 9. **Something drives the player on; choices cost something.** 10. **One target feeling for every layer.** 11. **Sound is half the game.**
+Aim for the shape of the first demo (Bible section 2): a toy verb, steady layers each readable from the visuals, an earned hilarious peak, crunchy failure then instant restart.
+
 ## File map
 - `CONSTITUTION.md`: rules, decision authority, knowledge policy, cost and time rules
 - `docs/tech/`: stack, core, audio/juice, bot harness, launcher/hosting, run protocol, themes script, `SCAFFOLD_API.md`, music and jukebox (`10-music-and-jukebox.md`), producing a music batch (`11-music-batch-runbook.md`)

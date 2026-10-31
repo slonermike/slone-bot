@@ -8,13 +8,16 @@ Three templates a night fills in. Keep each short. Files go in `briefs/<slug>.md
 Question: the one thing this build tests
 Target feeling: specific emotion or fantasy (not "fun")
 Mode: content-driven (5-10 min) | systemic (endless, polish 1-2 mechanics)
-Theme: <text>   Why picked: one line
+Theme: <text>   Why picked: one line. Theme expression: how it shows up (look, names, mood, at most one twist) and what you deliberately ignored. The theme is seasoning; the verb comes first
 Genre: <rolled genre>   Options considered: <the 3 to 5 you listed>   (from `node scripts/night-state.mjs genre ...`; reinterpret freely, stay recognizable)
 Human input: <what Slone said at the check-in, and how it shapes the build> or none
 Atoms: <id>, <id>      Wildcard: <text or none>
 Look (from `node scripts/night-state.mjs look`; override at most one dimension, say which and why): palette, shapes, rendering, framing, ui. Then the 3 to 5 hex colors you will actually use and one sentence on what the game looks like at rest.
 Loop (4 lines): win/reward | obstacle/pressure | fail state and recovery | player actions
-Core verb: what the player does, and why it is a toy before it is a game
+Verbs (one to three, plain words) and the toy: what the player does, which verb is fun alone, and why it is a toy before it is a game
+First ten seconds: what the player sees and does with no explanation, and why it is already fun
+Peak: the signature moment the loop builds toward (spectacle, absurdity, power), how it is earned, why a player would laugh or brag about it
+Layer schedule: what arrives when, one line each, one at a time, each readable from the visuals alone
 Pressure source: what pushes back, and how it ramps
 Recovery loop: what a soft failure looks like and how it generates a story
 Different from the last five nights (from the ledger only): one line
@@ -70,6 +73,7 @@ Measured (telemetry): runLength, deaths, firstPressureSimSec, idleSurvivalSec, v
 Believed (labeled): my guesses about feel, which I cannot verify (I cannot play or hear the build)
 Degenerate strategies found: or "none found"
 What I cut or ran out of time for:
+Tenets (Bible section 1): which did the build serve, which did it break; the four checks (toy, pace, peak, theme) with a one-line verdict each; was anything flushed, and did it help
 Surprises (follow the fun): accidents, emergent behavior, pivots (what was not working, what you changed, and whether it helped)
 Biggest risk for Slone to check: the one thing most likely to feel wrong
 Reusable tech proposed to main (as a PR opened after the prototype is complete, not merged during the build): or "none"
