@@ -3,56 +3,49 @@
   "seed": 1,
   "bot": "realtime-greedy",
   "mode": "content",
-  "simSeconds": 20.43,
+  "simSeconds": 21.25,
   "wallMs": 0,
   "timescale": 1,
   "outcome": "timeout",
   "metrics": {
-    "runLength": 20.43,
+    "runLength": 21.25,
     "deaths": 0,
     "firstPressureSimSec": 0,
     "restartDelaySimSec": 0,
     "mainVerbCount": 0,
     "decisionsPerMinute": 0,
     "idleSurvivalSec": 0,
-    "scoreOrProgress": 220,
+    "scoreOrProgress": 0,
     "variance": 0,
-    "blooms": 2,
-    "tier": 2,
-    "best": 2,
-    "glints": 20,
-    "glow": 0.502433333333332
+    "level": 0,
+    "cleared": 0,
+    "levelTime": 21.250000000000075
   },
   "perf": {
-    "avgFrameMs": 103.4,
+    "avgFrameMs": 94.5,
     "p95FrameMs": 183.3,
-    "fps": 9.67,
-    "particleMax": 122,
+    "fps": 10.58,
+    "particleMax": 39,
     "effectsOn": true
   },
   "feel": {
-    "inputToVisualMs": 43.7,
-    "inputToAudioMs": 10.9,
+    "inputToVisualMs": 16007.1,
+    "inputToAudioMs": 2.3,
     "eventsFired": {
-      "mote": 10,
-      "glint": 20,
-      "bloom": 2,
-      "jump": 2,
-      "land": 2,
-      "tier": 2,
-      "gust": 1
+      "level": 1,
+      "jump": 6,
+      "land": 6
     },
-    "shakePeak": 0.56,
-    "hitStopFrames": 20
+    "shakePeak": 0.09,
+    "hitStopFrames": 0
   },
   "errors": [],
   "balance": {
-    "drain": 0.035,
-    "drainRamp": 0.012,
-    "glintGain": 0.12,
+    "gravity": 1,
     "jumpPower": 1,
     "runSpeed": 1,
-    "wind": 1,
-    "gravity": 1
+    "airSteer": 0.2,
+    "stayTime": 2.5,
+    "sunPull": 1
   }
 }

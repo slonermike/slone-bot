@@ -125,6 +125,7 @@ function tryGenerate(spec0: LevelSpec, seed: number): World[] {
   return ws;
 }
 
+const levelCache = new Map<number, World[]>();
 export function levelBounds(ws: World[]) {
   let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
   for (const w of ws) { const m = w.r * (w.type === 'home' ? 1.9 : 1) + 60; x0 = Math.min(x0, w.ox - m); x1 = Math.max(x1, w.ox + m); y0 = Math.min(y0, w.oy - m); y1 = Math.max(y1, w.oy + m); }
@@ -212,6 +213,21 @@ export class Sim {
     if (rel > cap) { this.vx = w.vx + (this.vx - w.vx) * (cap / rel); this.vy = w.vy + (this.vy - w.vy) * (cap / rel); }
     this.grounded = false; this.buf = 0; this.coyote = 0;
     this.out.push({ type: 'jump', magnitude: 0.5, x: this.x, y: this.y });
+  }
+  /** Everything dynamic, as plain data (for bots that run outside the page, such as the media capture). */
+  snapshot() {
+    return { level: this.level, time: this.time, levelTime: this.levelTime, x: this.x, y: this.y, px: this.px, py: this.py, vx: this.vx, vy: this.vy,
+      grounded: this.grounded, gi: this.gi, ang: this.ang, vt: this.vt, cp: this.cp, cpAng: this.cpAng, deadT: this.deadT, clearT: this.clearT,
+      ws: this.ws.map((w) => [w.x, w.y, w.vx, w.vy, w.on ? 1 : 0, w.stay, w.off]), boss: this.boss, shots: this.shots };
+  }
+  static fromSnapshot(ctx: Ctx, st: ReturnType<Sim['snapshot']>): Sim {
+    const s = new Sim(); s.ctx = ctx; s.level = st.level;
+    let base = levelCache.get(st.level); if (!base) { base = generateLevel(LEVELS[st.level]); levelCache.set(st.level, base); }
+    s.ws = base.map((w) => ({ ...w, orbit: w.orbit ? { ...w.orbit } : null })); s.bounds = levelBounds(s.ws);
+    st.ws.forEach((d, i) => { const w = s.ws[i]; w.x = d[0]; w.y = d[1]; w.vx = d[2]; w.vy = d[3]; w.on = !!d[4]; w.stay = d[5]; w.off = d[6]; });
+    const { ws: _ws, ...rest } = st; void _ws; Object.assign(s, rest);
+    s.boss = st.boss ? { ...st.boss } : null; s.shots = st.shots.map((q) => ({ ...q }));
+    return s;
   }
   clone(): Sim { const c = new Sim(); Object.assign(c, this); c.ws = this.ws.map((w) => ({ ...w, orbit: w.orbit ? { ...w.orbit } : null })); c.out = []; c.boss = this.boss ? { ...this.boss } : null; c.shots = this.shots.map((q) => ({ ...q })); return c; }
 

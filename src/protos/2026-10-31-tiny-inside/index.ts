@@ -247,7 +247,7 @@ export function createPrototype(): Prototype {
     },
 
     telemetry: () => ({ level: sim.level, cleared: sim.cleared, deaths: sim.deaths, levelTime: sim.levelTime, scoreOrProgress: sim.cleared * 100 + sim.level }),
-    getState: () => ({ x: sim.x, y: sim.y, level: sim.level, grounded: sim.grounded ? 1 : 0 }),
+    getState: () => sim.snapshot(),
     dispose() { music.stop(); },
   };
 }

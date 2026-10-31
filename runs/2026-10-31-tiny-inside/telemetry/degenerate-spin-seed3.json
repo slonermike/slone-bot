@@ -3,12 +3,12 @@
   "seed": 3,
   "bot": "degenerate-spin",
   "mode": "content",
-  "simSeconds": 600,
-  "wallMs": 109,
+  "simSeconds": 120,
+  "wallMs": 22,
   "timescale": 20,
   "outcome": "timeout",
   "metrics": {
-    "runLength": 600,
+    "runLength": 120,
     "deaths": 0,
     "firstPressureSimSec": 0,
     "restartDelaySimSec": 0,
@@ -19,7 +19,7 @@
     "variance": 0,
     "level": 0,
     "cleared": 0,
-    "levelTime": 599.999999999783
+    "levelTime": 119.99999999999447
   },
   "perf": {
     "avgFrameMs": 0,
@@ -33,8 +33,8 @@
     "inputToAudioMs": 0,
     "eventsFired": {
       "level": 1,
-      "jump": 450,
-      "land": 450
+      "jump": 90,
+      "land": 90
     },
     "shakePeak": 0,
     "hitStopFrames": 0

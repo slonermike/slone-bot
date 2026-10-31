@@ -1,7 +1,7 @@
 import { blankInput } from '../../core/index.ts';
 import type { Bot, InputState } from '../../core/types.ts';
 import { live } from './live.ts';
-import { PR, graphDistToHome, type Sim } from './sim.ts';
+import { PR, Sim, graphDistToHome } from './sim.ts';
 
 const DT = 1 / 60;
 function inp(sx: number, sy: number, down: boolean, pressed: boolean): InputState {
@@ -47,14 +47,15 @@ function plan(s: Sim): number {
   return best;
 }
 
+const stubCtx = { balance: {}, params: {} } as never;
 let target: number | null = null;
 let airTick = 0;
 export const bots: Bot[] = [
   {
     name: 'greedy',
     reset() { target = null; airTick = 0; },
-    act(_o, tick) {
-      const s = live.sim;
+    act(o, tick) {
+      const s = live.sim ?? (o && (o as { ws?: unknown }).ws ? Sim.fromSnapshot(stubCtx, o as ReturnType<Sim['snapshot']>) : null);
       if (!s || s.deadT > 0 || s.clearT > 0) { target = null; return {}; }
       const goal = goalOf(s);
       if (s.grounded) {
