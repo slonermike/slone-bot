@@ -133,5 +133,560 @@
     ],
     "used": null,
     "retired": "2026-10-30"
+  },
+  {
+    "id": "t002",
+    "text": "Everything you build gets washed away on a schedule",
+    "type": "system",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t008",
+    "text": "A tiny town that needs you to keep the lights on",
+    "type": "world",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t013",
+    "text": "You borrow power and must give it back",
+    "type": "system",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t014",
+    "text": "A crowd that follows your lead, whether you want it or not",
+    "type": "world",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t017",
+    "text": "Things get stuck, and unsticking them is the fun",
+    "type": "system",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: already used by an earlier game (Unjam); themes never repeat"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t019",
+    "text": "Rebuild better after the flood",
+    "type": "feeling",
+    "source": "seed",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t021",
+    "text": "A failure that melts into the materials to rebuild",
+    "type": "system",
+    "source": "postmortem",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t022",
+    "text": "One object with three reasons to break it",
+    "type": "system",
+    "source": "postmortem",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t023",
+    "text": "Perfect information and no clock: only scarcity pushes back",
+    "type": "constraint",
+    "source": "postmortem",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t025",
+    "text": "Nothing can be undone, but everything can be moved",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t026",
+    "text": "The playfield shrinks every time you succeed",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t027",
+    "text": "You act only on a shared rhythm you do not control",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t028",
+    "text": "One button whose meaning depends on where you stand",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t029",
+    "text": "You see everything but can only touch the edge of it",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t030",
+    "text": "Three moves, then the world answers",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t031",
+    "text": "Your tools wear out in the order you use them",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t033",
+    "text": "Every action is paid for by something else you own",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t035",
+    "text": "You may only ever go forward, and the way back closes behind you",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t046",
+    "text": "Gravity is a resource you spend",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t047",
+    "text": "Two meters that fight each other",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t048",
+    "text": "A crowd that follows your mistakes",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t051",
+    "text": "Everything you destroy becomes a path",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t053",
+    "text": "Echoes of your last attempt help or hinder this one",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t057",
+    "text": "Every shortcut leaves a trail something else can follow",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t058",
+    "text": "A town where the weather is a job",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t061",
+    "text": "A garden running on borrowed time",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t062",
+    "text": "A workshop inside a living creature",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t063",
+    "text": "A border crossing where everyone carries something odd",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t066",
+    "text": "The smallest kingdom, under heavy management",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t067",
+    "text": "A night shift in a place that is only alive in the dark",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t068",
+    "text": "A river that every decision must follow downstream",
+    "type": "world",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t070",
+    "text": "Your best move is always one you can only make once",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t072",
+    "text": "Whatever helps you also costs you a little every turn",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t087",
+    "text": "Every move shows what the world could become",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t089",
+    "text": "One resource, two ways to spend it, and giving up either hurts",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t091",
+    "text": "A boost that is powerful because it is dangerous",
+    "type": "system",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
+  },
+  {
+    "id": "t094",
+    "text": "Every challenge ends before it gets old",
+    "type": "constraint",
+    "source": "human",
+    "strikes": 0,
+    "reasons": [
+      {
+        "date": "2026-10-31",
+        "text": "removed by human: too specific: reads as a mechanism or a story, which pulls a game into a narrative to serve it; themes should be short open sparks"
+      }
+    ],
+    "used": null,
+    "retired": "2026-10-31"
   }
 ]
