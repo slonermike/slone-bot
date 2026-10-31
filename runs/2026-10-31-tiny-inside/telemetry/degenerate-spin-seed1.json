@@ -3,13 +3,13 @@
   "seed": 1,
   "bot": "degenerate-spin",
   "mode": "content",
-  "simSeconds": 120,
-  "wallMs": 23,
+  "simSeconds": 600,
+  "wallMs": 115,
   "timescale": 20,
   "outcome": "timeout",
   "metrics": {
-    "runLength": 120,
-    "deaths": 60,
+    "runLength": 600,
+    "deaths": 0,
     "firstPressureSimSec": 0,
     "restartDelaySimSec": 0,
     "mainVerbCount": 0,
@@ -19,7 +19,7 @@
     "variance": 0,
     "level": 0,
     "cleared": 0,
-    "levelTime": 119.99999999999447
+    "levelTime": 599.999999999783
   },
   "perf": {
     "avgFrameMs": 0,
@@ -33,9 +33,8 @@
     "inputToAudioMs": 0,
     "eventsFired": {
       "level": 1,
-      "jump": 60,
-      "die": 60,
-      "respawn": 60
+      "jump": 450,
+      "land": 450
     },
     "shakePeak": 0,
     "hitStopFrames": 0
@@ -45,7 +44,7 @@
     "gravity": 1,
     "jumpPower": 1,
     "runSpeed": 1,
-    "airSteer": 1,
+    "airSteer": 0.2,
     "stayTime": 2.5,
     "sunPull": 1
   }

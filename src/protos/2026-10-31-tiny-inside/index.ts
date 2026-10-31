@@ -178,7 +178,7 @@ export function createPrototype(): Prototype {
       const up = sim.grounded ? sim.ang + Math.PI / 2 : Math.atan2(sim.vy, sim.vx) + Math.PI / 2;
       playerC.position.set(px, py); playerC.rotation = up;
       halo.scale.set(Math.max(1, 9 / (PR * zoom)) * (1 + 0.08 * Math.sin(t * 5)));
-      ss.update(dt, 0, sim.grounded ? 0 : -Math.hypot(sim.vx, sim.vy) / 900);
+      ss.update(dt, 0, sim.grounded ? 0 : -Math.hypot(sim.vx, sim.vy) / 600);
       if (!sim.grounded && ctx.vfxRng.next() < 0.5) parts.emit('dust', px, py, { count: 1, color: CORAL, size: 5 / zoom, speed: 30 / zoom });
       void w;
       // offscreen goal pointer

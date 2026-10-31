@@ -9,7 +9,7 @@ export const BALANCE: BalanceSpec[] = [
   { id: 'gravity', label: 'Gravity', min: 0.6, max: 1.6, step: 0.05, default: 1 },
   { id: 'jumpPower', label: 'Hop power', min: 0.7, max: 1.4, step: 0.05, default: 1 },
   { id: 'runSpeed', label: 'Run speed', min: 0.6, max: 1.6, step: 0.05, default: 1 },
-  { id: 'airSteer', label: 'Air steering', min: 0, max: 2, step: 0.1, default: 1 },
+  { id: 'airSteer', label: 'Air steering (a nudge)', min: 0, max: 1.5, step: 0.05, default: 0.2 },
   { id: 'stayTime', label: 'Seconds you can stand on crumbling and fading worlds', min: 1, max: 6, step: 0.5, default: 2.5 },
   { id: 'sunPull', label: 'Sun pull', min: 0.5, max: 2, step: 0.1, default: 1 },
 ];
@@ -25,14 +25,14 @@ export interface LevelSpec {
   suns: number; gums: number; repels: number; fades: number; blinks: number; crumbles: number; moving: number; boss: boolean; faceNext: boolean;
 }
 const L = (o: Partial<LevelSpec> & { name: string; seed: number; w: number; h: number; count: number }): LevelSpec =>
-  ({ sep: 150, reach: 280, suns: 0, gums: 0, repels: 0, fades: 0, blinks: 0, crumbles: 0, moving: 0, boss: false, faceNext: false, ...o });
+  ({ sep: 190, reach: 1, suns: 0, gums: 0, repels: 0, fades: 0, blinks: 0, crumbles: 0, moving: 0, boss: false, faceNext: false, ...o });
 
 // A sea: worlds scattered through a field, start at the left edge, home at the right. Each level adds one idea.
 export const LEVELS: LevelSpec[] = [
-  L({ name: 'First Hop', seed: 1, w: 640, h: 300, count: 3, sep: 170, faceNext: true }),
+  L({ name: 'First Hop', seed: 1, w: 1000, h: 300, count: 3, sep: 200, faceNext: true }),
   L({ name: 'Something Hot', seed: 2, w: 1000, h: 560, count: 6, suns: 1 }),
   L({ name: 'Do Not Linger', seed: 3, w: 1250, h: 640, count: 9, crumbles: 4 }),
-  L({ name: 'Fall Toward It', seed: 4, w: 1500, h: 760, count: 10, sep: 190, reach: 330, suns: 3 }),
+  L({ name: 'Fall Toward It', seed: 4, w: 1500, h: 760, count: 10, sep: 230, reach: 1.1, suns: 3 }),
   L({ name: 'Gone Again', seed: 5, w: 1800, h: 860, count: 13, fades: 4, suns: 1 }),
   L({ name: 'Blink', seed: 6, w: 2000, h: 960, count: 15, blinks: 4, suns: 1 }),
   L({ name: 'Springs', seed: 7, w: 2200, h: 1040, count: 17, gums: 4, suns: 1 }),
@@ -49,13 +49,21 @@ const gOf = (t: WType) => (t === 'sun' ? SURFACE_G * 1.7 : t === 'repel' ? -SURF
 const mk = (type: WType, r: number, x: number, y: number): World => ({ type, r, x, y, vx: 0, vy: 0, ox: x, oy: y, orbit: null, g: gOf(type), on: true, stay: 0, off: 0, period: 0, onFor: 0, phase: 0 });
 const isSafeType = (t: WType) => t !== 'sun' && t !== 'repel';
 
-/** Safe worlds connected by hops no longer than `reach` (surface to surface): is home reachable from the start? */
-export function connected(ws: World[], reach: number): boolean {
+/** Can a hop from world a reach world b? A hop climbs about 2.4 world-radii; the target's own pull helps a little. */
+export const canHop = (a: World, b: World, k: number) =>
+  Math.hypot(b.ox - a.ox, b.oy - a.oy) - a.r - b.r <= k * (2.4 * (a.r + PR) + 0.3 * b.r) + (a.orbit ? 45 : 0) + (b.orbit ? 45 : 0);
+
+function reachable(ws: World[], k: number): Set<number> {
   const seen = new Set<number>([0]); const q = [0];
   while (q.length) {
     const i = q.shift()!;
-    ws.forEach((w, j) => { if (!seen.has(j) && isSafeType(w.type) && Math.hypot(w.ox - ws[i].ox, w.oy - ws[i].oy) - w.r - ws[i].r <= reach + (w.orbit ? 45 : 0) + (ws[i].orbit ? 45 : 0)) { seen.add(j); q.push(j); } });
+    ws.forEach((w, j) => { if (!seen.has(j) && isSafeType(w.type) && canHop(ws[i], w, k)) { seen.add(j); q.push(j); } });
   }
+  return seen;
+}
+/** Safe worlds joined by hops a world can make: is home reachable from the start? */
+export function connected(ws: World[], k: number): boolean {
+  const seen = reachable(ws, k);
   return ws.some((w, j) => w.type === 'home' && seen.has(j));
 }
 
@@ -67,8 +75,10 @@ export function generateLevel(spec: LevelSpec): World[] {
   return tryGenerate(spec, spec.seed);
 }
 
-function tryGenerate(spec: LevelSpec, seed: number): World[] {
+function tryGenerate(spec0: LevelSpec, seed: number): World[] {
   const rng = new Rng(seed);
+  const k = spec0.seed === 1 ? 1 : 1.35; // the sea is wide: worlds are far apart, so each hop is a decision
+  const spec = { ...spec0, w: spec0.w * k, h: spec0.h * k };
   const last = spec.seed === LEVELS[LEVELS.length - 1].seed;
   const ws: World[] = [mk('rock', 85, 0, spec.h / 2)];
   const home = mk('home', last ? 150 : 85, spec.w, spec.h / 2 + (spec.count > 2 ? rng.range(-spec.h * 0.25, spec.h * 0.25) : 0));
@@ -94,17 +104,16 @@ function tryGenerate(spec: LevelSpec, seed: number): World[] {
       if (free(x, y, r, spec.sep)) { ws.push(mk(kind, r, x, y)); break; }
     }
   }
-  // bridge any gap the scatter left: drop a rock a reach away from the nearest reachable world
-  for (let k = 0; k < 60 && !connected(ws, spec.reach); k++) {
-    const seen = new Set<number>([0]); const q = [0];
-    while (q.length) { const i = q.shift()!; ws.forEach((w, j) => { if (!seen.has(j) && isSafeType(w.type) && Math.hypot(w.x - ws[i].x, w.y - ws[i].y) - w.r - ws[i].r <= spec.reach) { seen.add(j); q.push(j); } }); }
+  // bridge any gap the scatter left: drop a rock within hop reach of the nearest reachable world
+  for (let k = 0; k < 80 && !connected(ws, spec.reach); k++) {
+    const seen = reachable(ws, spec.reach);
     let best: { a: number; b: number; d: number } | null = null;
     ws.forEach((a, i) => { if (!seen.has(i)) return; ws.forEach((b, j) => { if (seen.has(j) || !isSafeType(b.type)) return; const d = Math.hypot(a.x - b.x, a.y - b.y) - a.r - b.r; if (!best || d < best.d) best = { a: i, b: j, d }; }); });
     if (!best) break;
     const A = ws[(best as { a: number }).a], B = ws[(best as { b: number }).b];
-    const ang = Math.atan2(B.y - A.y, B.x - A.x), r = rng.range(55, 85);
+    const ang = Math.atan2(B.y - A.y, B.x - A.x), r = rng.range(60, 95);
     let placed = false;
-    for (const f of [0.85, 0.7, 0.55, 0.4]) for (const off of [0, 70, -70, 140, -140]) { if (placed) break; const dd = A.r + spec.reach * f + r, cx = A.x + Math.cos(ang) * dd - Math.sin(ang) * off, cy = A.y + Math.sin(ang) * dd + Math.cos(ang) * off; if (free(cx, cy, r, spec.sep * 0.5)) { ws.push(mk('rock', r, cx, cy)); placed = true; } }
+    for (const mg of [0.6, 0.4, 0.25]) for (const f of [0.8, 0.65, 0.5, 0.35]) for (const off of [0, 70, -70, 140, -140, 210, -210]) { if (placed) break; const gap = f * spec.reach * (2.4 * (A.r + PR) + 0.3 * r), dd = A.r + gap + r, cx = A.x + Math.cos(ang) * dd - Math.sin(ang) * off, cy = A.y + Math.sin(ang) * dd + Math.cos(ang) * off; if (free(cx, cy, r, spec.sep * mg)) { ws.push(mk('rock', r, cx, cy)); placed = true; } }
     if (!placed) break;
   }
   const movers = ws.map((w, i) => ({ w, i })).filter(({ w, i }) => i > 1 && isSafeType(w.type));
@@ -138,7 +147,7 @@ export function gravityAt(ws: World[], x: number, y: number, k: number, sunK: nu
     if (!w.on) continue;
     const dx = w.x - x, dy = w.y - y, d = Math.hypot(dx, dy) || 1;
     const dd = Math.max(d, w.r + PR);
-    const s = w.g * (w.type === 'sun' ? sunK : 1) * k * Math.pow((w.r + PR) / dd, 2);
+    const s = w.g * (w.type === 'sun' ? sunK : 1) * k * Math.pow((w.r + PR) / dd, 3);
     ax += (dx / d) * s; ay += (dy / d) * s;
   }
   return { ax, ay };
@@ -146,6 +155,13 @@ export function gravityAt(ws: World[], x: number, y: number, k: number, sunK: nu
 
 export interface Boss { x: number; y: number; vx: number; vy: number; delay: number; fire: number; charge: number }
 export interface Shot { x: number; y: number; vx: number; vy: number; life: number }
+
+/** A hop is a fixed share of the world's escape speed: you never leave a world on one hop unless another world pulls you,
+ *  and big worlds throw you farther than small ones. */
+export const HOP_FRAC = 0.95;
+/** Pull falls off as 1/d^3, so the escape speed is sqrt(g (r+PR)). */
+export const escapeSpeed = (w: World) => Math.sqrt(Math.abs(w.g) * (w.r + PR));
+export const hopSpeed = (w: World) => HOP_FRAC * escapeSpeed(w);
 
 export class Sim {
   slung = false; slings = 0;
@@ -190,8 +206,10 @@ export class Sim {
   jump(tx: number, ty: number) {
     const w = this.ws[this.gi];
     const ux = Math.cos(this.ang), uy = Math.sin(this.ang);
-    const v0 = 640 * this.bal('jumpPower', 1);
+    const v0 = hopSpeed(w) * this.bal('jumpPower', 1);
     this.vx = w.vx + ux * v0 + tx * this.vt; this.vy = w.vy + uy * v0 + ty * this.vt;
+    const cap = hopSpeed(w) * this.bal('jumpPower', 1), rel = Math.hypot(this.vx - w.vx, this.vy - w.vy);
+    if (rel > cap) { this.vx = w.vx + (this.vx - w.vx) * (cap / rel); this.vy = w.vy + (this.vy - w.vy) * (cap / rel); }
     this.grounded = false; this.buf = 0; this.coyote = 0;
     this.out.push({ type: 'jump', magnitude: 0.5, x: this.x, y: this.y });
   }
@@ -249,9 +267,9 @@ export class Sim {
       const g = gravityAt(this.ws, this.x, this.y, gk, sunK);
       const rising = this.vx * g.ax + this.vy * g.ay < 0;
       const gm = rising && !input.buttons.a.down ? 2.2 : 1;
-      this.vx += g.ax * gm * dt + sx * 380 * this.bal('airSteer', 1) * dt;
-      this.vy += g.ay * gm * dt + sy * 380 * this.bal('airSteer', 1) * dt;
-      const sp = Math.hypot(this.vx, this.vy); if (sp > 1300) { this.vx *= 1300 / sp; this.vy *= 1300 / sp; }
+      this.vx += g.ax * gm * dt + sx * 380 * this.bal('airSteer', 0.2) * dt;
+      this.vy += g.ay * gm * dt + sy * 380 * this.bal('airSteer', 0.2) * dt;
+      const sp = Math.hypot(this.vx, this.vy); if (sp > 900) { this.vx *= 900 / sp; this.vy *= 900 / sp; }
       this.x += this.vx * dt; this.y += this.vy * dt;
       for (let i = 0; i < this.ws.length; i++) {
         const w = this.ws[i];
@@ -263,7 +281,7 @@ export class Sim {
         if (w.type === 'sun') { this.out.push({ type: 'burn', magnitude: 1, x: this.x, y: this.y }); this.die('sun'); break; }
         this.x = w.x + ux * (w.r + PR); this.y = w.y + uy * (w.r + PR);
         if (w.type === 'gum' || w.type === 'repel') {
-          const nv = Math.max(-vr * 0.95, 560);
+          const nv = Math.max(-vr * 0.95, 300);
           this.vx = w.vx + ux * nv + (-uy) * ((this.vx - w.vx) * -uy + (this.vy - w.vy) * ux);
           this.vy = w.vy + uy * nv + ux * ((this.vx - w.vx) * -uy + (this.vy - w.vy) * ux);
           this.out.push({ type: 'bounce', magnitude: 0.7, x: this.x, y: this.y });
@@ -272,7 +290,7 @@ export class Sim {
         this.gi = i; this.ang = Math.atan2(uy, ux);
         this.vt = (this.vx - w.vx) * -uy + (this.vy - w.vy) * ux;
         this.grounded = true; this.vx = w.vx; this.vy = w.vy;
-        this.out.push({ type: 'land', magnitude: Math.min(1, -vr / 700), x: this.x, y: this.y });
+        this.out.push({ type: 'land', magnitude: Math.min(1, -vr / 350), x: this.x, y: this.y });
         if (w.type === 'rock') { this.cp = i; this.cpAng = this.ang; }
         if (w.type === 'home') { this.cleared++; this.clearT = 1.8; this.out.push({ type: 'clear', magnitude: 0.6 + 0.4 * this.level / LEVEL_COUNT, x: w.x, y: w.y, data: { level: this.level } }); }
         break;
@@ -283,7 +301,7 @@ export class Sim {
     let dmin = 1e9;
     for (const w of this.ws) if (w.type === 'sun') dmin = Math.min(dmin, Math.hypot(this.x - w.x, this.y - w.y) - w.r);
     const spd = Math.hypot(this.vx, this.vy);
-    if (!this.grounded && !this.slung && dmin < 90 && spd > 480) { this.slung = true; this.slings++; this.out.push({ type: 'sling', magnitude: Math.min(1, spd / 900), x: this.x, y: this.y }); }
+    if (!this.grounded && !this.slung && dmin < 90 && spd > 330) { this.slung = true; this.slings++; this.out.push({ type: 'sling', magnitude: Math.min(1, spd / 900), x: this.x, y: this.y }); }
     if (dmin > 220) this.slung = false;
     const dg = dmin < 150 || (!!this.boss && this.boss.delay <= 0 && Math.hypot(this.x - this.boss.x, this.y - this.boss.y) < 320);
     if (dg !== this.danger) { this.danger = dg; this.out.push({ type: dg ? 'danger' : 'safe', magnitude: 0.4, x: this.x, y: this.y }); }
@@ -335,7 +353,7 @@ export function predictPath(s: Sim, a: boolean, steps: number, every: number): A
   const pts: Array<[number, number]> = [];
   let x = s.x, y = s.y, vx = s.vx, vy = s.vy;
   if (s.grounded) {
-    const w = s.ws[s.gi], v0 = 640 * (s.ctx.balance.jumpPower ?? 1);
+    const w = s.ws[s.gi], v0 = hopSpeed(w) * (s.ctx.balance.jumpPower ?? 1);
     vx = w.vx + Math.cos(s.ang) * v0 - Math.sin(s.ang) * s.vt; vy = w.vy + Math.sin(s.ang) * v0 + Math.cos(s.ang) * s.vt;
   }
   const dt = 1 / 60, gk = s.ctx.balance.gravity ?? 1, sunK = s.ctx.balance.sunPull ?? 1;
@@ -360,4 +378,16 @@ export function partsFor(level: number, danger: boolean, finale: boolean): strin
   if (level >= 7) p.push('harmony');
   if (danger) return p.filter((x) => x !== 'lead' && x !== 'harmony').concat(level >= 2 ? ['drums'] : []);
   return p;
+}
+
+/** Graph distance from every world to home over safe worlds (centre to centre, hops of up to 420 surface gap). A compass for bots and audits. */
+export function graphDistToHome(ws: World[]): number[] {
+  const n = ws.length, d = new Array(n).fill(1e9), done = new Array(n).fill(false);
+  const hi = ws.findIndex((w) => w.type === 'home'); d[hi] = 0;
+  for (let it = 0; it < n; it++) {
+    let u = -1; for (let i = 0; i < n; i++) if (!done[i] && (u < 0 || d[i] < d[u])) u = i;
+    if (u < 0 || d[u] >= 1e9) break; done[u] = true;
+    for (let v = 0; v < n; v++) { const w = ws[v]; if (done[v] || !isSafeType(w.type)) continue; const e = Math.hypot(w.ox - ws[u].ox, w.oy - ws[u].oy); if (e - w.r - ws[u].r < 420 && d[u] + e < d[v]) d[v] = d[u] + e; }
+  }
+  return d;
 }

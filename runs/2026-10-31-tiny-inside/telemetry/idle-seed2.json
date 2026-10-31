@@ -3,12 +3,12 @@
   "seed": 2,
   "bot": "idle",
   "mode": "content",
-  "simSeconds": 120,
-  "wallMs": 29,
+  "simSeconds": 600,
+  "wallMs": 80,
   "timescale": 20,
   "outcome": "timeout",
   "metrics": {
-    "runLength": 120,
+    "runLength": 600,
     "deaths": 0,
     "firstPressureSimSec": 0,
     "restartDelaySimSec": 0,
@@ -19,7 +19,7 @@
     "variance": 0,
     "level": 0,
     "cleared": 0,
-    "levelTime": 119.99999999999447
+    "levelTime": 599.999999999783
   },
   "perf": {
     "avgFrameMs": 0,
@@ -42,7 +42,7 @@
     "gravity": 1,
     "jumpPower": 1,
     "runSpeed": 1,
-    "airSteer": 1,
+    "airSteer": 0.2,
     "stayTime": 2.5,
     "sunPull": 1
   }

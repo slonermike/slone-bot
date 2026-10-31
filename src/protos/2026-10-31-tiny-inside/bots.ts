@@ -1,7 +1,7 @@
 import { blankInput } from '../../core/index.ts';
 import type { Bot, InputState } from '../../core/types.ts';
 import { live } from './live.ts';
-import { PR, type Sim } from './sim.ts';
+import { PR, graphDistToHome, type Sim } from './sim.ts';
 
 const DT = 1 / 60;
 function inp(sx: number, sy: number, down: boolean, pressed: boolean): InputState {
@@ -10,19 +10,11 @@ function inp(sx: number, sy: number, down: boolean, pressed: boolean): InputStat
   return i;
 }
 const goalOf = (s: Sim) => s.ws.find((w) => w.type === 'home')!;
-// graph distance to home over safe worlds (a better compass in a sea than straight-line distance)
 let gdCache: { key: string; d: number[] } | null = null;
 function graphDist(s: Sim): number[] {
   const key = `${s.level}:${s.ws.length}`;
   if (gdCache && gdCache.key === key) return gdCache.d;
-  const n = s.ws.length, d = new Array(n).fill(1e9), done = new Array(n).fill(false);
-  const hi = s.ws.findIndex((w) => w.type === 'home'); d[hi] = 0;
-  for (let it = 0; it < n; it++) {
-    let u = -1; for (let i = 0; i < n; i++) if (!done[i] && (u < 0 || d[i] < d[u])) u = i;
-    if (u < 0 || d[u] >= 1e9) break; done[u] = true;
-    for (let v = 0; v < n; v++) { const w = s.ws[v]; if (done[v] || w.type === 'sun' || w.type === 'repel') continue; const e = Math.hypot(w.ox - s.ws[u].ox, w.oy - s.ws[u].oy); if (e - w.r - s.ws[u].r < 420 && d[u] + e < d[v]) d[v] = d[u] + e; }
-  }
-  gdCache = { key, d }; return d;
+  gdCache = { key, d: graphDistToHome(s.ws) }; return gdCache.d;
 }
 
 /** Try a hop from every angle round the current world, steering toward the goal in the air; return the best angle. */
@@ -47,7 +39,7 @@ function plan(s: Sim): number {
         fin = true; break;
       }
       const dx = goal.x - c.x, dy = goal.y - c.y, d = Math.hypot(dx, dy) || 1;
-      c.step(DT, inp(dx / d, dy / d, true, false));
+      c.step(DT, inp(0, 0, true, false)); void dx; void dy; void d;
       if (t === 299) score = -Math.hypot(goal.x - c.x, goal.y - c.y) - 600;
     }
     if (score > bestScore) { bestScore = score; best = th; }
@@ -76,7 +68,7 @@ export const bots: Bot[] = [
       }
       target = null; airTick++;
       const dx = goal.x - s.x, dy = goal.y - s.y, dd = Math.hypot(dx, dy) || 1;
-      return { left: { x: dx / dd, y: dy / dd }, hold: ['a'] };
+      void dx; void dy; void dd; return { hold: ['a'] };
     },
   },
   { name: 'degenerate-spin', reset() {}, act: (_o, tick) => ({ left: { x: 1, y: 0 }, hold: tick % 80 === 0 ? ['a'] : [] }) },

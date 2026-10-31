@@ -3,23 +3,23 @@
   "seed": 3,
   "bot": "random",
   "mode": "content",
-  "simSeconds": 120,
-  "wallMs": 36,
+  "simSeconds": 600,
+  "wallMs": 188,
   "timescale": 20,
   "outcome": "timeout",
   "metrics": {
-    "runLength": 120,
-    "deaths": 56,
+    "runLength": 600,
+    "deaths": 2,
     "firstPressureSimSec": 0,
     "restartDelaySimSec": 0,
     "mainVerbCount": 0,
     "decisionsPerMinute": 0,
     "idleSurvivalSec": 0,
-    "scoreOrProgress": 101,
+    "scoreOrProgress": 201,
     "variance": 0,
     "level": 1,
-    "cleared": 1,
-    "levelTime": 20.966666666666757
+    "cleared": 2,
+    "levelTime": 254.58333333342807
   },
   "perf": {
     "avgFrameMs": 0,
@@ -33,14 +33,15 @@
     "inputToAudioMs": 0,
     "eventsFired": {
       "level": 2,
-      "jump": 64,
-      "die": 56,
-      "respawn": 56,
-      "land": 7,
-      "clear": 1,
-      "danger": 1,
-      "sling": 1,
-      "burn": 1
+      "jump": 341,
+      "land": 339,
+      "clear": 2,
+      "danger": 5,
+      "safe": 3,
+      "burn": 2,
+      "die": 2,
+      "respawn": 2,
+      "sling": 1
     },
     "shakePeak": 0,
     "hitStopFrames": 0
@@ -50,7 +51,7 @@
     "gravity": 1,
     "jumpPower": 1,
     "runSpeed": 1,
-    "airSteer": 1,
+    "airSteer": 0.2,
     "stayTime": 2.5,
     "sunPull": 1
   }
