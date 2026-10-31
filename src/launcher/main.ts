@@ -74,6 +74,9 @@ function allTags(): string[] {
 }
 
 function renderGrid(): void {
+  // The whole page is rebuilt on every focus move, which resets the new scroll area to the top; `main` scrolls smoothly,
+  // so without this it snapped to the top and slid back down. Carry the position over instead.
+  const prevScroll = root.querySelector('main')?.scrollTop ?? 0;
   root.innerHTML = '';
   const header = h('header');
   const title = h('h1');
@@ -107,6 +110,9 @@ function renderGrid(): void {
   if (controllerNote) foot.append(h('span', 'note', host?.deck && !host.steam ? `Not started from Steam: the controller acts as a mouse. Press ${glyph('start')} for help` : `No controller detected. Press ${glyph('start')} for help`));
   if (brokenCount) foot.append(h('span', 'note', `${brokenCount} broken build${brokenCount === 1 ? '' : 's'} hidden`));
   root.append(foot);
+  main.style.scrollBehavior = 'auto';
+  main.scrollTop = prevScroll;
+  main.style.removeProperty('scroll-behavior');
   scrollFocusIntoView();
 }
 
