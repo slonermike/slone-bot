@@ -23,9 +23,3 @@ Built short on purpose (low weekly tokens, pencils down early). Genre: explorati
 
 ## Layer schedule (slow, steady growth)
 Tier 0 pure toy (no ink, no drain for 12 s). Tier 1: ink chases you. Tier 2: gusts (faster cadence and stronger each tier). Tier 4: a second ink from the side. Tier 6: seeds drift (faster each tier). Plus ink speed +4% and glow drain up every tier. Each new layer is announced once with a short sticker label on arrival. Perfect-play greedy bot still clears in about 35 s, so human difficulty is the open question: tune `blot`, `drainRamp`, `wind`.
-
-## Agent review round (publisher, physics, sound)
-- Publisher: worlds felt empty, peak quiet. Added sleeper creatures that wake and look at you, and the first pebble stays as a dot in the wide shot.
-- Physics: ink was harmless until tier 6 (2.2 s delay was longer than a half lap), glow pressure was back-loaded, respawn could death-spiral at the top, drifters were near-trivial. Fixed: ink delay 1.0 s, wider with tier, keeps chasing in the air (damages only when grounded on that world); drain 0.05 with ramp 0.008; respawn at full glow with 3 s grace; drifters 20 to 40 percent of run speed; gust default 1.5.
-- Sound: tier chime now falls in pitch with a deep boom, own ink and gust sounds, low-glow heartbeat, bloom chord, calm/tense hysteresis, scaled shake.
-- Still not done: hand-play on a Deck; camera hold on big jumps; eye reacts on approach.
