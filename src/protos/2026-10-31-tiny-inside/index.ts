@@ -169,8 +169,8 @@ export function createPrototype(): Prototype {
       }
       // hop preview dots (where a held hop would go)
       if (sim.deadT <= 0 && sim.clearT <= 0) {
-        const pts = predictPath(sim, true, 260, 4);
-        pts.forEach(([x, y], i) => fxG.circle(x, y, Math.max(3, 3.5 / zoom)).fill({ color: INK, alpha: (sim.grounded ? 0.5 : 0.25) * (1 - i / pts.length) }));
+        const pts = predictPath(sim, true, 40, 4);
+        pts.forEach(([x, y], i) => fxG.circle(x, y, Math.max(3, 3.5 / zoom)).fill({ color: INK, alpha: (sim.grounded ? 0.55 : 0) * (1 - i / pts.length) }));
       }
       // player
       playerC.visible = sim.deadT <= 0;
