@@ -4,24 +4,22 @@
   "bot": "degenerate-spin",
   "mode": "content",
   "simSeconds": 120,
-  "wallMs": 52,
+  "wallMs": 22,
   "timescale": 20,
   "outcome": "timeout",
   "metrics": {
     "runLength": 120,
-    "deaths": 5,
+    "deaths": 43,
     "firstPressureSimSec": 0,
     "restartDelaySimSec": 0,
     "mainVerbCount": 0,
     "decisionsPerMinute": 0,
     "idleSurvivalSec": 0,
-    "scoreOrProgress": 126,
+    "scoreOrProgress": 101,
     "variance": 0,
-    "blooms": 0,
-    "tier": 0,
-    "best": 1,
-    "glints": 26,
-    "glow": 0.18606666666666283
+    "level": 1,
+    "cleared": 1,
+    "levelTime": 117.88333333332793
   },
   "perf": {
     "avgFrameMs": 0,
@@ -34,28 +32,23 @@
     "inputToVisualMs": 0,
     "inputToAudioMs": 0,
     "eventsFired": {
-      "jump": 80,
-      "glint": 26,
-      "land": 78,
-      "mote": 4,
-      "low": 6,
-      "faded": 5,
-      "layer": 1,
-      "tier": 1,
-      "ink": 4
+      "level": 2,
+      "jump": 46,
+      "land": 2,
+      "clear": 1,
+      "die": 43,
+      "respawn": 43
     },
     "shakePeak": 0,
     "hitStopFrames": 0
   },
   "errors": [],
   "balance": {
-    "drain": 0.05,
-    "drainRamp": 0.008,
-    "glintGain": 0.1,
+    "gravity": 1,
     "jumpPower": 1,
     "runSpeed": 1,
-    "blot": 0.5,
-    "wind": 1.5,
-    "gravity": 1
+    "airSteer": 1,
+    "stayTime": 2.5,
+    "sunPull": 1
   }
 }

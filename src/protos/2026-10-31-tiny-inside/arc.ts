@@ -1,4 +1,4 @@
-// Arc as an explicit polyline. Pixi's Graphics.arc() continues the current path, so an arc drawn without a
+// Arc as an explicit polyline (juice helper `arcPath`; see SCAFFOLD_API section 3).
 // moveTo (or after another shape) gets a stray line from wherever the path last was, usually the origin.
 // Here the start is always a fresh moveTo and every point is explicit, so nothing can trail off.
 export interface PathLike { moveTo(x: number, y: number): unknown; lineTo(x: number, y: number): unknown }

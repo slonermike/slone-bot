@@ -1,7 +1,7 @@
 ```
 night: tbd
 started: 2026-10-31T15:15:23.204Z
-phase: done
+phase: core
 branch: none
 brief: none
 lastGoodBuild: none
@@ -29,4 +29,6 @@ notes: one line per checkpoint
 - 0:19 round 6: bots + tier-5 screenshot with two inks | difficulty was flat after tier 2 | layer schedule: tier0 pure toy, tier1 ink, 2 gusts (more frequent/stronger each tier), 4 second ink from the side, 6 drifting seeds; each announced with a sticker label
 - 0:21 round 7: 3 agents reviewed (publisher, physics, sound) | publisher: worlds empty/nothing alive, peak weak, 2 clocks muddy; sound: tier pitch rises (wrong for vast), ink/gust reuse a tone, no low heartbeat, tense flaps | added sleeper creatures that wake and look at you, pebble dot in the final shot, own ink/gust sounds, deeper tier boom, bloom chord + rim pulse, scaled shake, low-glow heartbeat, hysteresis
 - 0:24 round 8: physics review: ink started after you had already crossed (delay 2.2s > half lap through tier 5), glow pressure back-loaded, respawn death spiral, drifters ~10% run speed, ink froze in air | ink delay 1.0s and wider with tier, drain 0.05 ramp 0.008, respawn full glow + 3s grace + resets, drifters 20-40% run speed, ink keeps chasing while airborne (damages only grounded), wider glint pickup, wind 1.5
+- 0:27 phase=core pivot: sea of worlds, n-body gravity, typed worlds, short levels to a goal
+- 0:32 round 9: pivot build: sea of worlds with n-body gravity, 8 world types, 12 levels, boss | bots: greedy plans hops by forward-simulating and clears all 12 (1 death), random about 5, spin 1 | tuned gravity falloff to 1/d^2, level 1 gap, bounds for the goal rays, bot braking before hop
 ```

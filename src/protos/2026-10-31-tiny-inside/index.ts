@@ -2,286 +2,241 @@ import { Container, Graphics, Text, type Application } from 'pixi.js';
 import { play, defineSound } from '../../audio/index.ts';
 import { music } from '../../audio/music.ts';
 import { glyph, stickGlyph } from '../../core/index.ts';
-import { tween, ease, shake, hitStop, SquashStretch, Particles, numberPop, chaseDt, clamp } from '../../juice/index.ts';
+import { tween, ease, shake, hitStop, SquashStretch, Particles, chaseDt, clamp } from '../../juice/index.ts';
 import type { Ctx, InputState, Prototype, SimEvent, View } from '../../core/types.ts';
-import { BALANCE, PR, Sim, TIERS, partsFor } from './sim.ts';
+import { BALANCE, LEVELS, LEVEL_COUNT, PR, Sim, partsFor, predictPath, type World } from './sim.ts';
 import { makeMusic } from './music.ts';
 import { arcPath } from './arc.ts';
+import { live } from './live.ts';
 export { bots } from './bots.ts';
 
-const PAPER = 0xf3ecdc, INK = 0x1d1b22, CORAL = 0xff5638, SHADE = 0xe2d6bb, RIBBON = 0x8a7f6a;
+const PAPER = 0xf3ecdc, INK = 0x1d1b22, CORAL = 0xff5638, SHADE = 0xe2d6bb, RIBBON = 0x8a7f6a, GOLD = 0xffc94a;
 const SEMI = (n: number) => Math.pow(2, n / 12);
 
 defineSound('hop', { wave: 'sine', freq: 420, slide: 1.6, attack: 0.002, sustain: 0.03, decay: 0.12, volume: 0.35 });
 defineSound('land', { wave: 'noise', freq: 140, slide: -1, attack: 0.001, sustain: 0.02, decay: 0.12, lowpass: 700, transient: 0.3, volume: 0.35 });
-defineSound('glint', { wave: 'sine', freq: 880, attack: 0.001, sustain: 0.04, decay: 0.28, vibratoDepth: 0.02, vibratoSpeed: 14, transient: 0.15, volume: 0.35 });
-defineSound('tier', { wave: 'triangle', freq: 200, slide: 1.2, attack: 0.08, sustain: 0.2, decay: 0.8, lowpass: 3000, volume: 0.5 });
-defineSound('lowwarn', { wave: 'sine', freq: 300, slide: -0.5, attack: 0.01, sustain: 0.1, decay: 0.4, volume: 0.35 });
-defineSound('ink', { wave: 'noise', freq: 220, slide: -0.8, attack: 0.002, sustain: 0.05, decay: 0.25, lowpass: 500, transient: 0.2, volume: 0.4 });
-defineSound('gust', { wave: 'noise', freq: 600, slide: -0.4, attack: 0.3, sustain: 0.3, decay: 0.8, lowpass: 1400, highpass: 200, volume: 0.22 });
+defineSound('boing', { wave: 'sine', freq: 200, slide: 2.4, attack: 0.002, sustain: 0.05, decay: 0.3, vibratoDepth: 0.05, vibratoSpeed: 20, volume: 0.4 });
+defineSound('chime', { wave: 'triangle', freq: 523, attack: 0.01, sustain: 0.15, decay: 0.7, transient: 0.1, volume: 0.45 });
 defineSound('boom', { wave: 'sine', freq: 90, slide: -0.3, attack: 0.01, sustain: 0.3, decay: 1.4, lowpass: 400, volume: 0.5 });
-defineSound('fade', { wave: 'saw', freq: 330, slide: -1.4, attack: 0.01, sustain: 0.2, decay: 0.7, lowpass: 900, volume: 0.35 });
+defineSound('burn', { wave: 'noise', freq: 500, slide: -1.2, attack: 0.002, sustain: 0.1, decay: 0.5, lowpass: 1800, transient: 0.4, volume: 0.5 });
+defineSound('shatter', { wave: 'noise', freq: 900, slide: -0.6, attack: 0.001, sustain: 0.05, decay: 0.35, highpass: 600, transient: 0.5, volume: 0.45 });
+defineSound('tick', { wave: 'square', freq: 700, attack: 0.001, sustain: 0.01, decay: 0.05, volume: 0.15 });
+defineSound('whoosh', { wave: 'noise', freq: 700, slide: -0.4, attack: 0.12, sustain: 0.1, decay: 0.4, lowpass: 1500, highpass: 200, volume: 0.25 });
+defineSound('warn', { wave: 'sine', freq: 300, slide: -0.5, attack: 0.01, sustain: 0.1, decay: 0.4, volume: 0.25 });
 
 export function createPrototype(): Prototype {
   const sim = new Sim();
   let ctx!: Ctx;
   let view: View; let W: Container, U: Container;
-  let cam: Container, body: Container, bodyG: Graphics, glintG: Graphics, playerC: Container, halo: Graphics, eyeG: Graphics;
+  let cam: Container, worldG: Graphics, fxG: Graphics, playerC: Container, halo: Graphics;
   let parts: Particles, ss: SquashStretch;
-  let critG: Graphics, moteG: Graphics, bloomG: Graphics, windG: Graphics, uiGlow: Graphics, uiTier: Graphics, uiTierTxt: Text, hint: Text, veil: Graphics;
-  let zoom = 0.6, zlog = Math.log(0.6), fx = 0, fy = 0, t = 0, eyeOpen = 0;
-  const eye = { open: 0 };
-  const bloomAmt: number[] = [];
+  let badge: Graphics, badgeTxt: Text, hint: Text, veil: Graphics;
+  let zoom = 0.8, zlog = Math.log(0.8), fx = 0, fy = 0, t = 0, safeT = 0, eyeOpen = 0, finale = 0;
   let song: ReturnType<typeof makeMusic>;
   let mode: 'calm' | 'tense' = 'calm';
-  let moved = 0; let bloomRim = 0; let heart = 0; let doneT = 0;
 
-  const zoomFor = (i: number) => { const b = sim.bodies[i]; return 330 / (b.r + 2.2 * b.gap); };
+  const label = (txt: string, size: number, fill = INK) => new Text({ text: txt, style: { fontFamily: 'Space Grotesk, sans-serif', fontWeight: '700', fontSize: size, fill } });
+  const setMode = (m: 'calm' | 'tense') => { mode = m; music.play(m === 'calm' ? song.calm : song.tense, partsFor(sim.level, m === 'tense', finale > 0) as never); };
+  const levelZoom = () => { const b = sim.bounds; return clamp(Math.min(1120 / (b.x1 - b.x0), 640 / (b.y1 - b.y0)), 0.3, 1); };
 
-  function drawWorld() {
-    bodyG.clear();
-    sim.bodies.forEach((b, i) => {
-      const w = 7 * b.f;
-      for (let k = 0; k < 5; k++) bodyG.circle(b.x, b.y, b.r * (1 - k * 0.12)).fill({ color: k % 2 ? 0xf8f2e4 : SHADE, alpha: k === 0 ? 1 : 0.55 });
-      bodyG.circle(b.x, b.y, b.r).stroke({ width: w, color: INK });
-      // ribbons: flowing arcs inside the disc, plus one coral spot ribbon
-      for (let k = 0; k < 5; k++) {
-        const rr = b.r * (0.35 + 0.11 * k), a0 = i * 1.7 + k * 1.3;
-        arcPath(bodyG, b.x, b.y, rr, a0, a0 + 1.4 + k * 0.25); bodyG.stroke({ width: 2.2 * b.f, color: RIBBON, alpha: 0.7 });
+  function drawWorld(g: Graphics, w: World, idx: number) {
+    const x = w.x, y = w.y, r = w.r, lim = ctx.balance.stayTime ?? 2.5;
+    if (w.orbit) { g.circle(w.ox, w.oy, w.orbit.rad).stroke({ width: 2 / zoom, color: RIBBON, alpha: 0.25 }); }
+    if (!w.on) { // ghost: where it will come back
+      g.circle(x, y, r).stroke({ width: 2 / zoom, color: RIBBON, alpha: 0.28 });
+      return;
+    }
+    const disc = (fill: number, a = 1) => { for (let k = 0; k < 4; k++) g.circle(x, y, r * (1 - k * 0.1)).fill({ color: k % 2 ? 0xf8f2e4 : fill, alpha: k === 0 ? a : 0.5 * a }); };
+    const rim = (c = INK, wd = 4, a = 1) => g.circle(x, y, r).stroke({ width: wd, color: c, alpha: a });
+    const standing = sim.grounded && sim.gi === idx;
+    switch (w.type) {
+      case 'rock':
+        disc(SHADE); rim();
+        for (let k = 0; k < 3; k++) { const a0 = idx * 1.9 + k * 2.1, rr = r * (0.45 + 0.17 * k); arcPath(g, x, y, rr, a0, a0 + 1.5); g.stroke({ width: 2, color: RIBBON, alpha: 0.7 }); }
+        break;
+      case 'sun': {
+        for (const k of [2.4, 3.6]) g.circle(x, y, r * k).stroke({ width: 2, color: CORAL, alpha: 0.18 });
+        for (let k = 0; k < 16; k++) { const a = k * 0.3927 + t * 0.4, r1 = r + 4, r2 = r + 22 + 6 * Math.sin(t * 5 + k); g.poly([x + Math.cos(a - 0.1) * r1, y + Math.sin(a - 0.1) * r1, x + Math.cos(a) * r2, y + Math.sin(a) * r2, x + Math.cos(a + 0.1) * r1, y + Math.sin(a + 0.1) * r1]).fill(CORAL); }
+        g.circle(x, y, r).fill(INK).stroke({ width: 4, color: CORAL });
+        g.circle(x, y, r * 0.55).fill({ color: CORAL, alpha: 0.35 + 0.15 * Math.sin(t * 4) });
+        break;
       }
-      arcPath(bodyG, b.x, b.y, b.r * 0.82, i * 2.1, i * 2.1 + 1.1); bodyG.stroke({ width: 5 * b.f, color: CORAL, alpha: 0.85 });
-      if (i === TIERS - 1) return;
-    });
-  }
-
-  function drawEye() {
-    const b = sim.bodies[TIERS - 1];
-    const o = eye.open, R = b.r * 0.78, h = R * 0.5 * o;
-    eyeG.clear();
-    const cx = b.x, cy = b.y;
-    if (o < 0.02) { eyeG.moveTo(cx - R, cy).quadraticCurveTo(cx, cy + R * 0.06, cx + R, cy).stroke({ width: 9 * b.f, color: INK }); return; }
-    eyeG.moveTo(cx - R, cy).quadraticCurveTo(cx, cy - h * 2, cx + R, cy).quadraticCurveTo(cx, cy + h * 2, cx - R, cy).fill(0xfffaf0).stroke({ width: 8 * b.f, color: INK });
-    const ix = cx + clamp((sim.x - cx) * 0.05, -R * 0.2, R * 0.2), iy = cy + clamp((sim.y - cy) * 0.05, -h * 0.4, h * 0.4);
-    eyeG.circle(ix, iy, h * 0.9).fill(CORAL).stroke({ width: 5 * b.f, color: INK });
-    eyeG.circle(ix, iy, h * 0.4).fill(INK);
-    eyeG.circle(ix - h * 0.25, iy - h * 0.25, h * 0.14).fill(0xffffff);
-  }
-
-  function label(txt: string, size: number, fill = INK) {
-    return new Text({ text: txt, style: { fontFamily: 'Space Grotesk, sans-serif', fontWeight: '700', fontSize: size, fill } });
-  }
-
-  function setMode(m: 'calm' | 'tense') {
-    mode = m;
-    music.play(m === 'calm' ? song.calm : song.tense, partsFor(sim.best, m === 'tense', sim.done) as never);
+      case 'crumble': {
+        disc(0xd8c79d); 
+        const fr = standing ? clamp(w.stay / lim, 0, 1) : clamp(w.stay / lim, 0, 1);
+        for (let k = 0; k < 14; k++) { const a0 = k * 0.449; arcPath(g, x, y, r, a0, a0 + 0.2); g.stroke({ width: 4, color: INK }); }
+        for (let k = 0; k < 5; k++) { const a = idx + k * 1.26, l = r * (0.3 + 0.7 * fr); g.moveTo(x, y).lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l * 0.9).stroke({ width: 2 + 2 * fr, color: INK, alpha: 0.4 + 0.5 * fr }); }
+        if (fr > 0) { arcPath(g, x, y, r + 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(0.999, fr)); g.stroke({ width: 7, color: CORAL, cap: 'round' }); }
+        break;
+      }
+      case 'fade': {
+        const fr = clamp(w.stay / lim, 0, 1), al = 1 - 0.55 * fr;
+        disc(0xe9efe9, al); g.circle(x, y, r).stroke({ width: 3, color: INK, alpha: al });
+        for (let k = 0; k < 6; k++) { const a0 = k * 1.05 + t * 0.3; arcPath(g, x, y, r * 0.75, a0, a0 + 0.5); g.stroke({ width: 2, color: RIBBON, alpha: 0.5 * al }); }
+        if (fr > 0) { arcPath(g, x, y, r + 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(0.999, fr)); g.stroke({ width: 6, color: INK, cap: 'round', alpha: 0.8 }); }
+        break;
+      }
+      case 'blink': {
+        const left = w.onFor - ((sim.time + w.phase) % w.period);
+        const flick = left < 0.9 && Math.sin(t * 30) > 0 ? 0.35 : 1;
+        disc(0xdfe8ee, flick); g.circle(x, y, r).stroke({ width: 4, color: INK, alpha: flick });
+        g.circle(x, y, r * 0.3).stroke({ width: 3, color: INK, alpha: flick }); // a little clock
+        g.moveTo(x, y).lineTo(x + Math.cos(-Math.PI / 2 + (left / w.onFor) * 6.283) * r * 0.3, y + Math.sin(-Math.PI / 2 + (left / w.onFor) * 6.283) * r * 0.3).stroke({ width: 3, color: INK, alpha: flick });
+        break;
+      }
+      case 'gum': {
+        const sq = 1 + 0.05 * Math.sin(t * 6 + idx);
+        disc(0xffb9a6); g.ellipse(x, y, r * sq, r / sq).stroke({ width: 5, color: INK });
+        for (let k = 1; k <= 2; k++) g.circle(x, y, r * (0.3 * k)).stroke({ width: 3, color: CORAL, alpha: 0.6 });
+        break;
+      }
+      case 'repel': {
+        for (const k of [1.8, 2.6]) g.circle(x, y, r * k).stroke({ width: 2, color: RIBBON, alpha: 0.18 });
+        disc(0xf8f2e4); for (let k = 0; k < 12; k++) { const a0 = k * 0.5236; arcPath(g, x, y, r, a0, a0 + 0.26); g.stroke({ width: 4, color: CORAL }); }
+        for (let k = 0; k < 8; k++) { const a = k * 0.785 + 0.2, ph = (t * 0.8 + k * 0.13) % 1, rr = r + 10 + ph * 40; g.poly([x + Math.cos(a - 0.08) * rr, y + Math.sin(a - 0.08) * rr, x + Math.cos(a) * (rr + 12), y + Math.sin(a) * (rr + 12), x + Math.cos(a + 0.08) * rr, y + Math.sin(a + 0.08) * rr]).fill({ color: CORAL, alpha: 1 - ph }); }
+        break;
+      }
+      case 'home': {
+        // the goal is unmistakable at all times: golden, rayed, haloed, pulsing, nothing else looks like it
+        const pulse = 1 + 0.05 * Math.sin(t * 3);
+        g.circle(x, y, r * 2.6 * pulse).fill({ color: GOLD, alpha: 0.1 }); g.circle(x, y, r * 1.8 * pulse).fill({ color: GOLD, alpha: 0.16 });
+        for (let k = 0; k < 14; k++) { const a = k * 0.4488 + t * 0.25, r1 = r + 6, r2 = r * (1.7 + 0.25 * Math.sin(t * 2 + k * 2)); g.poly([x + Math.cos(a - 0.07) * r1, y + Math.sin(a - 0.07) * r1, x + Math.cos(a) * r2, y + Math.sin(a) * r2, x + Math.cos(a + 0.07) * r1, y + Math.sin(a + 0.07) * r1]).fill({ color: GOLD, alpha: 0.9 }).stroke({ width: 1.5, color: INK }); }
+        g.circle(x, y, r).fill(GOLD).stroke({ width: 6, color: INK });
+        g.circle(x, y, r * 0.78).stroke({ width: 4, color: CORAL });
+        g.circle(x, y, r * 0.52).fill({ color: 0xfff4c8 });
+        g.star(x, y, 5, r * 0.4, r * 0.17, t * 0.6).fill(CORAL).stroke({ width: 3, color: INK });
+        if (sim.level === LEVEL_COUNT - 1) { // the last home is a sleeping eye
+          const o = eyeOpen, R = r * 0.7, h = R * 0.55 * o;
+          if (o < 0.03) g.moveTo(x - R, y).quadraticCurveTo(x, y + R * 0.1, x + R, y).stroke({ width: 7, color: INK });
+          else { g.moveTo(x - R, y).quadraticCurveTo(x, y - h * 2, x + R, y).quadraticCurveTo(x, y + h * 2, x - R, y).fill(0xfffaf0).stroke({ width: 6, color: INK }); g.circle(x + clamp((sim.x - x) * 0.05, -R * 0.2, R * 0.2), y, h * 0.9).fill(CORAL).stroke({ width: 4, color: INK }); g.circle(x + clamp((sim.x - x) * 0.05, -R * 0.2, R * 0.2), y, h * 0.4).fill(INK); }
+        }
+        break;
+      }
+    }
   }
 
   return {
-    meta: { slug: '2026-10-31-tiny-inside', title: 'Speck', question: 'Does the camera pulling back on every landing make a simple planet-hopper feel wonderful?', targetFeeling: 'awe and tenderness at being very small in a very large thing', mode: 'content' },
+    meta: { slug: '2026-10-31-tiny-inside', title: 'Speck', question: 'Is bending a path through a sea of gravity wells (hop, orbit, slingshot) a toy worth building levels on?', targetFeeling: 'awe and tenderness at being very small in a very large thing', mode: 'content' },
     balance: BALANCE,
-    init(c: Ctx) { ctx = c; sim.init(c); const T = Number(c.params.tier ?? 0); if (T > 0) { sim.best = T; sim.spawn(T); } if (c.params.eye === '1') eye.open = 1; if (c.params.done === '1') sim.done = true; const b = sim.bodies[0]; zoom = zoomFor(0); zlog = Math.log(zoom); fx = b.x; fy = b.y; },
+    init(c: Ctx) { ctx = c; live.sim = sim; sim.init(c); zlog = Math.log(levelZoom()); zoom = Math.exp(zlog); fx = (sim.bounds.x0 + sim.bounds.x1) / 2; fy = (sim.bounds.y0 + sim.bounds.y1) / 2; },
     step(dt: number, input: InputState) { sim.step(dt, input); },
     events() { return sim.events(); },
 
     mount(v: View) {
       view = v; W = v.world as Container; U = v.ui as Container;
       (v.app as Application).renderer.background.color = PAPER;
-      cam = new Container(); body = new Container(); bodyG = new Graphics(); glintG = new Graphics(); eyeG = new Graphics();
-      playerC = new Container(); halo = new Graphics();
+      cam = new Container(); worldG = new Graphics(); fxG = new Graphics(); playerC = new Container(); halo = new Graphics();
       halo.circle(0, 0, PR * 3.2).fill({ color: CORAL, alpha: 0.12 }).circle(0, 0, PR * 2.1).fill({ color: CORAL, alpha: 0.22 });
-      const dot = new Graphics().circle(0, 0, PR).fill(CORAL).stroke({ width: 3, color: INK });
-      const gleam = new Graphics().circle(-4, -5, 4).fill(0xffffff);
-      playerC.addChild(halo, dot, gleam);
-      bloomG = new Graphics(); moteG = new Graphics(); critG = new Graphics();
-      body.addChild(bodyG, bloomG, critG, eyeG, moteG, glintG);
-      cam.addChild(body, playerC);
-      W.addChild(cam);
-      parts = new Particles(W, { confettiColors: [CORAL, INK, 0xffc94a, 0x6fb3a6] });
+      playerC.addChild(halo, new Graphics().circle(0, 0, PR).fill(CORAL).stroke({ width: 3, color: INK }), new Graphics().circle(-3.5, -4.5, 3.5).fill(0xffffff));
+      cam.addChild(worldG, fxG, playerC); W.addChild(cam);
+      parts = new Particles(W, { confettiColors: [CORAL, INK, GOLD, 0x6fb3a6] });
       v.onFrame((dt) => parts.update(dt));
       ss = new SquashStretch(playerC);
-      drawWorld();
-      // sticker UI
-      windG = new Graphics(); uiGlow = new Graphics(); uiTier = new Graphics(); uiTierTxt = label('', 20);
-      hint = label('', 22, INK); hint.anchor.set(0.5); hint.position.set(640, 735);
+      badge = new Graphics(); badgeTxt = label('', 22); hint = label('', 22); hint.anchor.set(0.5); hint.position.set(640, 745);
       veil = new Graphics().rect(0, 0, 1280, 800).fill(0xffffff); veil.alpha = 0;
-      U.addChild(windG, uiGlow, uiTier, uiTierTxt, hint, veil);
-      song = makeMusic();
-      setMode('calm');
+      U.addChild(badge, badgeTxt, hint, veil);
+      song = makeMusic(); setMode('calm');
     },
 
     render(alpha: number) {
       const dt = view.frame.dt; t += dt;
       const px = sim.px + (sim.x - sim.px) * alpha, py = sim.py + (sim.y - sim.py) * alpha;
-      // camera: zoom to the nearest world, centre between that world and the player
-      let zt = Math.log(zoomFor(sim.cur));
-      let ox = 0, oy = 0, wide = 0;
-      if (sim.done) {
-        doneT += dt;
-        if (doneT > 2.6) { // the pull-back: the whole constellation, every world a freckle
-          const bs = sim.bodies; let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
-          for (const q of bs) { x0 = Math.min(x0, q.x - q.r); x1 = Math.max(x1, q.x + q.r); y0 = Math.min(y0, q.y - q.r); y1 = Math.max(y1, q.y + q.r); }
-          zt = Math.log(Math.min(1100 / (x1 - x0), 700 / (y1 - y0))); ox = (x0 + x1) / 2; oy = (y0 + y1) / 2; wide = 1;
-          if (doneT < 2.7) { shake(0.5); play('tier', { pitch: 0.5, volume: 0.6 }); }
-        }
+      const b = sim.bounds, cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
+      zlog = chaseDt(zlog, Math.log(levelZoom()), 0.7, dt); zoom = Math.exp(zlog);
+      const fit = Math.min(1180 / (b.x1 - b.x0), 640 / (b.y1 - b.y0)) >= 0.3;
+      fx = chaseDt(fx, fit ? cx : cx * 0.4 + px * 0.6, 0.8, dt); fy = chaseDt(fy, fit ? cy : cy * 0.4 + py * 0.6, 0.8, dt);
+      cam.scale.set(zoom); cam.position.set(640 - fx * zoom, 410 - fy * zoom);
+      if (sim.level === LEVEL_COUNT - 1 && sim.clearT > 0) { finale += dt; eyeOpen = Math.min(1, eyeOpen + dt * 0.8); } else if (sim.level !== LEVEL_COUNT - 1) eyeOpen = 0;
+      worldG.clear(); fxG.clear();
+      sim.ws.forEach((w, i) => drawWorld(worldG, w, i));
+      // the Hunter and its spit
+      if (sim.boss) {
+        const B = sim.boss, awake = B.delay <= 0, ch = B.charge > 0 ? 1 - B.charge / 0.7 : 0;
+        const pulse = 1 + 0.06 * Math.sin(t * 6) + 0.2 * ch, R0 = 46 * pulse;
+        const a0 = awake ? 1 : 0.35;
+        for (let k = 0; k < 6; k++) { const ph = t * 2 + k, tx = B.x - B.vx * 0.12 * (k + 1), ty = B.y - B.vy * 0.12 * (k + 1); worldG.circle(tx, ty, R0 * (0.8 - k * 0.1)).fill({ color: INK, alpha: 0.3 * a0 }); void ph; }
+        const pts: number[] = [];
+        for (let k = 0; k < 20; k++) { const a = (k / 20) * Math.PI * 2, rr = R0 * (1 + (k % 2 ? 0.28 : 0) + 0.06 * Math.sin(t * 5 + k * 1.7)); pts.push(B.x + Math.cos(a) * rr, B.y + Math.sin(a) * rr); }
+        worldG.poly(pts).fill({ color: INK, alpha: a0 }).stroke({ width: 4, color: CORAL, alpha: a0 });
+        const lx = clamp(sim.x - B.x, -1, 1), ly = clamp(sim.y - B.y, -1, 1), ln = Math.hypot(sim.x - B.x, sim.y - B.y) || 1;
+        for (const sg of [-1, 1]) { const ex = B.x + sg * R0 * 0.38 + (sim.x - B.x) / ln * 5, ey = B.y - R0 * 0.15 + (sim.y - B.y) / ln * 5; worldG.circle(ex, ey, R0 * 0.2).fill({ color: awake ? CORAL : 0x6b3b34 }); worldG.circle(ex + lx * 4, ey + ly * 4, R0 * 0.08).fill(INK); }
+        worldG.moveTo(B.x - R0 * 0.4, B.y + R0 * 0.35).quadraticCurveTo(B.x, B.y + R0 * (0.35 + 0.3 * ch), B.x + R0 * 0.4, B.y + R0 * 0.35).stroke({ width: 5, color: ch > 0 ? GOLD : CORAL });
+        if (ch > 0) worldG.circle(B.x, B.y, R0 * (1.4 + 1.2 * (1 - ch))).stroke({ width: 4, color: GOLD, alpha: ch });
+        for (const q of sim.shots) { worldG.circle(q.x - q.vx * 0.03, q.y - q.vy * 0.03, 7).fill({ color: INK, alpha: 0.4 }); worldG.circle(q.x, q.y, 9).fill(INK).stroke({ width: 3, color: CORAL }); }
       }
-      zlog = chaseDt(zlog, zt, wide ? 0.35 : 0.9, dt);
-      zoom = Math.exp(zlog);
-      const b = sim.bodies[sim.cur];
-      fx = chaseDt(fx, wide ? ox : b.x * 0.6 + px * 0.4, wide ? 0.35 : 0.9, dt); fy = chaseDt(fy, wide ? oy : b.y * 0.6 + py * 0.4, wide ? 0.35 : 0.9, dt);
-      cam.scale.set(zoom); cam.position.set(640 - fx * zoom, 400 - fy * zoom);
+      // hop preview dots (where a held hop would go)
+      if (sim.deadT <= 0 && sim.clearT <= 0) {
+        const pts = predictPath(sim, true, 150, 5);
+        pts.forEach(([x, y], i) => fxG.circle(x, y, Math.max(3, 3.5 / zoom)).fill({ color: INK, alpha: (sim.grounded ? 0.5 : 0.25) * (1 - i / pts.length) }));
+      }
       // player
-      const up = Math.atan2(py - b.y, px - b.x) + Math.PI / 2;
+      playerC.visible = sim.deadT <= 0;
+      const w = sim.ws[sim.gi];
+      const up = sim.grounded ? sim.ang + Math.PI / 2 : Math.atan2(sim.vy, sim.vx) + Math.PI / 2;
       playerC.position.set(px, py); playerC.rotation = up;
-      const vis = Math.max(1, 8 / (PR * zoom));
-      halo.scale.set(vis * (1 + 0.08 * Math.sin(t * 5)));
-      ss.update(dt, 0, sim.grounded ? 0 : -Math.hypot(sim.vx, sim.vy) / (900 * b.f));
-      // glints
-      glintG.clear();
-      const gs = Math.max(1, 6 / (PR * 0.5 * zoom));
-      for (const g of sim.glints) {
-        if (!g.on) continue;
-        const bob = Math.sin(t * 3 + g.x) * 6 * sim.bodies[g.body].f;
-        glintG.star(g.x, g.y + bob, 4, 10 * gs, 4 * gs, t).fill(0xffc94a).stroke({ width: 1.5 * gs, color: INK });
-      }
-      if (sim.best >= TIERS - 2 || eye.open > 0) drawEye(); else eyeG.clear();
-      moteG.clear(); bloomG.clear();
-      sim.bodies.forEach((bb, i) => { const a = (bloomAmt[i] = chaseDt(bloomAmt[i] ?? (sim.bloomed[i] ? 1 : 0), sim.bloomed[i] ? 1 : 0, 0.9, dt)); if (a > 0) { bloomG.circle(bb.x, bb.y, bb.r * a).fill({ color: CORAL, alpha: 0.22 }); bloomG.circle(bb.x, bb.y, bb.r * 0.5 * a).fill({ color: 0xffc94a, alpha: 0.25 }); } });
-      if (sim.blotOn) {
-        const bb = sim.bodies[sim.blotBody], rr = bb.r + 2 * bb.f, hw = (70 * bb.f) / (bb.r + PR);
-        const wait = sim.blotDelay > 0, al = wait ? 0.3 + 0.25 * Math.sin(t * 12) : 0.92;
-        for (const ba of sim.blots) {
-          arcPath(bloomG, bb.x, bb.y, rr, ba - hw, ba + hw); bloomG.stroke({ width: 46 * bb.f, color: INK, alpha: al, cap: 'round', join: 'round' });
-          for (let k = -2; k <= 2; k++) { const a = ba + k * hw * 0.5; bloomG.circle(bb.x + Math.cos(a) * (rr - 30 * bb.f - Math.abs(k) * 8 * bb.f), bb.y + Math.sin(a) * (rr - 30 * bb.f - Math.abs(k) * 8 * bb.f), (14 - Math.abs(k) * 3) * bb.f).fill({ color: INK, alpha: al }); }
-        }
-      }
-      for (const m of sim.motes) {
-        if (!m.on) continue;
-        const bb = sim.bodies[m.body], mx = bb.x + Math.cos(m.a) * (bb.r + PR * 0.4), my = bb.y + Math.sin(m.a) * (bb.r + PR * 0.4);
-        const sz = Math.max(12 * bb.f, 6 / zoom) * (1 + 0.15 * Math.sin(t * 6 + m.a));
-        moteG.circle(mx, my, sz).fill(CORAL).stroke({ width: Math.max(2 * bb.f, 1.5 / zoom), color: INK });
-        moteG.circle(mx - sz * 0.3, my - sz * 0.3, sz * 0.25).fill(0xffffff);
-      }
-      // sleepers: little creatures on every world; they stir and look at you when you come near (their size shows the scale)
-      critG.clear();
-      sim.bodies.forEach((bb, i) => {
-        if (i === TIERS - 1) return;
-        const n = 2 + (i >> 1);
-        for (let k = 0; k < n; k++) {
-          const a = i * 1.37 + k * (6.283 / n) + 0.6, cs = 30 * bb.f, rx = bb.x + Math.cos(a) * (bb.r + 2), ry = bb.y + Math.sin(a) * (bb.r + 2);
-          const near = Math.hypot(px - rx, py - ry) < 380 * bb.f;
-          const nx = Math.cos(a), ny = Math.sin(a), tx = -ny, ty = nx;
-          const bob = near ? Math.sin(t * 5 + k) * 0.08 : Math.sin(t * 1.3 + k) * 0.03;
-          const cx = rx + nx * cs * (0.7 + bob), cy = ry + ny * cs * (0.7 + bob);
-          critG.circle(cx, cy, cs).fill({ color: sim.bloomed[i] ? 0xffb9a6 : 0xd8cbab }).stroke({ width: Math.max(2 * bb.f, 1 / zoom), color: INK });
-          const ex = cs * 0.38;
-          for (const sg of [-1, 1]) {
-            const ex0 = cx + tx * ex * sg + nx * cs * 0.2, ey0 = cy + ty * ex * sg + ny * cs * 0.2;
-            if (near) {
-              const dx = px - ex0, dy = py - ey0, dl = Math.hypot(dx, dy) || 1;
-              critG.circle(ex0, ey0, cs * 0.22).fill(0xffffff).stroke({ width: Math.max(1 * bb.f, 0.8 / zoom), color: INK });
-              critG.circle(ex0 + (dx / dl) * cs * 0.08, ey0 + (dy / dl) * cs * 0.08, cs * 0.11).fill(INK);
-            } else {
-              critG.moveTo(ex0 - tx * cs * 0.2, ey0 - ty * cs * 0.2).lineTo(ex0 + tx * cs * 0.2, ey0 + ty * cs * 0.2).stroke({ width: Math.max(1.6 * bb.f, 1 / zoom), color: INK });
-            }
-          }
-        }
-      });
-      // the first pebble stays visible as a dot however far out the camera is
-      const b0 = sim.bodies[0];
-      if (b0.r * zoom < 5) bloomG.circle(b0.x, b0.y, 6 / zoom).fill(CORAL).stroke({ width: 1.5 / zoom, color: INK });
-      // ambient dust trail
-      moved += Math.hypot(sim.vx, sim.vy) * dt;
+      halo.scale.set(Math.max(1, 9 / (PR * zoom)) * (1 + 0.08 * Math.sin(t * 5)));
+      ss.update(dt, 0, sim.grounded ? 0 : -Math.hypot(sim.vx, sim.vy) / 900);
       if (!sim.grounded && ctx.vfxRng.next() < 0.5) parts.emit('dust', px, py, { count: 1, color: CORAL, size: 5 / zoom, speed: 30 / zoom });
-      heart -= dt; if (sim.low && heart <= 0) { heart = 1.2; play('lowwarn', { volume: 0.2 + 0.4 * (1 - sim.glow / 0.3), pitch: 0.7 }); }
-      bloomRim = Math.max(0, bloomRim - dt * 1.5);
-      if (bloomRim > 0) { const bb = sim.bodies[sim.cur]; bloomG.circle(bb.x, bb.y, bb.r * (1 + 0.15 * (1 - bloomRim))).stroke({ width: 10 * bb.f * bloomRim, color: 0xffc94a, alpha: bloomRim }); }
-      // gust ribbons sweep across the screen: faint while telegraphed, strong while pushing
-      windG.clear();
-      if (sim.windOn > 0) {
-        const act = sim.windOn < 1.4, ca = Math.cos(sim.windA), sa = Math.sin(sim.windA), ph = (2.2 - sim.windOn) * (act ? 900 : 300);
-        for (let k = 0; k < 9; k++) {
-          const off = (k - 4) * 120, cx = 640 + -sa * off + ca * ((ph + k * 211) % 1800 - 900), cy = 400 + ca * off + sa * ((ph + k * 211) % 1800 - 900);
-          windG.moveTo(cx - ca * 90, cy - sa * 90).quadraticCurveTo(cx - sa * 30, cy + ca * 30, cx + ca * 90, cy + sa * 90).stroke({ width: act ? 6 : 3, color: RIBBON, alpha: act ? 0.55 : 0.25, cap: 'round' });
-        }
-      }
-      // UI stickers
-      const gl = sim.glow, low = gl < 0.3;
-      uiGlow.clear();
-      uiGlow.circle(76, 76, 50).fill(0xfffaf0).stroke({ width: 5, color: INK });
-      arcPath(uiGlow, 76, 76, 36, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(0.999, Math.max(0.001, gl))); uiGlow.stroke({ width: 14, color: low && Math.sin(t * 14) > 0 ? INK : CORAL, cap: 'round' });
-      uiGlow.circle(76, 76, 18).fill({ color: CORAL, alpha: 0.35 + 0.65 * gl });
-      uiTier.clear();
-      for (let i = 0; i < TIERS; i++) {
-        const on = i <= sim.best, cur = i === sim.cur;
-        uiTier.circle(1280 - 40 - (TIERS - 1 - i) * 30, 52, cur ? 12 : 9).fill(on ? CORAL : 0xfffaf0).stroke({ width: 3, color: INK });
-      }
-      uiTierTxt.text = ''; 
-      hint.alpha = sim.time < 14 ? 1 : 0;
+      void w;
+      // offscreen goal pointer
+      const home = sim.ws.find((q) => q.type === 'home')!;
+      const sxh = 640 + (home.x - fx) * zoom, syh = 400 + (home.y - fy) * zoom;
+      if (sxh < 40 || sxh > 1240 || syh < 40 || syh > 760) { const ex = clamp(sxh, 50, 1230), ey = clamp(syh, 50, 750); badge.circle(ex, ey, 0); fxG.position.set(0, 0); }
+      // calm again only after a second of safety (no flapping)
+      if (mode === 'tense' && !sim.danger) { safeT += dt; if (safeT > 1) { safeT = 0; setMode('calm'); } } else safeT = 0;
+      // stickers
+      badge.clear();
+      badge.roundRect(24, 24, 330, 56, 28).fill(0xfffaf0).stroke({ width: 5, color: INK });
+      badgeTxt.text = `${sim.level + 1}  ${LEVELS[sim.level].name}`; badgeTxt.position.set(48, 38);
+      for (let i = 0; i < LEVEL_COUNT; i++) badge.circle(1280 - 36 - (LEVEL_COUNT - 1 - i) * 24, 52, i === sim.level ? 10 : 7).fill(i < sim.cleared || i < sim.level ? CORAL : 0xfffaf0).stroke({ width: 3, color: INK });
+      hint.alpha = sim.level < 2 && sim.levelTime < 12 ? 1 : 0;
       hint.text = `${stickGlyph('left')}: run    ${glyph('a')}: hop (hold to go higher)`;
     },
 
     onEvent(e: SimEvent) {
       const m = e.magnitude ?? 0.5, x = e.x ?? 0, y = e.y ?? 0, s = 1 / zoom;
-      const tier = Number(e.data?.tier ?? 0);
       switch (e.type) {
         case 'jump': play('hop', { variation: 0.05 }); ss.pop(0.35, 'y'); parts.emit('puff', x, y, { count: 6, color: PAPER, size: 7 * s, speed: 90 * s }); break;
-        case 'land':
-          play('land', { volume: 0.3 + 0.7 * m, pitch: (0.9 + 0.2 * m) / (1 + 0.12 * sim.cur), variation: 0.05 });
-          ss.pop(0.2 + 0.4 * m, 'y');
-          parts.emit('dust', x, y, { count: 4 + Math.floor(8 * m), color: SHADE, size: 6 * s, speed: 120 * s });
-          if (m > 0.5) shake((0.15 * m) / (1 + 0.25 * sim.cur));
+        case 'land': play('land', { volume: 0.3 + 0.7 * m, pitch: 0.9 + 0.2 * m, variation: 0.05 }); ss.pop(0.2 + 0.4 * m, 'y'); parts.emit('dust', x, y, { count: 4 + Math.floor(8 * m), color: SHADE, size: 6 * s, speed: 120 * s }); if (m > 0.5) shake(0.12 * m); break;
+        case 'bounce': play('boing', { variation: 0.08 }); ss.pop(0.6, 'x'); shake(0.12); parts.emit('sparks', x, y, { count: 10, color: CORAL, size: 6 * s, speed: 200 * s }); break;
+        case 'charge': play('warn', { pitch: 0.5, volume: 0.4 }); shake(0.08); break;
+        case 'spit': play('whoosh', { pitch: 1.4, volume: 0.35 }); break;
+        case 'splat': play('tick', { pitch: 0.5 }); parts.emit('dust', x, y, { count: 5, color: INK, size: 4 * s, speed: 90 * s }); break;
+        case 'bossHit': play('burn'); shake(0.45); hitStop(5); parts.emit('sparks', x, y, { count: 30, color: GOLD, size: 8 * s, speed: 320 * s }); break;
+        case 'dropped': play('whoosh'); ss.pop(0.4, 'x'); break;
+        case 'tick': play('tick', { pitch: 1 + 0.2 * Math.random() * 0 }); break;
+        case 'vanish': play('land', { pitch: 0.6, volume: 0.6 }); shake(0.2); parts.emit('puff', x, y, { count: 24, color: SHADE, size: 12 * s, speed: 160 * s }); break;
+        case 'blinkoff': play('tick', { pitch: 0.6, volume: 0.5 }); break;
+        case 'return': play('chime', { pitch: 1.5, volume: 0.15 }); break;
+        case 'shatter': play('shatter'); shake(0.35); parts.emit('debris', x, y, { count: 30, color: 0xd8c79d, size: 9 * s, speed: 260 * s }); break;
+        case 'burn': play('burn'); shake(0.45); hitStop(5); parts.emit('sparks', x, y, { count: 30, color: CORAL, size: 8 * s, speed: 320 * s }); break;
+        case 'die':
+          if (e.data?.cause === 'lost') play('whoosh', { pitch: 0.6 });
+          veil.alpha = 0.55; tween(veil, { alpha: 0 }, 450, ease.outCubic);
+          music.stinger(song.lose, { duck: 0.7 } as never); setMode('calm');
           break;
-        case 'glint': {
-          const c = Number(e.data?.combo ?? 1);
-          play('glint', { pitch: SEMI(Math.min(c - 1, 12) * 2 % 13), variation: 0.01 });
-          parts.emit('sparks', x, y, { count: 8, color: 0xffc94a, size: 6 * s, speed: 160 * s });
-          numberPop(W, c > 2 ? `x${c}` : '+', x, y - 30 * s, { color: CORAL, stroke: INK, size: 26 * s, rise: 60 * s });
-          if (c === 5) music.stinger(song.glint, { duck: 0.5 } as never);
+        case 'respawn': play('chime', { pitch: 1.2, volume: 0.3 }); parts.emit('puff', x, y, { count: 12, color: CORAL, size: 8 * s, speed: 120 * s }); break;
+        case 'danger': if (mode === 'calm') { play('warn'); setMode('tense'); } safeT = 0; break;
+        case 'clear':
+          play('chime', { pitch: SEMI(sim.level) * 0.8 }); play('boom', { volume: 0.3 + 0.03 * sim.level });
+          shake(0.3 + 0.03 * sim.level); hitStop(7); parts.emit('confetti', x, y, { count: 50, size: 9 * s, speed: 320 * s });
+          veil.alpha = 0.6; tween(veil, { alpha: 0 }, 800, ease.outCubic);
+          music.stinger(sim.level === LEVEL_COUNT - 1 ? song.win : song.tier, { duck: 0.6 } as never);
           break;
-        }
-        case 'tier': case 'finale': {
-          play('tier', { pitch: 1.3 / SEMI(tier * 1.1) }); play('boom', { pitch: 1 / (1 + 0.1 * tier), volume: 0.4 + 0.05 * tier });
-          shake(0.3 + 0.03 * tier); hitStop(8);
-          parts.emit('confetti', x, y, { count: 40, size: 9 * s, speed: 300 * s });
-          veil.alpha = 0.7; tween(veil, { alpha: 0 }, 700, ease.outCubic);
-          zlog += 0.5; // the camera starts closer and swoops back out: the reveal
-          music.stinger(e.type === 'finale' ? song.win : song.tier, { duck: 0.6 } as never);
-          music.setParts(partsFor(sim.best, false, e.type === 'finale') as never, 1.5);
-          if (mode === 'tense') setMode('calm');
-          if (e.type === 'finale') tween(eye, { open: 1 }, 2200, ease.outCubic);
-          break;
-        }
-        case 'mote': { const l = Number(e.data?.left ?? 0); play('glint', { pitch: SEMI(7 + (sim.motes.filter((q) => q.body === sim.cur).length - l) % 8), volume: 0.4 }); parts.emit('sparks', x, y, { count: 7, color: CORAL, size: 6 * s, speed: 140 * s }); break; }
-        case 'bloom': {
-          const bi = Number(e.data?.body ?? 0); bloomAmt[bi] = 0;
-          for (const [k, r] of [1, 1.25, 1.5, 2].entries()) setTimeout(() => play('glint', { pitch: SEMI(5 + bi) * r, volume: 0.4 }), k * 70);
-          shake(0.2); hitStop(5); bloomRim = 1;
-          parts.emit('confetti', x, y, { count: 36, size: 8 * s, speed: 260 * s });
-          music.stinger(song.glint, { duck: 0.5 } as never); break;
-        }
-        case 'ink': play('ink', { variation: 0.06 }); shake(0.1); hitStop(3); ss.pop(0.5, 'x'); parts.emit('dust', x, y, { count: 5, color: INK, size: 4 * s, speed: 80 * s }); break;
-        case 'layer': {
-          const nm = { ink: 'INK RISES', gusts: 'GUSTS', pincer: 'INK FROM BOTH SIDES', drifters: 'DRIFTING SEEDS' }[String(e.data?.name)] ?? '';
-          const tx = label(nm, 34, CORAL); tx.anchor.set(0.5); tx.position.set(640, 170); tx.alpha = 0; U.addChild(tx);
-          tween(tx, { alpha: 1 }, 250, ease.outCubic); tween(tx, { alpha: 0 }, 500, ease.linear, { delay: 2200, onComplete: () => tx.destroy() });
+        case 'level': {
+          const n = Number(e.data?.level ?? 0);
+          music.setParts(partsFor(n, false, false) as never, 1.5); if (n > 0) play('whoosh', { volume: 0.2 });
+          const tx = label(LEVELS[n].name.toUpperCase(), 42, CORAL); tx.anchor.set(0.5); tx.position.set(640, 150); tx.alpha = 0; U.addChild(tx);
+          tween(tx, { alpha: 1 }, 300, ease.outCubic); tween(tx, { alpha: 0 }, 600, ease.linear, { delay: 1700, onComplete: () => tx.destroy() });
+          zlog += 0.35; // swoop in from a little closer
           break;
         }
-        case 'gust': play('gust'); break;
-        case 'low': play('lowwarn'); setMode('tense'); break;
-        case 'recover': if (mode === 'tense') setMode('calm'); break;
-        case 'faded':
-          play('fade'); shake(0.4); parts.emit('puff', x, y, { count: 30, color: CORAL, size: 10 * s, speed: 200 * s });
-          music.stinger(song.lose, { duck: 0.7 } as never); setMode('calm'); veil.alpha = 0.9; tween(veil, { alpha: 0 }, 900, ease.outCubic);
-          break;
+        case 'complete': music.stinger(song.win, { duck: 0.5 } as never); parts.emit('confetti', x, y, { count: 60, size: 12 * s, speed: 400 * s }); break;
       }
     },
 
-    telemetry: () => ({ blooms: sim.blooms, tier: sim.cur, best: sim.best, glints: sim.glints_got, deaths: sim.deaths, glow: Math.max(0, sim.glow), scoreOrProgress: sim.best * 100 + sim.glints_got }),
-    getState: () => {
-      const b = sim.bodies[sim.cur], n = sim.bodies[Math.min(sim.cur + 1, TIERS - 1)];
-      let ma = -99, bd = 9; for (const m of sim.motes) if (m.on && m.body === sim.cur) { let d = Math.atan2(sim.y - b.y, sim.x - b.x) - m.a; d = Math.abs(Math.atan2(Math.sin(d), Math.cos(d))); if (d < bd) { bd = d; ma = m.a; } }
-      return { ma, x: sim.x, y: sim.y, cx: b.x, cy: b.y, tx: n.x, ty: n.y, grounded: sim.grounded ? 1 : 0 };
-    },
+    telemetry: () => ({ level: sim.level, cleared: sim.cleared, deaths: sim.deaths, levelTime: sim.levelTime, scoreOrProgress: sim.cleared * 100 + sim.level }),
+    getState: () => ({ x: sim.x, y: sim.y, level: sim.level, grounded: sim.grounded ? 1 : 0 }),
     dispose() { music.stop(); },
   };
 }

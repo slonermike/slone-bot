@@ -29,3 +29,5 @@ Screens and UI plan: sticker badges: glow ring badge top-left, tier pips top-rig
 Balance knobs: drain (glow loss per second, 0.04), drainRamp (per tier, 0.015), glintGain (0.12), jumpPower (1.0), runSpeed (1.0), gravity (1.0).
 Telemetry plan: tier, glints, deaths, best tier; bots: greedy runs to the next body and hops; degenerate-spin runs in circles.
 Feedback questions: Is the zoom-out a thrill? Is the toy fun alone? Is the drain fair? Does the eye land? Do you want more things to do on worlds?
+
+PIVOT (after playing and reviewing): the nearest-world gravity hop was the best part. New game: a sea of worlds with real n-body gravity, a goal world to reach each level, world types that react to you (rock safe, sun lethal but its gravity is a tool, crumble lets you stay only a short time, gum bounces you, repel pushes you away, moving worlds), ten short levels adding one idea at a time (level 1 is a single hop, level 2 adds a sun). The old tier/ink/glow design is dropped. Title stays Speck, tiny in a vast sea; the last level's goal is the sleeping eye.
