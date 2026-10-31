@@ -262,3 +262,22 @@ describe('attended and unattended runs', () => {
     expect(run(a, 'resume', 'a calmer game')).toMatch(/clock started/);
   });
 });
+
+describe('pitch gate', () => {
+  it('counts pitch rounds and refuses to start the core build without enough of them', async () => {
+    expect(night.pitchRounds(['0:02 pitch 1: x | y', '0:09 round 1: a | b | c', '0:11 pitch 2: z | w'])).toBe(2);
+    const { execFileSync } = await import('node:child_process');
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'pitch-')), 's.md');
+    const run = (...a: string[]) => { try { return execFileSync('node', ['scripts/night-state.mjs', ...a], { encoding: 'utf8', env: { ...process.env, NIGHT_STATE_FILE: f }, stdio: ['ignore', 'pipe', 'pipe'] }); } catch (e: any) { return String(e.stderr || e.message); } };
+    run('start');
+    expect(run('checkpoint', 'core')).toMatch(/0 of 2 pitch rounds/);
+    expect(run('checkpoint', 'core', '--skip-pitch')).toMatch(/needs --reason/);
+    expect(run('pitch', 'fails explain test | rewrote the headline')).toMatch(/logged pitch round 1/);
+    expect(run('checkpoint', 'core')).toMatch(/1 of 2 pitch rounds/);
+    expect(run('pitch', 'all pass | none')).toMatch(/logged pitch round 2/);
+    expect(run('checkpoint', 'core')).toMatch(/checkpoint core/);
+  });
+});

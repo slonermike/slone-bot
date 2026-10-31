@@ -2,25 +2,27 @@
 
 Design principles for making prototypes Slone will like. Nightly runs read and follow this file but never edit it. It changes when Slone gives feedback in chat (the chat agent updates it directly as the first step, see `CONSTITUTION.md` section 15) or runs an assessment of `pending-lessons.md`. **Every lesson here is written to apply to any kind of game**: principles in genre-neutral terms, no prototype names, no vocabulary that implies a genre (see `CONSTITUTION.md` section 15). Keep it that way in every edit.
 
-Version: 11 (rebuilt around core tenets and the shape of the best build so far; every earlier rule is kept, regrouped by use. One data point per lesson unless marked; see the revision log at the end).
+Version: 12 (rebuilt around core tenets and the shape of the best build so far; every earlier rule is kept, regrouped by use. One data point per lesson unless marked; see the revision log at the end).
 
 ## 1. Core tenets
-Read these first. They are ranked by how much they help a build succeed; everything after them is detail in service of them. Each has a short reason, and the sections below hold the rules behind it.
+Read these first. They are roughly ranked by how much they help a build succeed; everything after them is detail in service of them. Each has a short reason, and the sections below hold the rules behind it.
 
 **How to work**
 1. **Iterate.** Get something playable fast, then play it, note what works and what does not, change it, repeat, and step back often to look at the whole. A first pass is a draft. Use the whole night. (Section 4)
 2. **Flush the turds.** Do not polish a flat core: if the bare verb is not fun, throw it out and try something else. Polish amplifies a working core and cannot create one. At every step-back, make an explicit call: keep, cut, or flush. (Sections 4, 6)
 3. **One great idea beats three good ones.** Subtract before you add. Find the one thing that makes the game worth playing and cut what does not serve it. (Sections 4, 6)
 
+4. **Pitch it before you build it, and make it sellable.** Write a one-page pitch first and scrutinise it until it survives: who it is for, why they would pick it over what they already play, and what a stranger sees in ten seconds. A good game is marketable. If it takes much explaining to sell, it is not good; if you do not know who it is for, it is not good. Think like you intend to sell it to humans you have to win over. (Sections 3, 10)
+
 **What to build**
-4. **Verb first, theme second.** Name the verbs: what does the player do? One to three, in plain words, and every system serves one. The main verb is a toy: satisfying to do alone, before any goal or rule. The theme is seasoning, not a spec: it flavors the toy (look, names, mood, at most one twist) and must never cost you the toy. (Sections 3, 6)
-5. **Build to a peak.** Give the player a payoff worth working for: a signature moment of spectacle, absurdity or power that the whole loop builds toward and the player chooses when to spend. It should be the part they tell people about. (Sections 2, 7)
-6. **Show, don't tell.** The concept and the rules must be understood from what the player sees and does, with every word hidden. If it needs a caption, redesign it. (Section 8)
-7. **Keep the player in control and able to read the game.** Input does what they meant, the right action announces itself, and every outcome traces back to its cause. (Section 8)
-8. **Layer complexity with intention.** One new layer at a time, at a steady pace; each earns its place and is legible at a glance the moment it arrives, and the player has understood one before the next comes. (Sections 2, 7)
-9. **Something drives the player on, and choices cost something.** Pressure pushes, or curiosity and creativity pull. Failure is soft and storied unless the feeling calls for a real ending. Spending a resource should be a real sacrifice, and discovery should open new ways to play. (Section 7)
-10. **Aim every layer at one target feeling.** Name it in specific words; mechanics, art, sound and UI all pull the same way. (Sections 3, 5)
-11. **Sound is half the game.** Chosen for this game, part of the loop, tied to the player's action. (Section 9)
+5. **Verb first, theme second.** Name the verbs: what does the player do? One to three, in plain words, and every system serves one. The main verb is a toy: satisfying to do alone, before any goal or rule. The theme is seasoning, not a spec: it flavors the toy (look, names, mood, at most one twist) and must never cost you the toy. (Sections 3, 6)
+6. **Build to a peak.** Give the player a payoff worth working for: a signature moment of spectacle, absurdity or power that the whole loop builds toward and the player chooses when to spend. It should be the part they tell people about. (Sections 2, 7)
+7. **Show, don't tell.** The concept and the rules must be understood from what the player sees and does, with every word hidden. If it needs a caption, redesign it. (Section 8)
+8. **Keep the player in control and able to read the game.** Input does what they meant, the right action announces itself, and every outcome traces back to its cause. (Section 8)
+9. **Layer complexity with intention.** One new layer at a time, at a steady pace; each earns its place and is legible at a glance the moment it arrives, and the player has understood one before the next comes. (Sections 2, 7)
+10. **Something drives the player on, and choices cost something.** Pressure pushes, or curiosity and creativity pull. Failure is soft and storied unless the feeling calls for a real ending. Spending a resource should be a real sacrifice, and discovery should open new ways to play. (Section 7)
+11. **Aim every layer at one target feeling.** Name it in specific words; mechanics, art, sound and UI all pull the same way. (Sections 3, 5)
+12. **Sound is half the game.** Chosen for this game, part of the loop, tied to the player's action. (Section 9)
 
 ## 2. The shape of a game that worked
 The first demo is still the best thing built here. It was shaped over five rounds of Slone's play and feedback, which a one-night run cannot repeat, so a nightly build has to reach the same quality through its own iteration. This is what it had, in terms that fit any genre (it is the shape to aim for, not a template to copy):
@@ -42,7 +44,7 @@ The first demo is still the best thing built here. It was shaped over five round
 ## 3. Before building: what a prototype is for, and what to write down
 A prototype answers one question quickly. The big three questions: Is it fun? Is it viable? Will people like it? Our nightly prototypes mostly ask "is it fun and what does it feel like?" Slone is the only playtester, so every build must make his feedback easy and specific.
 
-**Write these down in the brief:**
+**Write these down in the brief (the pitch comes first, and is scrutinised before any code):**
 1. **The one question** this build tests.
 2. **The target feeling** (a specific emotion or fantasy, e.g. "thrilling escape, then curious"). "Fun" is not a feeling. Use words like powerful, tense, crafty, sneaky, flustered, cozy, relieved.
 3. **The mode:** content-driven (5 to 10 minutes with a beginning, ramp, and end) or systemic (endless loop; polish the 1 to 2 most valuable mechanics).
@@ -52,6 +54,7 @@ A prototype answers one question quickly. The big three questions: Is it fun? Is
 7. **The peak:** the signature moment the loop builds toward, and how the player earns it.
 8. **The layer schedule:** what arrives when, in one line each (a rough beat, not a promise).
 9. **The first ten seconds:** what the player sees and does with no explanation, and why it is already fun.
+10. **Who it is for, and why they would pick it:** a specific kind of player, what they already play, and why this over that. Plus the one-sentence pitch a stranger would want to try from.
 
 ## 4. How to work: build, iterate, flush
 ### Core before polish, then feel
@@ -74,6 +77,7 @@ A prototype answers one question quickly. The big three questions: Is it fun? Is
 - Introduce abilities gradually (Portal style); too many abilities at once makes constraints impossible and learning hard.
 - Unforeseen interactions between systems force micro-decisions. Decide them deliberately and log them.
 - Know when to stop. Prototyping is addictive. A night ends at pencils-down with an honest post mortem.
+- **Borrow cheaply except the core:** openly licensed code, properly licensed assets and engine features are fine for non-core parts. Borrowed mechanics import their dynamics and feelings, so check them against the target feeling.
 
 ### Honesty
 Bots can show the build works and find exploits. They cannot say whether it is fun or whether it sounds good. State this in every post mortem and ask Slone specific questions about feel.
@@ -124,6 +128,7 @@ A game can have plenty of activity (motion, numbers, events, effects, systems) a
 - **The test:** if the mechanic cannot be understood with every word hidden, the design is wrong and needs overhauling, not captioning. Storyboard the real build at fixed intervals with the text ignored and describe each frame in one plain sentence; iterate until the sentences come out in order. (v9, one data point.)
 
 ### Interface, screens and readability
+- **Readable at handheld distance.** Text must be readable at Deck size from arm's length; apply typography, palette and layout skills (the `frontend-design` skill, if available) once the feel is right.
 - **UI is designed, not typed on.** Prompts, hints and menus are anchored components (a plate with key-cap chips and short labels, choice cards), never loose text floating over the game. A cyclable list shows its bumper glyphs at its ends and lies horizontally. (v7, one data point: `2026-10-30-stillwinter`.)
 - **Put each number where it is used, and keep unlike meters apart.** A currency sits beside the thing you spend it on. Two meters that fill from different causes are separated in space and in shape, so a flying number never looks like it feeds the wrong one; a state that matters (time frozen or flowing) is also carried by shape, not only by digits. (v7, one data point.)
 - **Win and lose are designed events.** A win is unmistakable: say plainly that it is a win, and show it (the hero object powers up and the remaining threats are cleared one after another before any tally). Win and loss screens get their own sequence, a tally that counts up, a plain reason for a loss, and choice cards. A mode or reward is named plainly and explained in one line ("Endless Night: no dawn, the waves never stop"); a name that needs the player to guess its meaning is a bug. (v7, one data point.)
@@ -150,13 +155,14 @@ See `01-feel-checklist.md`. The headline rules: respond to every input right awa
 - Avoid gritty or violent theming. Remove the skin and judge the loop.
 - **Silly is welcome.** A kooky, unashamed tone and absurd scale can be the point of a game. (v9, one data point.)
 
-### Appeal check (cheap marketing test)
-Could a one-sentence headline and a 10-second clip make someone want to try it? Name the appeal type: fantasy ("I want to be this"), exploration ("I want to explore this"), toy ("I want to touch this"), challenge, comedy, nostalgia. A hook (something interesting to say about the game) plus an anchor (something familiar) helps a game land. Because Slone is the player, weigh toy appeal and discovery appeal heavily.
+### Sell it: the appeal check
+Could a one-sentence headline and a 10-second clip make someone want to try it? Name the appeal type: fantasy ("I want to be this"), exploration ("I want to explore this"), toy ("I want to touch this"), challenge, comedy, nostalgia. A hook (something interesting to say about the game) plus an anchor (something familiar) helps a game land. Because Slone is the player, weigh toy appeal and discovery appeal heavily. Beyond the headline, a game has to survive being sold to someone you have to win over: **if it takes much explanation to sell, it is not good; if you do not know who it is for, it is not good.** Name the player (what they already play, when and where they would play this), name two or three games they could play instead and why they would pick this one, and find the moment they would tell a friend about. Test the pitch on a hostile reader, not only on yourself. (v12, one data point: Slone.)
 
 ### Balance is a human job: every game exposes balance knobs
 AI is weak at balance work, and balance is where a game's feel is finally decided. Each game therefore exposes a handful (3 to 8) of tweakable values in a balance menu in the pause menu: the pressure rate and ramp, how fast the player's power grows (forward pressure), forgiveness (lives, relief per success), and the pace of new layers. Each has a sensible default, a range, and a plain label. Slone tunes by feel while playing; the values persist on the device and can be copied out. The plan is to save his tuned values globally through an API so every player gets the values he settled on (roadmap). The agent's job is to pick good knobs and defaults, not to be the final balancer. (v3, one data point: `_demo`.)
 
 ## Revision log
+- v12, 2026-10-31: pitch before code (new core tenet 4, brief section 3, "Sell it" in section 10). Slone: agents should spend more time considering and refining ideas before writing code, starting with a scrutinised design one-pager; a good game is marketable, so if it takes too much explanation to sell it, or you do not know who it is for, it is not good. Think like you intend to sell it to humans you have to win over.
 - v11, 2026-10-31: rebuilt around core tenets (iterate, flush the turds, one great idea beats three good ones, verb first and theme second, build to a peak, show don't tell, layer with intention, and the rest), a section on the shape of the best build (the first demo), and four checks (toy, pace, peak, theme). Every earlier rule is kept and regrouped by use. Prompted by Slone: none of the nightly prototypes has matched the demo; the demo "layered at a good pace, always sufficiently communicated by visuals", and its berserk mode was "hilarious and fun as heck"; the other games "may have overindexed on theming".
 - v9, 2026-10-30: from Slone on `2026-10-30-blotbeat`: the resource story was disconnected (splats, a bottle, page icons, banners) and "if it can't be communicated clearly without words, then it's not a good design and needs to be overhauled". Resources flow visibly and connected; costs and lives live in the world; the no-words test (7c). One data point.
 - v10, 2026-10-30: music is a design tool (7). Prompted by every nightly game choosing the same mid-tempo 4/4 groove. New: Music plan in the brief (weigh options and choose to fit the game; no random roll), a menu of musical options, music review tool, and a research-backed craft section (`06-music-craft.md`).

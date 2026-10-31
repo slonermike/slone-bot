@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Run-protocol helper: NIGHT_STATE.md checkpoints, elapsed-time gates, seeded atom picks.
-// Commands: start [--night <slug>] [--attended] [--force] | checkin | resume "<input>" | checkpoint <phase> [note...] [--early --reason "why"] | round "<played> | <noticed> | <changed>" [--stepback] | set key=value ... | show | elapsed | check | atoms [--seed N] | look [--seed N] | sound | genre <g1> <g2> <g3> [<g4> <g5>] [--reroll --reason "why"]
+// Commands: start [--night <slug>] [--attended] [--force] | checkin | resume "<input>" | pitch "<failed tests | change>" | checkpoint <phase> [note...] [--early --reason "why"] [--skip-pitch --reason "why"] | round "<played> | <noticed> | <changed>" [--stepback] | set key=value ... | show | elapsed | check | atoms [--seed N] | look [--seed N] | sound | genre <g1> <g2> <g3> [<g4> <g5>] [--reroll --reason "why"]
 // Spec: docs/tech/06-nightly-run-protocol.md
 import fs from 'node:fs';
 import path from 'node:path';
@@ -15,6 +15,8 @@ export const PENCILS_MIN = 90;
 // Finishing early is a failure signal: `checkpoint done` needs this much time and this much iteration, or an explicit --early --reason.
 export const MIN_DONE_MIN = 60;
 export const MIN_ROUNDS = 3;
+// The pitch has to be written, scrutinised and revised before any game code: at least this many logged pitch rounds.
+export const MIN_PITCH_ROUNDS = 2;
 const STATE_FILE = () => process.env.NIGHT_STATE_FILE || path.join(ROOT, 'NIGHT_STATE.md');
 const PHASES = ['start', 'brief', 'core', 'feel', 'test', 'done'];
 const KEYS = ['night', 'started', 'phase', 'branch', 'brief', 'lastGoodBuild', 'genre', 'genreOptions', 'workStart', 'checkinAt', 'attended'];
@@ -57,6 +59,9 @@ export function elapsedMinutes(s, now = Date.now()) {
 }
 export function gate(min) {
   return min >= PENCILS_MIN ? 'PENCILS-DOWN' : min >= WRAP_MIN ? 'WRAP-UP' : 'OK';
+}
+export function pitchRounds(notes = []) {
+  return notes.filter((n) => /^\S+ pitch \d+:/.test(n)).length;
 }
 export function countRounds(notes = []) {
   return {
@@ -170,8 +175,20 @@ function main(argv) {
     const phase = rest[0];
     if (!PHASES.includes(phase)) throw new Error(`phase must be one of ${PHASES.join('|')}`);
     const m = elapsedMinutes(s, now.getTime());
-    const words = rest.slice(1).filter((a, i, arr) => !['--early', '--reason'].includes(a) && arr[i - 1] !== '--reason');
+    const words = rest.slice(1).filter((a, i, arr) => !['--early', '--reason', '--skip-pitch'].includes(a) && arr[i - 1] !== '--reason');
     let note = words.join(' ');
+    if (phase === 'core') {
+      const p = pitchRounds(s.notes);
+      if (p < MIN_PITCH_ROUNDS) {
+        if (!flag('skip-pitch')) {
+          console.error(`NOT YET: ${p} of ${MIN_PITCH_ROUNDS} pitch rounds logged. Write the one-page pitch, scrutinise it (docs/tech/06, "Pitch"), revise it, and log each round with \`pitch "<tests that failed> | <what you changed>"\`. If there is a real reason to skip, \`checkpoint core --skip-pitch --reason "why"\`.`);
+          process.exitCode = 2;
+          return;
+        }
+        if (!opt('reason')) throw new Error('--skip-pitch needs --reason "why building without a scrutinised pitch is right"');
+        note = `skipped the pitch (${p} of ${MIN_PITCH_ROUNDS} rounds) because ${opt('reason')} ${note}`.trim();
+      }
+    }
     if (phase === 'done') {
       const blockers = doneBlockers(m, s.notes);
       if (blockers.length && m < PENCILS_MIN) {
@@ -188,6 +205,15 @@ function main(argv) {
     s.notes.push(`${fmt(m)} phase=${phase}${note ? ' ' + note : ''}`);
     writeState(s);
     console.log(`checkpoint ${phase} at ${fmt(m)} [${gate(m)}]`);
+  } else if (cmd === 'pitch') {
+    const s = readState();
+    if (!s) throw new Error('no NIGHT_STATE.md; run `start` first');
+    const text = rest.filter((a) => !a.startsWith('--')).join(' ').trim();
+    if (!text) throw new Error('usage: pitch "<which tests failed> | <what I changed>"');
+    const n = pitchRounds(s.notes) + 1;
+    s.notes.push(`${fmt(elapsedMinutes(s, now.getTime()))} pitch ${n}: ${text}`);
+    writeState(s);
+    console.log(`logged pitch round ${n}. ${n < MIN_PITCH_ROUNDS ? 'Revise it and scrutinise it again.' : 'If every test now passes, start the core build; if two or more still fail, flush the idea (a different reading, or genre --reroll) and pitch again.'}`);
   } else if (cmd === 'round') {
     const s = readState();
     if (!s) throw new Error('no NIGHT_STATE.md; run `start` first');

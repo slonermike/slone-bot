@@ -2,6 +2,8 @@
 
 The rules every agent follows, building the scaffold or running a night. If another doc conflicts with this one, this one wins and the conflict goes in the run log.
 
+**What this file is for.** It holds the rules about authority, knowledge, safety and legality: who decides what, what an agent may read, what may be published, and the open-source terms. These rarely change, and only Slone changes them. It is deliberately not the place for design beliefs (the Bible) or for how a night runs (the run protocol); sections that used to repeat those are one-line pointers now, with their numbers kept so references stay valid.
+
 ## 1. Purpose and the experiment
 The product is the **agent-plus-documents system**, not any single prototype. Slone's inputs are only: these markdown files, his post-play feedback, and non-code resources he hands over. He does not guide architecture. The system should get iteratively better at making games he enjoys, unattended. Docs here are the encoded "Slone in the system"; treat them as authoritative.
 
@@ -10,9 +12,8 @@ The product is the **agent-plus-documents system**, not any single prototype. Sl
 - Single player, offline, no PvP, no online features, no accounts, no ranked skill ladders.
 - 2D first. 3D is on the roadmap, not in scope.
 
-## 3. Taste (details in `docs/design/02-taste-cards.md`)
-Slone likes: back pressure on open-ended play (Timberborn droughts, GTA heat), recoverable setbacks that generate stories (The Sims), discovering new play patterns (new verbs, items, vehicles), toy-like core verbs (Mario, Tony Hawk), readable systems that pile up consequences (RollerCoaster Tycoon, Tetris), dense worlds that open up with items (Zelda OoT, Metroid).
-Slone dislikes: mastery-by-humiliation ("git gud"), online multiplayer, gritty theming, punishing failure. Theme is secondary; the heart of a game is its loop and feeling, not its skin.
+## 3. Taste (moved)
+Slone's taste lives in `docs/design/02-taste-cards.md` (what he loves, stripped to the heart) and the Bible (`docs/design/00-bible.md`, which turns it into rules). This file no longer repeats it.
 
 ## 4. Decision authority
 **The agent decides alone:** stack details, art direction, audio sourcing, what to build within the brief, how to cut scope, which theme option to pick, which scaffold helpers to add.
@@ -35,34 +36,20 @@ Slone dislikes: mastery-by-humiliation ("git gud"), online multiplayer, gritty t
 | `docs/chronicle/` (the experiment's history, with details of earlier games; written for humans) | **No.** |
 | Source code and full designs of earlier prototypes | **No.** Do not open other `proto/*` branches or `src/protos/*` of other nights |
 | Theme pool, strike counts, rejection reasons | **No direct access.** Only via `scripts/themes.mjs` |
-Reason: reading old prototypes causes copy-and-tweak anchoring. Variety comes from injected randomness (section 8), not from hoping the agent is creative.
+Reason: reading old prototypes causes copy-and-tweak anchoring. Variety comes from injected randomness (doc 06, Step 1), not from hoping the agent is creative.
 Every run logs every file it opens outside the allowed set in the post mortem run-health line.
 
-## 7. Prototype rules
-- **One question and one target feeling** per prototype, written in the brief before any code. The target feeling is a specific emotion or fantasy (MDA aesthetics), never just "fun".
-- **Declare a mode:** *content-driven* (5 to 10 minutes of content with a beginning, ramp, and ending) or *systemic* (endless loop; spend effort on the 1 to 2 most valuable mechanics and polish those).
-- **Verb first, theme second; core first, then iterate; flush what is flat.** The theme is seasoning, not a spec. Establish the core is interesting with a bare version, fast, then loop: play it, note what works and what does not, change it, repeat, stepping back to look at the whole every few rounds. Juice amplifies a working core; it cannot create one. One pass through the phases is a draft, not a game.
-- **Back pressure and soft failure by default.** Failure should be recoverable and story-generating unless the brief says otherwise.
-- **Feel is mandatory:** main verb, feedback events, and pressure state each get audio and juice. A build with no feel on the main verb fails the self-review.
-- **Follow the fun with edges.** Log surprises before fixing them. Test discoveries against the target feeling. The night's usual anchor is the target feeling; exploration happens inside it. If the build is not working, drastic changes are reasonable and encouraged (see doc 06, "When it is not working").
-- **Borrow cheaply except the core:** openly licensed code, properly licensed assets, and engine features are fine for non-core parts. Borrowed mechanics import dynamics and feelings; check them against the target feeling.
-- **Respect scope:** one night, one small build.
+## 7. Prototype rules (moved)
+Design rules live in the Bible: the core tenets (section 1), what to write down before building (section 3, starting with the pitch), and how to work (section 4). This file no longer repeats them.
 
-## 8. Injected randomness (variety)
-Each night's brief must be built around: **one theme** (from the theme script's n=3 options), **two random atoms** from the concept library, and **at most one wildcard constraint** (e.g. one button only, camera never moves, 60 seconds max, no player character). The brief must include a "what is different from the last five nights" line, written from the ledger only.
+## 8. Injected randomness (variety) (moved)
+How a night is built from a rolled theme, genre and look, drawn atoms and a wildcard, and why, is in `docs/tech/06-nightly-run-protocol.md` (Step 1). Variety comes from injected randomness, not from hoping the agent is creative.
 
-## 9. Time and cost
-- The clock starts at the check-in answer (`night-state.mjs resume`), not at launch. Budget: wrap-up at 1:15, pencils-down at 1:30 (the night targets about 90 minutes), measured by wall clock. Stamp the start with `night-state.mjs start`; check elapsed time at every phase boundary and before every long command. Give builds, bot runs, and downloads their own timeouts.
-- **Wrap-up (1:15):** stop starting features. Freeze scope. Bot tests, one fix pass, manifest, feedback sheet, post mortem.
-- **Pencils-down (1:30):** stop editing. Ship the last build that passed the smoke test, or leave the previous prototype as latest. Write the post mortem.
-- Phase times: ideation 10 min, core verb up to 25 (first playable by about 0:30), then iterate in rounds of play, note, change until wrap-up, then wrap 15. These are not targets to beat. Finishing early means the loop did not run: `night-state.mjs checkpoint done` is refused before 1:00 or without 3 rounds and a step-back, unless `--early --reason` explains why (doc 06, "Iterate").
-- Keep context small: short docs read up front, bulky work (bot runs, log parsing, asset hunting) delegated or written to files with summary-only output.
-- Write a checkpoint to `NIGHT_STATE.md` after each phase so a dead or compacted run can resume.
-- If a `PAUSE` file exists on main at start, do nothing and exit.
-- Never spend quota on retry loops. After two failed attempts at the same fix, cut the feature and log it.
+## 9. Time and cost (moved)
+A `PAUSE` file on main stops all runs: do nothing and exit. Everything else (the 90 minute target, wrap-up and pencils-down, the phases, checkpoints, retry limits, cost rules) lives in `docs/tech/06-nightly-run-protocol.md` and is enforced by `scripts/night-state.mjs`.
 
-## 10. Self-review before the human sees it
-Run the bot harness and the feel checklist. Reject or fix builds that fail: dead on arrival, flat main verb, no pressure curve, frame rate below 55 on a mid-tier laptop with effects on, audio missing on the main verb. Be honest in the post mortem: separate measured facts (telemetry) from beliefs about feel. The agent cannot play or hear the build; say so.
+## 10. Self-review before the human sees it (moved)
+The honesty rule (bots can show a build works, not that it is fun or sounds good; say so) is in the Bible (section 4, Honesty). The checks a build must pass are in the run protocol (wrap-up) and `docs/design/01-feel-checklist.md`.
 
 ## 11. Failure handling
 A bad night degrades gracefully: the launcher keeps working, the previous prototype stays playable, and the failure is logged for the next night. Never publish a build that fails the smoke test. Never force-push main.
@@ -75,11 +62,11 @@ A bad night degrades gracefully: the launcher keeps working, the previous protot
 - No music by default. Procedural or openly licensed music only when the night's question is about mood or tension.
 - The sandbox network allowlist may block asset sites. If a download fails, fall back to synthesis; do not retry with workarounds.
 
-## 13. Design polish
-After feel is right, apply design skills (typography, palette, layout, accessibility for a handheld screen) in the build itself. Read the `frontend-design` skill if available. Text must be readable at Deck size from arm's length.
+## 13. Design polish (moved)
+Handheld readability, typography and layout rules are in the Bible (section 8, Interface and readability).
 
-## 14. Theme pool
-The agent receives n=3 theme options, picks one, and logs a one-line reason for each rejected option, via the script only. Rules and strike mechanics are in `docs/tech/07-themes-script.md`. At pencils-down, add 1 to 3 new themes sourced from the night's own surprises (not from the agent's generic priors). Themes are design prompts (constraint, feeling, system, world), not skins.
+## 14. Theme pool (moved)
+Rules and strike mechanics are in `docs/tech/07-themes-script.md`; the run protocol says how a night uses them. Themes are short, open sparks, never mechanisms or stories.
 
 ## 15. Feedback
 Chat-only for now. Each prototype ships a feedback sheet (template in `docs/design/04-feedback-and-postmortem.md`): one prototype question, 3 to 5 targeted questions, the nightly constants, and a freeform box. Slone's replies are processed in his chat session by the default procedure below.

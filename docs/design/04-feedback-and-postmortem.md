@@ -2,26 +2,34 @@
 
 Three templates a night fills in. Keep each short. Files go in `briefs/<slug>.md`, `runs/<slug>/feedback-sheet.md`, `runs/<slug>/postmortem.md`.
 
-## 1. Brief (written before building)
+## 1. Brief: the pitch first, then the plan (written before any game code)
+The brief has two halves. The **pitch** is one page, written first, scrutinised and revised until it survives (see "Pitch" in `docs/tech/06-nightly-run-protocol.md`). The **plan** is written only after the pitch passes. Think like you intend to sell the game to humans you have to win over.
 ```
 # Brief: <title>   (<slug>)
-Question: the one thing this build tests
-Target feeling: specific emotion or fantasy (not "fun")
+
+## Pitch (one page)
+Pitch sentence: "A <genre> where you <verb> to <goal>, and <hook>." A stranger should want to try it from this sentence and a ten-second clip.
+Who it is for: a specific kind of player, what they already play, and when and where they would play this
+Why this and not that: two or three games they could play instead, and in a clause each why they would pick this one
+Hook and anchor: the one interesting thing to say about it, and the one familiar thing that makes it easy to approach
+First ten seconds: what the player sees and does with no text, and why it is already fun
+Verbs (one to three, plain words) and the toy: what the player does, which verb is fun alone, and why it is a toy before it is a game
+Peak: the moment a player would tell a friend about (spectacle, absurdity, power), and how it is earned
+Target feeling: a specific emotion or fantasy (not "fun").   Question: the one thing this build tests
+Theme and genre: <theme text> and <rolled genre>. Theme expression: how it shows up (look, names, mood, at most one twist) and what you deliberately ignored. Genre options you listed: <3 to 5>
+What it is not: what is explicitly out
+Scrutiny log (one line per round, from `night-state.mjs pitch`): the tests that failed (explain, audience, why-this, hook, first ten seconds, tell-a-friend, complexity, theme) and what you changed
+
+## Plan
 Mode: content-driven (5-10 min) | systemic (endless, polish 1-2 mechanics)
-Theme: <text>   Why picked: one line. Theme expression: how it shows up (look, names, mood, at most one twist) and what you deliberately ignored. The theme is seasoning; the verb comes first
-Genre: <rolled genre>   Options considered: <the 3 to 5 you listed>   (from `node scripts/night-state.mjs genre ...`; reinterpret freely, stay recognizable)
 Human input: <what Slone said at the check-in, and how it shapes the build> or none
 Atoms: <id>, <id>      Wildcard: <text or none>
 Look (from `node scripts/night-state.mjs look`; override at most one dimension, say which and why): palette, shapes, rendering, framing, ui. Then the 3 to 5 hex colors you will actually use and one sentence on what the game looks like at rest.
 Loop (4 lines): win/reward | obstacle/pressure | fail state and recovery | player actions
-Verbs (one to three, plain words) and the toy: what the player does, which verb is fun alone, and why it is a toy before it is a game
-First ten seconds: what the player sees and does with no explanation, and why it is already fun
-Peak: the signature moment the loop builds toward (spectacle, absurdity, power), how it is earned, why a player would laugh or brag about it
 Layer schedule: what arrives when, one line each, one at a time, each readable from the visuals alone
 Pressure source: what pushes back, and how it ramps
 Recovery loop: what a soft failure looks like and how it generates a story
 Different from the last five nights (from the ledger only): one line
-Scope cut line: what is in, what is explicitly out
 Feel plan: sound and juice on main verb, feedback events, pressure state
 Music plan (chosen to fit this game, not rolled; `night-state.mjs sound` prints the menu): three options weighed from across the spectrum and why one won (role, tempo, meter, mode, texture). Then: the arc (start, peak, end), the gauge (what the music says about state, and how), the quiet (where it thins or stops), the stingers (3 to 5 moments), the contrast (the second loop or phase), and how it differs from the last games' music
 Screens and UI plan: how the prompts are anchored, where each meter and currency sits, how the win and the loss are shown and named, what each unit type's one job is and how its look and animation say it
@@ -73,6 +81,7 @@ Measured (telemetry): runLength, deaths, firstPressureSimSec, idleSurvivalSec, v
 Believed (labeled): my guesses about feel, which I cannot verify (I cannot play or hear the build)
 Degenerate strategies found: or "none found"
 What I cut or ran out of time for:
+Pitch: the one-sentence pitch, who it was for, how many pitch rounds it took and what the scrutiny changed, and an honest read on whether the built game delivers the pitch (would that player want it, could you sell it in a sentence?)
 Tenets (Bible section 1): which did the build serve, which did it break; the four checks (toy, pace, peak, theme) with a one-line verdict each; was anything flushed, and did it help
 Surprises (follow the fun): accidents, emergent behavior, pivots (what was not working, what you changed, and whether it helped)
 Biggest risk for Slone to check: the one thing most likely to feel wrong
