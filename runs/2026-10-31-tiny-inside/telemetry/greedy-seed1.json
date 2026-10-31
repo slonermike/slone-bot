@@ -1,0 +1,57 @@
+{
+  "night": "2026-10-31-tiny-inside",
+  "seed": 1,
+  "bot": "greedy",
+  "mode": "content",
+  "simSeconds": 14.88,
+  "wallMs": 9,
+  "timescale": 20,
+  "outcome": "completed",
+  "metrics": {
+    "runLength": 14.88,
+    "deaths": 0,
+    "firstPressureSimSec": 0,
+    "restartDelaySimSec": 0,
+    "mainVerbCount": 0,
+    "decisionsPerMinute": 0,
+    "idleSurvivalSec": 0,
+    "scoreOrProgress": 845,
+    "variance": 6.222222222222221,
+    "tier": 8,
+    "best": 8,
+    "glints": 45,
+    "glow": 0.9978166666666667
+  },
+  "perf": {
+    "avgFrameMs": 0,
+    "p95FrameMs": 0,
+    "fps": 0,
+    "particleMax": 0,
+    "effectsOn": false
+  },
+  "feel": {
+    "inputToVisualMs": 0,
+    "inputToAudioMs": 0,
+    "eventsFired": {
+      "glint": 45,
+      "jump": 8,
+      "land": 8,
+      "tier": 7,
+      "gust": 1,
+      "finale": 1,
+      "complete": 1
+    },
+    "shakePeak": 0,
+    "hitStopFrames": 0
+  },
+  "errors": [],
+  "balance": {
+    "drain": 0.035,
+    "drainRamp": 0.012,
+    "glintGain": 0.12,
+    "jumpPower": 1,
+    "runSpeed": 1,
+    "wind": 1,
+    "gravity": 1
+  }
+}

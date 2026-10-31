@@ -1,0 +1,18 @@
+{
+  "slug": "2026-10-31-tiny-inside",
+  "title": "Speck",
+  "date": "2026-10-31",
+  "question": "Does the camera pulling back on every landing make a simple planet-hopper feel wonderful?",
+  "targetFeeling": "awe and tenderness at being very small in a very large thing",
+  "mode": "content",
+  "tags": ["exploration platformer", "planet hopping", "scale"],
+  "theme": "Being very small in a very large thing",
+  "wildcard": null,
+  "juiceLayers": ["shake", "particles", "hitStop", "squashStretch", "flash", "trails", "audio"],
+  "metrics": ["tier", "best", "glints", "deaths", "glow"],
+  "assets": [],
+  "buildStatus": "ok",
+  "feedbackStatus": "needs-feedback",
+  "sizeKB": 0,
+  "thumbnail": ""
+}
