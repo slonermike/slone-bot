@@ -10,6 +10,20 @@ function inp(sx: number, sy: number, down: boolean, pressed: boolean): InputStat
   return i;
 }
 const goalOf = (s: Sim) => s.ws.find((w) => w.type === 'home')!;
+// graph distance to home over safe worlds (a better compass in a sea than straight-line distance)
+let gdCache: { key: string; d: number[] } | null = null;
+function graphDist(s: Sim): number[] {
+  const key = `${s.level}:${s.ws.length}`;
+  if (gdCache && gdCache.key === key) return gdCache.d;
+  const n = s.ws.length, d = new Array(n).fill(1e9), done = new Array(n).fill(false);
+  const hi = s.ws.findIndex((w) => w.type === 'home'); d[hi] = 0;
+  for (let it = 0; it < n; it++) {
+    let u = -1; for (let i = 0; i < n; i++) if (!done[i] && (u < 0 || d[i] < d[u])) u = i;
+    if (u < 0 || d[u] >= 1e9) break; done[u] = true;
+    for (let v = 0; v < n; v++) { const w = s.ws[v]; if (done[v] || w.type === 'sun' || w.type === 'repel') continue; const e = Math.hypot(w.ox - s.ws[u].ox, w.oy - s.ws[u].oy); if (e - w.r - s.ws[u].r < 420 && d[u] + e < d[v]) d[v] = d[u] + e; }
+  }
+  gdCache = { key, d }; return d;
+}
 
 /** Try a hop from every angle round the current world, steering toward the goal in the air; return the best angle. */
 function plan(s: Sim): number {
@@ -28,7 +42,7 @@ function plan(s: Sim): number {
       if (c.deadT > 0) { score = -1e9 + t; fin = true; break; }
       if (c.grounded && t > 3) {
         const lw = c.ws[c.gi];
-        score = lw.type === 'home' ? 1e6 : -Math.hypot(goal.x - lw.x, goal.y - lw.y) - (lw.type === 'crumble' ? 40 : 0) - (lw.type === 'fade' || lw.type === 'blink' ? 20 : 0);
+        score = lw.type === 'home' ? 1e6 : -graphDist(s)[c.gi] - (lw.type === 'crumble' ? 40 : 0) - (lw.type === 'fade' || lw.type === 'blink' ? 20 : 0);
         if (c.gi === s.gi) score -= 400;
         fin = true; break;
       }

@@ -30,14 +30,14 @@ export function createPrototype(): Prototype {
   let view: View; let W: Container, U: Container;
   let cam: Container, worldG: Graphics, fxG: Graphics, playerC: Container, halo: Graphics;
   let parts: Particles, ss: SquashStretch;
-  let badge: Graphics, badgeTxt: Text, hint: Text, veil: Graphics;
+  let ptr: Graphics, badge: Graphics, badgeTxt: Text, hint: Text, veil: Graphics;
   let zoom = 0.8, zlog = Math.log(0.8), fx = 0, fy = 0, t = 0, safeT = 0, eyeOpen = 0, finale = 0;
   let song: ReturnType<typeof makeMusic>;
   let mode: 'calm' | 'tense' = 'calm';
 
   const label = (txt: string, size: number, fill = INK) => new Text({ text: txt, style: { fontFamily: 'Space Grotesk, sans-serif', fontWeight: '700', fontSize: size, fill } });
   const setMode = (m: 'calm' | 'tense') => { mode = m; music.play(m === 'calm' ? song.calm : song.tense, partsFor(sim.level, m === 'tense', finale > 0) as never); };
-  const levelZoom = () => { const b = sim.bounds; return clamp(Math.min(1120 / (b.x1 - b.x0), 640 / (b.y1 - b.y0)), 0.3, 1); };
+  const levelZoom = () => { const b = sim.bounds; return clamp(Math.min(1120 / (b.x1 - b.x0), 640 / (b.y1 - b.y0)), 0.55, 1); };
 
   function drawWorld(g: Graphics, w: World, idx: number) {
     const x = w.x, y = w.y, r = w.r, lim = ctx.balance.stayTime ?? 2.5;
@@ -49,6 +49,7 @@ export function createPrototype(): Prototype {
     const disc = (fill: number, a = 1) => { for (let k = 0; k < 4; k++) g.circle(x, y, r * (1 - k * 0.1)).fill({ color: k % 2 ? 0xf8f2e4 : fill, alpha: k === 0 ? a : 0.5 * a }); };
     const rim = (c = INK, wd = 4, a = 1) => g.circle(x, y, r).stroke({ width: wd, color: c, alpha: a });
     const standing = sim.grounded && sim.gi === idx;
+    if (w.type !== 'sun' && w.type !== 'repel' && w.type !== 'home') g.circle(x, y, r * 1.7).stroke({ width: 2 / zoom, color: RIBBON, alpha: 0.1 + (!sim.grounded && Math.hypot(sim.x - x, sim.y - y) < r * 4 ? 0.1 * (1 + Math.sin(t * 5)) : 0) });
     switch (w.type) {
       case 'rock':
         disc(SHADE); rim();
@@ -132,9 +133,9 @@ export function createPrototype(): Prototype {
       parts = new Particles(W, { confettiColors: [CORAL, INK, GOLD, 0x6fb3a6] });
       v.onFrame((dt) => parts.update(dt));
       ss = new SquashStretch(playerC);
-      badge = new Graphics(); badgeTxt = label('', 22); hint = label('', 22); hint.anchor.set(0.5); hint.position.set(640, 745);
+      ptr = new Graphics(); badge = new Graphics(); badgeTxt = label('', 22); hint = label('', 22); hint.anchor.set(0.5); hint.position.set(640, 745);
       veil = new Graphics().rect(0, 0, 1280, 800).fill(0xffffff); veil.alpha = 0;
-      U.addChild(badge, badgeTxt, hint, veil);
+      U.addChild(ptr, badge, badgeTxt, hint, veil);
       song = makeMusic(); setMode('calm');
     },
 
@@ -143,8 +144,10 @@ export function createPrototype(): Prototype {
       const px = sim.px + (sim.x - sim.px) * alpha, py = sim.py + (sim.y - sim.py) * alpha;
       const b = sim.bounds, cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
       zlog = chaseDt(zlog, Math.log(levelZoom()), 0.7, dt); zoom = Math.exp(zlog);
-      const fit = Math.min(1180 / (b.x1 - b.x0), 640 / (b.y1 - b.y0)) >= 0.3;
-      fx = chaseDt(fx, fit ? cx : cx * 0.4 + px * 0.6, 0.8, dt); fy = chaseDt(fy, fit ? cy : cy * 0.4 + py * 0.6, 0.8, dt);
+      const fit = Math.min(1180 / (b.x1 - b.x0), 640 / (b.y1 - b.y0)) >= 0.55;
+      const hm = sim.ws.find((q) => q.type === 'home')!;
+      const lead = (k: number, p: number, h: number) => p + (h - p) * k; // lean toward the goal a little so the way forward is on screen
+      fx = chaseDt(fx, fit ? cx : lead(0.18, px, hm.x), 0.8, dt); fy = chaseDt(fy, fit ? cy : lead(0.18, py, hm.y), 0.8, dt);
       cam.scale.set(zoom); cam.position.set(640 - fx * zoom, 410 - fy * zoom);
       if (sim.level === LEVEL_COUNT - 1 && sim.clearT > 0) { finale += dt; eyeOpen = Math.min(1, eyeOpen + dt * 0.8); } else if (sim.level !== LEVEL_COUNT - 1) eyeOpen = 0;
       worldG.clear(); fxG.clear();
@@ -166,7 +169,7 @@ export function createPrototype(): Prototype {
       }
       // hop preview dots (where a held hop would go)
       if (sim.deadT <= 0 && sim.clearT <= 0) {
-        const pts = predictPath(sim, true, 150, 5);
+        const pts = predictPath(sim, true, 260, 4);
         pts.forEach(([x, y], i) => fxG.circle(x, y, Math.max(3, 3.5 / zoom)).fill({ color: INK, alpha: (sim.grounded ? 0.5 : 0.25) * (1 - i / pts.length) }));
       }
       // player
@@ -181,7 +184,8 @@ export function createPrototype(): Prototype {
       // offscreen goal pointer
       const home = sim.ws.find((q) => q.type === 'home')!;
       const sxh = 640 + (home.x - fx) * zoom, syh = 400 + (home.y - fy) * zoom;
-      if (sxh < 40 || sxh > 1240 || syh < 40 || syh > 760) { const ex = clamp(sxh, 50, 1230), ey = clamp(syh, 50, 750); badge.circle(ex, ey, 0); fxG.position.set(0, 0); }
+      ptr.clear();
+      if (sxh < 40 || sxh > 1240 || syh < 40 || syh > 760) { const ex = clamp(sxh, 50, 1230), ey = clamp(syh, 100, 740), an = Math.atan2(syh - ey, sxh - ex), pl = 1 + 0.15 * Math.sin(t * 6); ptr.poly([ex + Math.cos(an) * 26 * pl, ey + Math.sin(an) * 26 * pl, ex + Math.cos(an + 2.5) * 20, ey + Math.sin(an + 2.5) * 20, ex + Math.cos(an - 2.5) * 20, ey + Math.sin(an - 2.5) * 20]).fill(GOLD).stroke({ width: 4, color: INK }); }
       // calm again only after a second of safety (no flapping)
       if (mode === 'tense' && !sim.danger) { safeT += dt; if (safeT > 1) { safeT = 0; setMode('calm'); } } else safeT = 0;
       // stickers
@@ -199,6 +203,13 @@ export function createPrototype(): Prototype {
         case 'jump': play('hop', { variation: 0.05 }); ss.pop(0.35, 'y'); parts.emit('puff', x, y, { count: 6, color: PAPER, size: 7 * s, speed: 90 * s }); break;
         case 'land': play('land', { volume: 0.3 + 0.7 * m, pitch: 0.9 + 0.2 * m, variation: 0.05 }); ss.pop(0.2 + 0.4 * m, 'y'); parts.emit('dust', x, y, { count: 4 + Math.floor(8 * m), color: SHADE, size: 6 * s, speed: 120 * s }); if (m > 0.5) shake(0.12 * m); break;
         case 'bounce': play('boing', { variation: 0.08 }); ss.pop(0.6, 'x'); shake(0.12); parts.emit('sparks', x, y, { count: 10, color: CORAL, size: 6 * s, speed: 200 * s }); break;
+        case 'sling': {
+          play('whoosh', { pitch: 1.8, volume: 0.5 }); play('chime', { pitch: 1.5, volume: 0.4 }); hitStop(4); shake(0.15);
+          parts.emit('sparks', x, y, { count: 24, color: GOLD, size: 7 * s, speed: 360 * s });
+          const tx = label('SLINGSHOT', 30, GOLD); tx.anchor.set(0.5); tx.position.set(640, 200); tx.alpha = 0; U.addChild(tx);
+          tween(tx, { alpha: 1 }, 120, ease.outCubic); tween(tx, { alpha: 0 }, 400, ease.linear, { delay: 700, onComplete: () => tx.destroy() });
+          break;
+        }
         case 'charge': play('warn', { pitch: 0.5, volume: 0.4 }); shake(0.08); break;
         case 'spit': play('whoosh', { pitch: 1.4, volume: 0.35 }); break;
         case 'splat': play('tick', { pitch: 0.5 }); parts.emit('dust', x, y, { count: 5, color: INK, size: 4 * s, speed: 90 * s }); break;

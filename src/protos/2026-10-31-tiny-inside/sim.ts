@@ -21,69 +21,93 @@ export interface World {
 }
 
 export interface LevelSpec {
-  name: string; seed: number; chain: number; gap: [number, number]; chainTypes: WType[];
-  suns: number; gums: number; repels: number; moving: number; blinks: number; fades: number; bend: number; faceNext: boolean; boss: boolean;
+  name: string; seed: number; w: number; h: number; count: number; sep: number; reach: number;
+  suns: number; gums: number; repels: number; fades: number; blinks: number; crumbles: number; moving: number; boss: boolean; faceNext: boolean;
 }
-const L = (o: Partial<LevelSpec> & { name: string; seed: number; chain: number; gap: [number, number] }): LevelSpec =>
-  ({ chainTypes: [], suns: 0, gums: 0, repels: 0, moving: 0, blinks: 0, fades: 0, bend: 0.5, faceNext: false, boss: false, ...o });
+const L = (o: Partial<LevelSpec> & { name: string; seed: number; w: number; h: number; count: number }): LevelSpec =>
+  ({ sep: 150, reach: 280, suns: 0, gums: 0, repels: 0, fades: 0, blinks: 0, crumbles: 0, moving: 0, boss: false, faceNext: false, ...o });
 
+// A sea: worlds scattered through a field, start at the left edge, home at the right. Each level adds one idea.
 export const LEVELS: LevelSpec[] = [
-  L({ name: 'First Hop', seed: 1, chain: 2, gap: [190, 210], faceNext: true, bend: 0 }),
-  L({ name: 'Something Hot', seed: 2, chain: 3, gap: [150, 190], suns: 1, faceNext: true }),
-  L({ name: 'Do Not Linger', seed: 3, chain: 4, gap: [150, 200], chainTypes: ['crumble'], bend: 0.3 }),
-  L({ name: 'Fall Toward It', seed: 4, chain: 3, gap: [250, 290], suns: 2, bend: 0.3 }),
-  L({ name: 'Gone Again', seed: 5, chain: 4, gap: [150, 200], chainTypes: ['fade', 'rock'], suns: 1 }),
-  L({ name: 'Blink', seed: 6, chain: 4, gap: [150, 200], chainTypes: ['blink', 'rock'], suns: 1 }),
-  L({ name: 'Springs', seed: 7, chain: 4, gap: [160, 220], chainTypes: ['gum', 'rock'], suns: 1, bend: 0.6 }),
-  L({ name: 'Moons', seed: 8, chain: 5, gap: [150, 200], chainTypes: ['rock', 'fade'], moving: 2, suns: 1 }),
-  L({ name: 'The Hunter', seed: 12, chain: 5, gap: [150, 210], chainTypes: ['rock', 'fade', 'rock'], suns: 1, boss: true, bend: 0.4 }),
-  L({ name: 'Push and Pull', seed: 9, chain: 5, gap: [160, 220], chainTypes: ['rock', 'crumble', 'blink'], repels: 2, suns: 2, moving: 1 }),
-  L({ name: 'The Sea', seed: 10, chain: 6, gap: [170, 240], chainTypes: ['crumble', 'gum', 'fade', 'blink', 'rock'], suns: 4, gums: 1, repels: 1, moving: 2, blinks: 1, fades: 1 }),
-  L({ name: 'Home', seed: 11, chain: 7, gap: [180, 250], chainTypes: ['blink', 'gum', 'rock', 'crumble', 'fade'], suns: 4, gums: 2, repels: 2, moving: 3, blinks: 1, fades: 1 }),
+  L({ name: 'First Hop', seed: 1, w: 640, h: 300, count: 3, sep: 170, faceNext: true }),
+  L({ name: 'Something Hot', seed: 2, w: 1000, h: 560, count: 6, suns: 1 }),
+  L({ name: 'Do Not Linger', seed: 3, w: 1250, h: 640, count: 9, crumbles: 4 }),
+  L({ name: 'Fall Toward It', seed: 4, w: 1500, h: 760, count: 10, sep: 190, reach: 330, suns: 3 }),
+  L({ name: 'Gone Again', seed: 5, w: 1800, h: 860, count: 13, fades: 4, suns: 1 }),
+  L({ name: 'Blink', seed: 6, w: 2000, h: 960, count: 15, blinks: 4, suns: 1 }),
+  L({ name: 'Springs', seed: 7, w: 2200, h: 1040, count: 17, gums: 4, suns: 1 }),
+  L({ name: 'Moons', seed: 8, w: 2400, h: 1140, count: 19, moving: 6, fades: 2, suns: 3 }),
+  L({ name: 'The Hunter', seed: 9, w: 2400, h: 1200, count: 19, fades: 3, suns: 3, boss: true }),
+  L({ name: 'Push and Pull', seed: 10, w: 2700, h: 1300, count: 22, repels: 5, suns: 2 }),
+  L({ name: 'The Sea', seed: 11, w: 3100, h: 1500, count: 28, repels: 3, crumbles: 3, blinks: 3, fades: 3, gums: 3, suns: 5, moving: 5 }),
+  L({ name: 'Home', seed: 12, w: 3500, h: 1700, count: 32, sep: 170, repels: 3, crumbles: 3, blinks: 3, fades: 3, gums: 3, suns: 6, moving: 6 }),
 ];
 export const LEVEL_COUNT = LEVELS.length;
 
 const SURFACE_G = 900;
-const GAPK = 1.0;
 const gOf = (t: WType) => (t === 'sun' ? SURFACE_G * 1.7 : t === 'repel' ? -SURFACE_G * 0.8 : SURFACE_G);
 const mk = (type: WType, r: number, x: number, y: number): World => ({ type, r, x, y, vx: 0, vy: 0, ox: x, oy: y, orbit: null, g: gOf(type), on: true, stay: 0, off: 0, period: 0, onFor: 0, phase: 0 });
+const isSafeType = (t: WType) => t !== 'sun' && t !== 'repel';
+
+/** Safe worlds connected by hops no longer than `reach` (surface to surface): is home reachable from the start? */
+export function connected(ws: World[], reach: number): boolean {
+  const seen = new Set<number>([0]); const q = [0];
+  while (q.length) {
+    const i = q.shift()!;
+    ws.forEach((w, j) => { if (!seen.has(j) && isSafeType(w.type) && Math.hypot(w.ox - ws[i].ox, w.oy - ws[i].oy) - w.r - ws[i].r <= reach + (w.orbit ? 45 : 0) + (ws[i].orbit ? 45 : 0)) { seen.add(j); q.push(j); } });
+  }
+  return ws.some((w, j) => w.type === 'home' && seen.has(j));
+}
 
 export function generateLevel(spec: LevelSpec): World[] {
-  const rng = new Rng(spec.seed * 7919);
-  const ws: World[] = [];
-  let x = 0, y = 0, dir = 0;
-  for (let i = 0; i < spec.chain; i++) {
-    const last = i === spec.chain - 1;
-    const type: WType = i === 0 ? 'rock' : last ? 'home' : spec.chainTypes.length ? spec.chainTypes[(i - 1) % spec.chainTypes.length] : 'rock';
-    const r = last ? (spec.seed === LEVELS[LEVELS.length - 1].seed ? 150 : 85) : i === 0 ? 85 : rng.range(60, 100);
-    if (i > 0) {
-      const p = ws[i - 1];
-      dir += rng.range(-spec.bend, spec.bend);
-      dir = Math.max(-1.1, Math.min(1.1, dir));
-      const d = p.r + rng.range(spec.gap[0], spec.gap[1]) * GAPK + r;
-      x = p.x + Math.cos(dir) * d; y = p.y + Math.sin(dir) * d;
-    }
-    ws.push(mk(type, r, x, y));
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const ws = tryGenerate(spec, spec.seed * 7919 + attempt * 104729);
+    if (connected(ws, spec.reach) || attempt === 59) return ws;
   }
+  return tryGenerate(spec, spec.seed);
+}
+
+function tryGenerate(spec: LevelSpec, seed: number): World[] {
+  const rng = new Rng(seed);
+  const last = spec.seed === LEVELS[LEVELS.length - 1].seed;
+  const ws: World[] = [mk('rock', 85, 0, spec.h / 2)];
+  const home = mk('home', last ? 150 : 85, spec.w, spec.h / 2 + (spec.count > 2 ? rng.range(-spec.h * 0.25, spec.h * 0.25) : 0));
+  ws.push(home);
+  if (spec.faceNext) ws[1].y = 0;
   const free = (cx: number, cy: number, r: number, margin: number) => ws.every((w) => Math.hypot(w.x - cx, w.y - cy) - w.r - r > margin);
-  const place = (type: WType, rlo: number, rhi: number) => {
-    for (let tries = 0; tries < 80; tries++) {
-      const k = rng.int(0, spec.chain - 2);
-      const a = ws[k], b = ws[k + 1];
-      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-      const ang = Math.atan2(b.y - a.y, b.x - a.x) + (rng.chance(0.5) ? 1 : -1) * Math.PI / 2;
-      const r = rng.range(rlo, rhi), off = r + rng.range(110, 190);
-      const cx = mx + Math.cos(ang) * off, cy = my + Math.sin(ang) * off;
-      if (free(cx, cy, r, 70)) { ws.push(mk(type, r, cx, cy)); return; }
+  const kinds: WType[] = [];
+  for (let i = 0; i < spec.suns; i++) kinds.push('sun');
+  for (let i = 0; i < spec.crumbles; i++) kinds.push('crumble');
+  for (let i = 0; i < spec.fades; i++) kinds.push('fade');
+  for (let i = 0; i < spec.blinks; i++) kinds.push('blink');
+  for (let i = 0; i < spec.gums; i++) kinds.push('gum');
+  for (let i = 0; i < spec.repels; i++) kinds.push('repel');
+  while (kinds.length < spec.count - 2) kinds.push('rock');
+  rng.shuffle(kinds);
+  const radiusOf = (t: WType) => (t === 'sun' ? rng.range(60, 100) : t === 'gum' ? rng.range(40, 60) : t === 'repel' ? rng.range(45, 70) : t === 'rock' ? rng.range(55, 105) : rng.range(45, 75));
+  for (const kind of kinds) {
+    for (let tries = 0; tries < 200; tries++) {
+      const r = radiusOf(kind);
+      const x = rng.range(150, spec.w - 150), y = rng.range(-spec.h * 0.1, spec.h * 1.1);
+      const nearStart = Math.hypot(x - ws[0].x, y - ws[0].y) - ws[0].r - r;
+      if (kind === 'sun' && nearStart < 230) continue;
+      if (free(x, y, r, spec.sep)) { ws.push(mk(kind, r, x, y)); break; }
     }
-  };
-  for (let i = 0; i < spec.suns; i++) place('sun', 60, 100);
-  for (let i = 0; i < spec.gums; i++) place('gum', 40, 60);
-  for (let i = 0; i < spec.repels; i++) place('repel', 45, 70);
-  for (let i = 0; i < spec.blinks; i++) place('blink', 45, 65);
-  for (let i = 0; i < spec.fades; i++) place('fade', 45, 65);
-  // timers and motion
-  const movers = ws.map((w, i) => ({ w, i })).filter(({ w, i }) => i > 0 && w.type !== 'home' && w.type !== 'sun');
+  }
+  // bridge any gap the scatter left: drop a rock a reach away from the nearest reachable world
+  for (let k = 0; k < 60 && !connected(ws, spec.reach); k++) {
+    const seen = new Set<number>([0]); const q = [0];
+    while (q.length) { const i = q.shift()!; ws.forEach((w, j) => { if (!seen.has(j) && isSafeType(w.type) && Math.hypot(w.x - ws[i].x, w.y - ws[i].y) - w.r - ws[i].r <= spec.reach) { seen.add(j); q.push(j); } }); }
+    let best: { a: number; b: number; d: number } | null = null;
+    ws.forEach((a, i) => { if (!seen.has(i)) return; ws.forEach((b, j) => { if (seen.has(j) || !isSafeType(b.type)) return; const d = Math.hypot(a.x - b.x, a.y - b.y) - a.r - b.r; if (!best || d < best.d) best = { a: i, b: j, d }; }); });
+    if (!best) break;
+    const A = ws[(best as { a: number }).a], B = ws[(best as { b: number }).b];
+    const ang = Math.atan2(B.y - A.y, B.x - A.x), r = rng.range(55, 85);
+    let placed = false;
+    for (const f of [0.85, 0.7, 0.55, 0.4]) for (const off of [0, 70, -70, 140, -140]) { if (placed) break; const dd = A.r + spec.reach * f + r, cx = A.x + Math.cos(ang) * dd - Math.sin(ang) * off, cy = A.y + Math.sin(ang) * dd + Math.cos(ang) * off; if (free(cx, cy, r, spec.sep * 0.5)) { ws.push(mk('rock', r, cx, cy)); placed = true; } }
+    if (!placed) break;
+  }
+  const movers = ws.map((w, i) => ({ w, i })).filter(({ w, i }) => i > 1 && isSafeType(w.type));
   for (let i = 0; i < spec.moving && movers.length; i++) {
     const m = movers.splice(rng.int(0, movers.length - 1), 1)[0].w;
     m.orbit = { rad: 45, w: (rng.chance(0.5) ? 1 : -1) * rng.range(0.4, 0.7), ph: rng.range(0, 6.28) };
@@ -124,6 +148,7 @@ export interface Boss { x: number; y: number; vx: number; vy: number; delay: num
 export interface Shot { x: number; y: number; vx: number; vy: number; life: number }
 
 export class Sim {
+  slung = false; slings = 0;
   boss: Boss | null = null; shots: Shot[] = [];
   level = 0; ws: World[] = []; bounds = { x0: 0, x1: 0, y0: 0, y1: 0 };
   x = 0; y = 0; px = 0; py = 0; vx = 0; vy = 0;
@@ -257,10 +282,14 @@ export class Sim {
     // danger (near a sun) and lost
     let dmin = 1e9;
     for (const w of this.ws) if (w.type === 'sun') dmin = Math.min(dmin, Math.hypot(this.x - w.x, this.y - w.y) - w.r);
+    const spd = Math.hypot(this.vx, this.vy);
+    if (!this.grounded && !this.slung && dmin < 90 && spd > 480) { this.slung = true; this.slings++; this.out.push({ type: 'sling', magnitude: Math.min(1, spd / 900), x: this.x, y: this.y }); }
+    if (dmin > 220) this.slung = false;
     const dg = dmin < 150 || (!!this.boss && this.boss.delay <= 0 && Math.hypot(this.x - this.boss.x, this.y - this.boss.y) < 320);
     if (dg !== this.danger) { this.danger = dg; this.out.push({ type: dg ? 'danger' : 'safe', magnitude: 0.4, x: this.x, y: this.y }); }
     const b = this.bounds;
-    if (this.x < b.x0 - 500 || this.x > b.x1 + 500 || this.y < b.y0 - 500 || this.y > b.y1 + 500) this.die('lost');
+    const lm = this.level < 4 ? 260 : 450;
+    if (this.x < b.x0 - lm || this.x > b.x1 + lm || this.y < b.y0 - lm || this.y > b.y1 + lm) this.die('lost');
   }
   stepBoss(dt: number, gk: number) {
     const B = this.boss!;

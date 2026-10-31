@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LEVELS, generateLevel, partsFor } from '../../src/protos/2026-10-31-tiny-inside/sim.ts';
+import { LEVELS, connected, generateLevel, partsFor } from '../../src/protos/2026-10-31-tiny-inside/sim.ts';
 import { reviewGameMusic } from '../../src/music/review.ts';
 import { makeMusic } from '../../src/protos/2026-10-31-tiny-inside/music.ts';
 
@@ -17,6 +17,11 @@ describe('speck', () => {
       for (let i = 0; i < ws.length; i++) for (let j = i + 1; j < ws.length; j++)
         expect(Math.hypot(ws[i].x - ws[j].x, ws[i].y - ws[j].y), `${spec.name} ${i}/${j}`).toBeGreaterThan(ws[i].r + ws[j].r + 20);
     }
+  });
+  it('every level is a connected sea that grows', () => {
+    let prev = 0;
+    for (const spec of LEVELS) { const ws = generateLevel(spec); expect(connected(ws, spec.reach), spec.name).toBe(true); expect(ws.length).toBeGreaterThanOrEqual(prev - 1); prev = ws.length; }
+    expect(generateLevel(LEVELS[11]).length).toBeGreaterThan(24);
   });
   it('levels add types one at a time', () => {
     const types = (n: number) => new Set(generateLevel(LEVELS[n]).map((w) => w.type));
