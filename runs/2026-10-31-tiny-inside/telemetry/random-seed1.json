@@ -4,7 +4,7 @@
   "bot": "random",
   "mode": "content",
   "simSeconds": 120,
-  "wallMs": 134,
+  "wallMs": 126,
   "timescale": 20,
   "outcome": "timeout",
   "metrics": {
