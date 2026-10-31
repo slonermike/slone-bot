@@ -50,6 +50,44 @@ try {
   check('launcher lists a card', (cardText ?? '').length > 0, (cardText ?? '').slice(0, 60));
   await L.page.screenshot({ path: path.join(OUT, 'screens/launcher.png') });
 
+  // moving focus to a lower row must not snap the grid back to the top: sample the scroll position every frame
+  {
+    const G = await newPage(browser);
+    await G.page.route('**/index.json', async (route) => {
+      const res = await route.fetch();
+      const body = await res.json();
+      const base = body.prototypes[0];
+      const many = Array.from({ length: 12 }, (_, i) => ({ ...base, slug: `${base.slug}-${i}`, title: `${base.title} ${i}`, date: `2030-01-${String(20 - i).padStart(2, '0')}` }));
+      await route.fulfill({ response: res, json: { ...body, prototypes: many } });
+    });
+    await G.page.goto(srv.url + '/');
+    await G.page.bringToFront(); // a background page gets no animation frames, and smooth scrolling never runs
+    await G.page.waitForSelector('.card', { timeout: 10000 });
+    await G.page.evaluate(() => {
+      const main = document.querySelector('main');
+      window.__scrollMin = Infinity;
+      window.__scrollSamples = [];
+      const loop = () => { const m = document.querySelector('main'); if (m) { window.__scrollSamples.push(m.scrollTop); } requestAnimationFrame(loop); };
+      loop();
+      return main?.scrollHeight;
+    });
+    let presses = 0, focusIdx = 0;
+    for (let i = 0, f = 0; f < 6 && i < 24; i++) {
+      presses++;
+      await G.page.keyboard.press('ArrowDown').catch(() => {});
+      await G.page.waitForTimeout(120);
+      f = await G.page.evaluate(() => Number(document.querySelector('.card.focus')?.dataset.i ?? 0));
+      focusIdx = f;
+    }
+    // the focused card must end up fully on screen (software-GL headless Chromium animates smooth scrolling slowly, so wait for it)
+    const onScreen = await G.page.waitForFunction(() => { const c = document.querySelector('.card.focus')?.getBoundingClientRect(); const m = document.querySelector('main')?.getBoundingClientRect(); return !!c && !!m && c.top >= m.top - 1 && c.bottom <= m.bottom + 1; }, null, { timeout: 12000 }).then(() => true, () => false);
+    const samples = await G.page.evaluate(() => window.__scrollSamples);
+    let peak = 0, worstDrop = 0;
+    for (const s of samples) { peak = Math.max(peak, s); worstDrop = Math.max(worstDrop, peak - s); }
+    check('moving down a row never snaps the grid back to the top', onScreen && peak > 50 && worstDrop < 8, `${presses} presses, focus ${focusIdx}, focused card on screen ${onScreen}, scrolled to ${Math.round(peak)}px, worst snap-back ${Math.round(worstDrop)}px, ${samples.length} samples`);
+    await G.page.context().close().catch(() => {});
+  }
+
   // launch with the gamepad (A)
   // pressing A navigates away mid-press, which can destroy the page the release is sent to; that is expected
   await tap(L.page, [BTN.a], 300).catch(() => {});
