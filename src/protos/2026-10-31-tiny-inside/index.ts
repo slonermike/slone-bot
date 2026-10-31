@@ -6,6 +6,7 @@ import { tween, ease, shake, hitStop, SquashStretch, Particles, numberPop, chase
 import type { Ctx, InputState, Prototype, SimEvent, View } from '../../core/types.ts';
 import { BALANCE, PR, Sim, TIERS, partsFor } from './sim.ts';
 import { makeMusic } from './music.ts';
+import { arcPath } from './arc.ts';
 export { bots } from './bots.ts';
 
 const PAPER = 0xf3ecdc, INK = 0x1d1b22, CORAL = 0xff5638, SHADE = 0xe2d6bb, RIBBON = 0x8a7f6a;
@@ -43,9 +44,9 @@ export function createPrototype(): Prototype {
       // ribbons: flowing arcs inside the disc, plus one coral spot ribbon
       for (let k = 0; k < 5; k++) {
         const rr = b.r * (0.35 + 0.11 * k), a0 = i * 1.7 + k * 1.3;
-        bodyG.moveTo(b.x + rr * Math.cos(a0), b.y + rr * Math.sin(a0)).arc(b.x, b.y, rr, a0, a0 + 1.4 + k * 0.25).stroke({ width: 2.2 * b.f, color: RIBBON, alpha: 0.7 });
+        arcPath(bodyG, b.x, b.y, rr, a0, a0 + 1.4 + k * 0.25); bodyG.stroke({ width: 2.2 * b.f, color: RIBBON, alpha: 0.7 });
       }
-      bodyG.moveTo(b.x + b.r * 0.82 * Math.cos(i * 2.1), b.y + b.r * 0.82 * Math.sin(i * 2.1)).arc(b.x, b.y, b.r * 0.82, i * 2.1, i * 2.1 + 1.1).stroke({ width: 5 * b.f, color: CORAL, alpha: 0.85 });
+      arcPath(bodyG, b.x, b.y, b.r * 0.82, i * 2.1, i * 2.1 + 1.1); bodyG.stroke({ width: 5 * b.f, color: CORAL, alpha: 0.85 });
       if (i === TIERS - 1) return;
     });
   }
@@ -165,7 +166,7 @@ export function createPrototype(): Prototype {
       const gl = sim.glow, low = gl < 0.3;
       uiGlow.clear();
       uiGlow.circle(76, 76, 50).fill(0xfffaf0).stroke({ width: 5, color: INK });
-      uiGlow.moveTo(76, 40).arc(76, 76, 36, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.001, gl)).stroke({ width: 14, color: low && Math.sin(t * 14) > 0 ? INK : CORAL, cap: 'round' });
+      arcPath(uiGlow, 76, 76, 36, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(0.999, Math.max(0.001, gl))); uiGlow.stroke({ width: 14, color: low && Math.sin(t * 14) > 0 ? INK : CORAL, cap: 'round' });
       uiGlow.circle(76, 76, 18).fill({ color: CORAL, alpha: 0.35 + 0.65 * gl });
       uiTier.clear();
       for (let i = 0; i < TIERS; i++) {
