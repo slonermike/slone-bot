@@ -4,7 +4,7 @@
   "bot": "idle",
   "mode": "content",
   "simSeconds": 120,
-  "wallMs": 26,
+  "wallMs": 29,
   "timescale": 20,
   "outcome": "timeout",
   "metrics": {

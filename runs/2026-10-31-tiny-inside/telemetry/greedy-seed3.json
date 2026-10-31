@@ -4,7 +4,7 @@
   "bot": "greedy",
   "mode": "content",
   "simSeconds": 100,
-  "wallMs": 471,
+  "wallMs": 508,
   "timescale": 20,
   "outcome": "completed",
   "metrics": {

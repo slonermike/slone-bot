@@ -67,7 +67,7 @@ export function createPrototype(): Prototype {
         const fr = standing ? clamp(w.stay / lim, 0, 1) : clamp(w.stay / lim, 0, 1);
         for (let k = 0; k < 14; k++) { const a0 = k * 0.449; arcPath(g, x, y, r, a0, a0 + 0.2); g.stroke({ width: 4, color: INK }); }
         for (let k = 0; k < 5; k++) { const a = idx + k * 1.26, l = r * (0.3 + 0.7 * fr); g.moveTo(x, y).lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l * 0.9).stroke({ width: 2 + 2 * fr, color: INK, alpha: 0.4 + 0.5 * fr }); }
-        if (fr > 0) { arcPath(g, x, y, r + 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(0.999, fr)); g.stroke({ width: 7, color: CORAL, cap: 'round' }); }
+        if (fr > 0 || standing) { arcPath(g, x, y, r + 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, Math.min(0.999, fr))); g.stroke({ width: 7, color: CORAL, cap: 'round' }); }
         break;
       }
       case 'fade': {
@@ -164,8 +164,8 @@ export function createPrototype(): Prototype {
         const lx = clamp(sim.x - B.x, -1, 1), ly = clamp(sim.y - B.y, -1, 1), ln = Math.hypot(sim.x - B.x, sim.y - B.y) || 1;
         for (const sg of [-1, 1]) { const ex = B.x + sg * R0 * 0.38 + (sim.x - B.x) / ln * 5, ey = B.y - R0 * 0.15 + (sim.y - B.y) / ln * 5; worldG.circle(ex, ey, R0 * 0.2).fill({ color: awake ? CORAL : 0x6b3b34 }); worldG.circle(ex + lx * 4, ey + ly * 4, R0 * 0.08).fill(INK); }
         worldG.moveTo(B.x - R0 * 0.4, B.y + R0 * 0.35).quadraticCurveTo(B.x, B.y + R0 * (0.35 + 0.3 * ch), B.x + R0 * 0.4, B.y + R0 * 0.35).stroke({ width: 5, color: ch > 0 ? GOLD : CORAL });
-        if (ch > 0) worldG.circle(B.x, B.y, R0 * (1.4 + 1.2 * (1 - ch))).stroke({ width: 4, color: GOLD, alpha: ch });
-        for (const q of sim.shots) { worldG.circle(q.x - q.vx * 0.03, q.y - q.vy * 0.03, 7).fill({ color: INK, alpha: 0.4 }); worldG.circle(q.x, q.y, 9).fill(INK).stroke({ width: 3, color: CORAL }); }
+        if (ch > 0) { worldG.circle(B.x, B.y, R0 * (1.4 + 1.2 * (1 - ch))).stroke({ width: 4, color: GOLD, alpha: ch }); const ax = sim.x - B.x, ay = sim.y - B.y, al = Math.hypot(ax, ay) || 1; for (let k = 1; k <= 14; k++) worldG.circle(B.x + (ax / al) * k * 34, B.y + (ay / al) * k * 34, 3).fill({ color: GOLD, alpha: ch * 0.8 }); }
+        for (const q of sim.shots) { worldG.circle(q.x - q.vx * 0.03, q.y - q.vy * 0.03, 7).fill({ color: INK, alpha: 0.4 }); worldG.circle(q.x, q.y, 15).fill({ color: CORAL, alpha: 0.25 }); worldG.circle(q.x, q.y, 9).fill(INK).stroke({ width: 3, color: CORAL }); }
       }
       // hop preview dots (where a held hop would go)
       if (sim.deadT <= 0 && sim.clearT <= 0) {
@@ -193,7 +193,7 @@ export function createPrototype(): Prototype {
       badge.roundRect(24, 24, 330, 56, 28).fill(0xfffaf0).stroke({ width: 5, color: INK });
       badgeTxt.text = `${sim.level + 1}  ${LEVELS[sim.level].name}`; badgeTxt.position.set(48, 38);
       for (let i = 0; i < LEVEL_COUNT; i++) badge.circle(1280 - 36 - (LEVEL_COUNT - 1 - i) * 24, 52, i === sim.level ? 10 : 7).fill(i < sim.cleared || i < sim.level ? CORAL : 0xfffaf0).stroke({ width: 3, color: INK });
-      hint.alpha = sim.level < 2 && sim.levelTime < 12 ? 1 : 0;
+      hint.alpha = sim.level < 2 && sim.levelTime < 20 ? 1 : 0;
       hint.text = `${stickGlyph('left')}: run    ${glyph('a')}: hop (hold to go higher)`;
     },
 
@@ -210,7 +210,7 @@ export function createPrototype(): Prototype {
           tween(tx, { alpha: 1 }, 120, ease.outCubic); tween(tx, { alpha: 0 }, 400, ease.linear, { delay: 700, onComplete: () => tx.destroy() });
           break;
         }
-        case 'charge': play('warn', { pitch: 0.5, volume: 0.4 }); shake(0.08); break;
+        case 'charge': play('warn', { pitch: 0.7, volume: 0.55 }); shake(0.08); break;
         case 'spit': play('whoosh', { pitch: 1.4, volume: 0.35 }); break;
         case 'splat': play('tick', { pitch: 0.5 }); parts.emit('dust', x, y, { count: 5, color: INK, size: 4 * s, speed: 90 * s }); break;
         case 'bossHit': play('burn'); shake(0.45); hitStop(5); parts.emit('sparks', x, y, { count: 30, color: GOLD, size: 8 * s, speed: 320 * s }); break;
@@ -220,10 +220,10 @@ export function createPrototype(): Prototype {
         case 'blinkoff': play('tick', { pitch: 0.6, volume: 0.5 }); break;
         case 'return': play('chime', { pitch: 1.5, volume: 0.15 }); break;
         case 'shatter': play('shatter'); shake(0.35); parts.emit('debris', x, y, { count: 30, color: 0xd8c79d, size: 9 * s, speed: 260 * s }); break;
-        case 'burn': play('burn'); shake(0.45); hitStop(5); parts.emit('sparks', x, y, { count: 30, color: CORAL, size: 8 * s, speed: 320 * s }); break;
+        case 'burn': play('burn'); shake(0.4); hitStop(3); parts.emit('sparks', x, y, { count: 30, color: CORAL, size: 8 * s, speed: 320 * s }); break;
         case 'die':
           if (e.data?.cause === 'lost') play('whoosh', { pitch: 0.6 });
-          veil.alpha = 0.55; tween(veil, { alpha: 0 }, 450, ease.outCubic);
+          veil.clear().rect(0, 0, 1280, 800).fill(CORAL); veil.alpha = 0.25; tween(veil, { alpha: 0 }, 450, ease.outCubic); parts.emit('puff', x, y, { count: 10, color: INK, size: 8 * s, speed: 200 * s });
           music.stinger(song.lose, { duck: 0.7 } as never); setMode('calm');
           break;
         case 'respawn': play('chime', { pitch: 1.2, volume: 0.3 }); parts.emit('puff', x, y, { count: 12, color: CORAL, size: 8 * s, speed: 120 * s }); break;
@@ -231,7 +231,7 @@ export function createPrototype(): Prototype {
         case 'clear':
           play('chime', { pitch: SEMI(sim.level) * 0.8 }); play('boom', { volume: 0.3 + 0.03 * sim.level });
           shake(0.3 + 0.03 * sim.level); hitStop(7); parts.emit('confetti', x, y, { count: 50, size: 9 * s, speed: 320 * s });
-          veil.alpha = 0.6; tween(veil, { alpha: 0 }, 800, ease.outCubic);
+          veil.clear().rect(0, 0, 1280, 800).fill(0xffffff); veil.alpha = 0.6; tween(veil, { alpha: 0 }, 800, ease.outCubic);
           music.stinger(sim.level === LEVEL_COUNT - 1 ? song.win : song.tier, { duck: 0.6 } as never);
           break;
         case 'level': {

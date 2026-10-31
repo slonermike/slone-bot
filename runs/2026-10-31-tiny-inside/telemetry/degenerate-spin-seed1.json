@@ -4,7 +4,7 @@
   "bot": "degenerate-spin",
   "mode": "content",
   "simSeconds": 120,
-  "wallMs": 21,
+  "wallMs": 23,
   "timescale": 20,
   "outcome": "timeout",
   "metrics": {
