@@ -69,6 +69,11 @@ Run this on every build before wrap-up. For each item, mark: yes, no, n/a, or un
 - [ ] A new player can tell what to do first from the screen alone (markers on what to press), and ghosted or queued states look different from real ones. [Slone]
 - [ ] A list the player can cycle (spires, tools) is laid out horizontally with the bumper glyphs (LB / RB) at its ends. [Slone]
 
+## F4. No-words test for a resource (v9)
+- [ ] Hide all text and describe, in order, where the resource comes from, how it travels, where it is stored, what pressure looks like, what overflow looks like and costs, and what spending it does. Each step is one plain sentence and needs no caption. [bot: storyboard the build at fixed intervals; Slone]
+- [ ] The path from source to store is visible while it happens (you can watch it move), and the same store shows both filling and spending.
+- [ ] Costs and lives are physical things in the world that visibly lose something, not icons in a corner.
+
 ## F3. Interface, screens and units (v7)
 - [ ] Every prompt is an anchored UI component (key-cap chips on a plate), not loose text over the game; cyclable lists show their bumper glyphs. [Slone]
 - [ ] The currency is shown beside where it is spent; unlike meters are apart and differ in shape; state that matters is carried by shape as well as digits. [Slone]

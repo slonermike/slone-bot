@@ -42,3 +42,10 @@ Unlike the Bible, this file is deliberately genre-specific: it is what the first
 
 ## 7. Failure that feeds a resource (found in this build, applies to any hit/miss economy)
 - If misses fill a resource the player can spend, make spending cost something (a lock after use, a halved gain while powered) or a bot that never plays can win by cashing in; give hoarding a price (a leak while the store is over half full) so "spend now or carry more" is a decision; give clean play its own reward (a lost page returns after a tidy stretch) so the skilled player has forward pressure too.
+
+## 8. Showing a failure economy without words (what worked here)
+- Let the failure itself become the resource: a missed note turns into the resource right where it died and travels along its own lane to the store. No separate splat, drop or counter.
+- Make the store the character: a glass creature whose level is the resource; pressure is the glass straining (bulge, cracks, bubbles, a rattling cork, the resource creeping over the lip). A mark on the glass shows how much is enough; when it is reached he lights up and a key cap appears.
+- Spend by the same gesture in reverse: he leaps and slams, the resource sprays back out along the lanes onto the notes, and his level drains as the timer for the power move.
+- Overflow floods every lane over the page and the ruined sheet peels off a physical stack of sheets that the board sits on: the stack is the lives.
+- Verify with scripted captures at fixed intervals (a miss, the fill ladder, the slam at 50 ms, the drain, the loss), not with single stills; a flat grey disc as a "ready glow" read as a rendering error until it was replaced by a halo on the character himself.
