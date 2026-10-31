@@ -31,15 +31,15 @@ const L = (o: Partial<LevelSpec> & { name: string; seed: number; w: number; h: n
 export const LEVELS: LevelSpec[] = [
   L({ name: 'First Hop', seed: 1, w: 1000, h: 300, count: 3, sep: 200, faceNext: true }),
   L({ name: 'Something Hot', seed: 2, w: 1000, h: 560, count: 6, suns: 1 }),
-  L({ name: 'Do Not Linger', seed: 3, w: 1250, h: 640, count: 9, crumbles: 4 }),
-  L({ name: 'Fall Toward It', seed: 4, w: 1500, h: 760, count: 10, sep: 230, reach: 1.1, suns: 3 }),
-  L({ name: 'Gone Again', seed: 5, w: 1800, h: 860, count: 13, fades: 4, suns: 1 }),
+  L({ name: 'Do Not Linger', seed: 3, w: 1250, h: 640, count: 8, crumbles: 3 }),
+  L({ name: 'Fall Toward It', seed: 4, w: 1500, h: 760, count: 10, sep: 210, reach: 1.1, suns: 2 }),
+  L({ name: 'Gone Again', seed: 5, w: 1800, h: 860, count: 13, fades: 3 }),
   L({ name: 'Blink', seed: 6, w: 2000, h: 960, count: 15, blinks: 4, suns: 1 }),
   L({ name: 'Springs', seed: 7, w: 2200, h: 1040, count: 17, gums: 4, suns: 1 }),
   L({ name: 'Moons', seed: 8, w: 2400, h: 1140, count: 19, moving: 6, fades: 2, suns: 3 }),
-  L({ name: 'The Hunter', seed: 9, w: 2400, h: 1200, count: 19, fades: 3, suns: 3, boss: true }),
-  L({ name: 'Push and Pull', seed: 10, w: 2700, h: 1300, count: 22, repels: 5, suns: 2 }),
-  L({ name: 'The Sea', seed: 11, w: 3100, h: 1500, count: 28, repels: 3, crumbles: 3, blinks: 3, fades: 3, gums: 3, suns: 5, moving: 5 }),
+  L({ name: 'The Hunter', seed: 9, w: 2400, h: 1200, count: 19, fades: 3, suns: 4, boss: true }),
+  L({ name: 'Push and Pull', seed: 10, w: 2700, h: 1300, count: 24, repels: 5, suns: 3, moving: 4 }),
+  L({ name: 'The Sea', seed: 11, w: 2600, h: 1300, count: 22, repels: 3, crumbles: 2, blinks: 2, fades: 2, suns: 3, moving: 3 }),
   L({ name: 'Home', seed: 12, w: 3500, h: 1700, count: 32, sep: 170, repels: 3, crumbles: 3, blinks: 3, fades: 3, gums: 3, suns: 6, moving: 6 }),
 ];
 export const LEVEL_COUNT = LEVELS.length;

@@ -24,7 +24,8 @@
     "preflight": "node scripts/preflight.mjs",
     "prepare": "node scripts/install-hooks.mjs",
     "songs": "node scripts/make-songs.mjs",
-    "jump-audit": "node scripts/jump-audit.mjs"
+    "jump-audit": "node scripts/jump-audit.mjs",
+    "level-curve": "node scripts/level-curve.mjs"
   },
   "dependencies": {
     "@dimforge/rapier2d-compat": "^0.21.0",
