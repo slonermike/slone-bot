@@ -54,8 +54,13 @@
     "text": "One tool, many uses",
     "type": "constraint",
     "source": "seed",
-    "strikes": 0,
-    "reasons": [],
+    "strikes": 1,
+    "reasons": [
+      {
+        "date": "2026-10-31T15:15:23",
+        "text": "less evocative than the feeling theme tonight"
+      }
+    ],
     "used": null
   },
   {
@@ -174,15 +179,6 @@
   {
     "id": "t039",
     "text": "The satisfaction of a perfect fit",
-    "type": "feeling",
-    "source": "human",
-    "strikes": 0,
-    "reasons": [],
-    "used": null
-  },
-  {
-    "id": "t040",
-    "text": "Being very small in a very large thing",
     "type": "feeling",
     "source": "human",
     "strikes": 0,
@@ -680,8 +676,13 @@
     "text": "Stuck together",
     "type": "constraint",
     "source": "human",
-    "strikes": 0,
-    "reasons": [],
+    "strikes": 1,
+    "reasons": [
+      {
+        "date": "2026-10-31T15:15:23",
+        "text": "less evocative than the feeling theme tonight"
+      }
+    ],
     "used": null
   },
   {

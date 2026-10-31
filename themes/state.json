@@ -1,6 +1,6 @@
 {
-  "lastRollDate": "2026-10-30",
-  "lastResolveDate": "2026-10-30",
+  "lastRollDate": "2026-10-31T15:15:23",
+  "lastResolveDate": "2026-10-31T15:15:23",
   "rollHistory": [
     {
       "date": "2026-10-30",
@@ -8,6 +8,14 @@
         "t018",
         "t020",
         "t003"
+      ]
+    },
+    {
+      "date": "2026-10-31T15:15:23",
+      "ids": [
+        "t121",
+        "t040",
+        "t007"
       ]
     }
   ],
@@ -17,6 +25,12 @@
       "text": "Time only moves when something breaks",
       "type": "constraint",
       "date": "2026-10-30"
+    },
+    {
+      "id": "t040",
+      "text": "Being very small in a very large thing",
+      "type": "feeling",
+      "date": "2026-10-31T15:15:23"
     }
   ],
   "adds": {
