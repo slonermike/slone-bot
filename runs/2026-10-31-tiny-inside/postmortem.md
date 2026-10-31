@@ -16,3 +16,7 @@ Built short on purpose (low weekly tokens, pencils down early). Genre: explorati
 - Critique: a straight line of nine hops with nothing to do on a world, no choice and no cost; a quiet peak.
 - Changed: surface motes (3 + tier per world). Collect them all to bloom the world (coral flood, glow back); hopping on without blooming refills glow only partly, so skipping costs something. Finale now pulls the camera back to the whole constellation. Fewer glints on the arcs.
 - Greedy run is now about 38 s (was 15 s). Still untested by a human. Debug: `?done=1` jumps to the end state.
+
+## Urgency and arc fix (user feedback)
+- Slone saw thin lines running from drawn rings and ribbons toward the origin on a real device. Cause: Pixi `Graphics.arc()` continues the current path, so an arc without a fresh moveTo gets a connecting line from the path's last point (usually 0,0). The first fix added moveTo; now every arc is an explicit polyline (`arc.ts`). Taken to main as `helper/arc-path` (juice `arcPath`, test, SCAFFOLD_API row).
+- Added urgency to leave a world: after landing, ink starts creeping round the surface toward you (2.2 s warning, speed = knob `blot` x your run speed plus 4% per tier). Touching it drains glow fast. Blooming the world (collecting all its motes) clears the ink; hopping on resets it on the new world. Idle and spin probes now fade repeatedly; greedy unchanged at about 38 s.

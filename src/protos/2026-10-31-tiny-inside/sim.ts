@@ -9,6 +9,7 @@ export const BALANCE: BalanceSpec[] = [
   { id: 'glintGain', label: 'Glow from a glint', min: 0.02, max: 0.3, step: 0.01, default: 0.12 },
   { id: 'jumpPower', label: 'Hop power', min: 0.7, max: 1.4, step: 0.05, default: 1 },
   { id: 'runSpeed', label: 'Run speed', min: 0.6, max: 1.6, step: 0.05, default: 1 },
+  { id: 'blot', label: 'Ink chase speed (x your run)', min: 0, max: 1.2, step: 0.05, default: 0.5 },
   { id: 'wind', label: 'Gust strength (from tier 2)', min: 0, max: 2, step: 0.1, default: 1 },
   { id: 'gravity', label: 'Gravity', min: 0.6, max: 1.6, step: 0.05, default: 1 },
 ];
@@ -75,6 +76,7 @@ export class Sim {
   glow = 1; low = false;
   vt = 0; // tangential speed when grounded
   angle = -Math.PI / 2;
+  blotBody = -1; blotA = 0; blotOn = false; blotDelay = 0; blotHit = 0;
   windT = 6; windOn = 0; windA = 0;
   coyote = 0; buf = 0; combo = 0; comboT = 0;
   grace = 12; // seconds without drain at the start
@@ -101,7 +103,9 @@ export class Sim {
     this.vt = 0; this.vx = this.vy = 0; this.grounded = true;
     this.x = b.x + Math.cos(a) * (b.r + PR); this.y = b.y + Math.sin(a) * (b.r + PR);
     this.px = this.x; this.py = this.y;
+    this.startBlot();
   }
+  startBlot() { this.blotOn = !this.bloomed[this.cur]; this.blotBody = this.cur; this.blotA = this.angle + Math.PI; this.blotDelay = 2.2; }
   nearest(): number {
     let bi = 0, bd = Infinity;
     for (let i = 0; i < this.bodies.length; i++) {
@@ -161,6 +165,7 @@ export class Sim {
           this.angle = Math.atan2(uy, ux);
           this.vt = this.vx * -uy + this.vy * ux;
           this.grounded = true;
+          if (this.cur !== this.blotBody) this.startBlot();
           this.x = b.x + ux * (b.r + PR); this.y = b.y + uy * (b.r + PR);
           this.out.push({ type: 'land', magnitude: Math.min(1, -vr / (900 * b.f)), x: this.x, y: this.y });
           if (this.cur > this.best) {
@@ -170,6 +175,21 @@ export class Sim {
             if (this.cur === TIERS - 1) { this.done = true; this.out.push({ type: 'complete', magnitude: 1, x: this.x, y: this.y }); }
           }
           if (this.buf > 0) this.jump(-uy, ux);
+        }
+      }
+    }
+    if (this.blotOn && this.grounded && this.blotBody === this.cur) {
+      const b = this.bodies[this.cur];
+      if (this.blotDelay > 0) this.blotDelay -= dt;
+      else {
+        const sp = (this.bal('blot', 0.5) + 0.04 * this.best) * 420 * this.bal('runSpeed', 1) * b.f;
+        let d = this.angle - this.blotA; d = Math.atan2(Math.sin(d), Math.cos(d));
+        const om = sp / (b.r + PR);
+        this.blotA += Math.sign(d) * Math.min(Math.abs(d), om * dt);
+        const hw = (70 * b.f) / (b.r + PR);
+        if (Math.abs(d) < hw) {
+          this.glow -= 0.4 * dt; this.blotHit -= dt;
+          if (this.blotHit <= 0) { this.blotHit = 0.45; this.out.push({ type: 'ink', magnitude: 0.5, x: this.x, y: this.y }); }
         }
       }
     }
@@ -193,7 +213,7 @@ export class Sim {
           m.on = false; this.glow = Math.min(1, this.glow + 0.06);
           const left = this.motes.filter((q) => q.body === this.cur && q.on).length;
           this.out.push({ type: 'mote', magnitude: 0.5, x: mx, y: my, data: { left } });
-          if (left === 0) { this.bloomed[this.cur] = true; this.blooms++; this.glow = Math.min(1, this.glow + 0.3); this.out.push({ type: 'bloom', magnitude: 0.6 + 0.4 * this.cur / TIERS, x: b.x, y: b.y, data: { body: this.cur } }); }
+          if (left === 0) { this.bloomed[this.cur] = true; this.blotOn = false; this.blooms++; this.glow = Math.min(1, this.glow + 0.3); this.out.push({ type: 'bloom', magnitude: 0.6 + 0.4 * this.cur / TIERS, x: b.x, y: b.y, data: { body: this.cur } }); }
         }
       }
     }

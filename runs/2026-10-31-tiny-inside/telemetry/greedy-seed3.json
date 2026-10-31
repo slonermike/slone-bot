@@ -4,7 +4,7 @@
   "bot": "greedy",
   "mode": "content",
   "simSeconds": 38.45,
-  "wallMs": 17,
+  "wallMs": 25,
   "timescale": 20,
   "outcome": "completed",
   "metrics": {
@@ -40,6 +40,7 @@
       "jump": 8,
       "land": 8,
       "tier": 7,
+      "ink": 6,
       "gust": 3,
       "finale": 1,
       "complete": 1
@@ -54,6 +55,7 @@
     "glintGain": 0.12,
     "jumpPower": 1,
     "runSpeed": 1,
+    "blot": 0.5,
     "wind": 1,
     "gravity": 1
   }

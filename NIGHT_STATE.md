@@ -25,4 +25,5 @@ notes: one line per checkpoint
 - 0:07 phase=done finished early (only 0:07 elapsed (need 1:00)) because user asked for pencils down around 1h with low weekly tokens; playable build with 4 rounds logged
 - 0:12 round 4: bots: greedy 15s, one straight line of hops | BRUTAL: nothing to do on a world, no choice, no cost; random bot reaches tier 3 | added surface motes (3+tier per world): bloom the world for glow, skipping costs refill (choice with a cost)
 - 0:13 stepback 2: arc now toy -> motes/bloom -> reveals -> gusts -> eye + pull-back | BRUTAL: peak was a quiet eye; glint arcs clutter; hop feel unverified by a human; worlds still uniform | added finale pull-back to the whole constellation with shake and low swell; next: fewer arc glints, per-world personality
+- 0:17 round 5: idle/spin bots linger on one world, nothing pushed them off | user asked for urgency to leave a world | added creeping ink that chases you round the surface after landing (starts after 2.2s, speed scales with tier, blooming the world clears it, knob 'blot'); idle deaths 4->23, greedy unchanged
 ```

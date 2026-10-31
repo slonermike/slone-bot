@@ -143,6 +143,12 @@ export function createPrototype(): Prototype {
       if (sim.best >= TIERS - 2 || eye.open > 0) drawEye(); else eyeG.clear();
       moteG.clear(); bloomG.clear();
       sim.bodies.forEach((bb, i) => { const a = (bloomAmt[i] = chaseDt(bloomAmt[i] ?? (sim.bloomed[i] ? 1 : 0), sim.bloomed[i] ? 1 : 0, 0.9, dt)); if (a > 0) { bloomG.circle(bb.x, bb.y, bb.r * a).fill({ color: CORAL, alpha: 0.22 }); bloomG.circle(bb.x, bb.y, bb.r * 0.5 * a).fill({ color: 0xffc94a, alpha: 0.25 }); } });
+      if (sim.blotOn) {
+        const bb = sim.bodies[sim.blotBody], rr = bb.r + 2 * bb.f, hw = (70 * bb.f) / (bb.r + PR);
+        const wait = sim.blotDelay > 0, al = wait ? 0.3 + 0.25 * Math.sin(t * 12) : 0.92;
+        arcPath(bloomG, bb.x, bb.y, rr, sim.blotA - hw, sim.blotA + hw); bloomG.stroke({ width: 46 * bb.f, color: INK, alpha: al, cap: 'round', join: 'round' });
+        for (let k = -2; k <= 2; k++) { const a = sim.blotA + k * hw * 0.5; bloomG.circle(bb.x + Math.cos(a) * (rr - 30 * bb.f - Math.abs(k) * 8 * bb.f), bb.y + Math.sin(a) * (rr - 30 * bb.f - Math.abs(k) * 8 * bb.f), (14 - Math.abs(k) * 3) * bb.f).fill({ color: INK, alpha: al }); }
+      }
       for (const m of sim.motes) {
         if (!m.on) continue;
         const bb = sim.bodies[m.body], mx = bb.x + Math.cos(m.a) * (bb.r + PR * 0.4), my = bb.y + Math.sin(m.a) * (bb.r + PR * 0.4);
@@ -216,6 +222,7 @@ export function createPrototype(): Prototype {
           parts.emit('confetti', x, y, { count: 36, size: 8 * s, speed: 260 * s });
           music.stinger(song.glint, { duck: 0.5 } as never); break;
         }
+        case 'ink': play('lowwarn', { pitch: 0.55, volume: 0.4 }); shake(0.12); parts.emit('dust', x, y, { count: 5, color: INK, size: 4 * s, speed: 80 * s }); break;
         case 'gust': play('lowwarn', { pitch: 1.6, volume: 0.3 }); break;
         case 'low': play('lowwarn'); setMode('tense'); break;
         case 'recover': if (mode === 'tense') setMode('calm'); break;
