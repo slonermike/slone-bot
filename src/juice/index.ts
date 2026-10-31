@@ -18,3 +18,5 @@ export { bakeTexture, SpritePool } from './sprites.ts';
 export { dial, JuiceDial, LAYERS } from './dial.ts';
 export type { Layer } from './dial.ts';
 export { vfx, vfxRange, setVfxRandom } from './random.ts';
+export { arcPath } from './arc.ts';
+export type { PathLike } from './arc.ts';
