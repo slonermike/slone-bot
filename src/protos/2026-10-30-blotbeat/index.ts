@@ -9,10 +9,11 @@ import { Eyes, Particles, SquashStretch, chase, ease, flash, numberPop, punch, s
 import { BALANCE, SETS, STICKERS, createSim } from './sim.ts';
 import type { Note } from './sim.ts';
 import { CX, CY, HH, HW, LANE_BUTTON, LANE_DIR, RING_RX, RING_RY, lanePoint, laneRing, laneStart } from './geometry.ts';
-import { C, FONT, LANE_COLORS, chip, drop, hintPlate, label, sheet, sticker, stickerIcon } from './ui.ts';
+import { C, FONT, LANE_COLORS, chip, hintPlate, label, sticker, stickerIcon, stickerShape } from './ui.ts';
 import { defineBlotSounds, pitchFor } from './sounds.ts';
 import { SET_DEFS, backingFor, partsFor, stingerFor } from './music.ts';
 import { LANE_KIND, LANE_LABEL } from './chart.ts';
+import { InkView } from './ink.ts';
 import { syncStep } from './sync.ts';
 export { bots } from './bots.ts';
 
@@ -29,7 +30,6 @@ const hintFor = (set: number): Parameters<typeof hintPlate>[0] => [
 ][set]!;
 
 interface NoteView { g: Graphics; ribbon: Graphics | null; fading: boolean; }
-interface Splat { g: Graphics; }
 
 export function createPrototype(): Prototype {
   const sim = createSim();
@@ -43,23 +43,18 @@ export function createPrototype(): Prototype {
   // scene
   let boardC!: Container;
   let noteC!: Container;
-  let splatC!: Container;
   let fxC!: Container;
   let linkG!: Graphics;
-  let dangerG!: Graphics;
   let feverG!: Graphics;
   let latticeFever!: Graphics;
-  let wellC!: Container;
-  let wellFill!: Graphics;
-  let wellSS!: SquashStretch;
-  let eyes!: Eyes;
   const targets: Container[] = [];
   const targetLabels: ReturnType<typeof label>[] = [];
   const noteViews = new Map<number, NoteView>();
-  let splats: Splat[] = [];
 
   // hud
-  let pageIcons: Graphics[] = [];
+  let ink!: InkView;
+  let multBg!: Graphics;
+  let multFever = false;
   let setText!: ReturnType<typeof label>;
   let infoText!: ReturnType<typeof label>;
   let railG!: Graphics;
@@ -67,12 +62,6 @@ export function createPrototype(): Prototype {
   let comboText!: ReturnType<typeof label>;
   let multBadge!: Container;
   let multText!: ReturnType<typeof label>;
-  let dropsC!: Container;
-  let dropGs: Graphics[] = [];
-  let dropsMax = -1;
-  let stampC!: Container;
-  let stampKey = '';
-  let railFever!: Graphics;
   let stickerRow!: Container;
   let hintC: Container | null = null;
   let bannerC: Container | null = null;
@@ -83,22 +72,16 @@ export function createPrototype(): Prototype {
 
   // render state
   let pulse = 0;
-  let wellLevel = 0;
   let time = 0;
-  let seenFirstBlot = false;
-  let seenStampReady = false;
   let lastPages = -1;
   let introFor = -1;
   let musicSet = -1;
   const syncState = { bigFrames: 0 };
   let clockBase = NaN;
   let virtualClock = false;
-  let pagesKey = '';
   let railKey = -1;
   let scoreShown = -1;
   let frameNo = 0;
-  let geyserT = 0;
-  let seenDrip = false;
   const streaks: Graphics[] = [];
   let lastStickers = 0;
   let sigPoints: number[] = [];
@@ -194,69 +177,15 @@ export function createPrototype(): Prototype {
     music.setParts(partsFor(s.set, s.inkBand, s.feverT > 0, s.phase !== 'play'), 0.5);
   }
 
-  function addSplat(x: number, y: number): void {
-    const g = new Graphics();
-    const n = 5 + Math.floor(ctx.vfxRng.next() * 3);
-    for (let i = 0; i < n; i++) {
-      const a = ctx.vfxRng.next() * Math.PI * 2;
-      const r = 6 + ctx.vfxRng.next() * 22;
-      const px = Math.cos(a) * r * (i ? 1 : 0.2);
-      const py = Math.sin(a) * r * 0.5 * (i ? 1 : 0.2);
-      const rad = 7 + ctx.vfxRng.next() * 15 * (i ? 0.7 : 1.2);
-      g.ellipse(px, py, rad, rad * 0.55).fill(C.lime).stroke({ width: 5, color: C.ink, join: 'round' });
-    }
-    // second pass without strokes so the blob reads as one shape
-    for (let i = 0; i < n; i++) g.ellipse(Math.cos(i * 2) * 4, Math.sin(i * 2) * 2, 12, 7).fill(C.lime);
-    g.position.set(x + (ctx.vfxRng.next() - 0.5) * 70, y + (ctx.vfxRng.next() - 0.5) * 30);
-    g.rotation = (ctx.vfxRng.next() - 0.5) * 0.4;
-    g.scale.set(0.1);
-    splatC.addChild(g);
-    tween(g, { scale: 1 }, 320, ease.outBack);
-    splats.push({ g });
-  }
-
-  function flyDrop(fromX: number, fromY: number, delay = 0, color: number = C.lime, then?: () => void): void {
-    const g = drop(new Graphics(), 30).fill(color).stroke({ width: 4, color: C.ink, join: 'round' });
-    g.position.set(fromX, fromY);
-    g.alpha = 0;
-    fxC.addChild(g);
-    tween(g, { alpha: 1 }, 80, ease.linear, { delay });
-    tween(g, { x: CX, y: CY - 14, scale: 0.4 }, 420, ease.inQuad, {
-      delay,
-      onComplete: () => { g.destroy(); then?.(); },
-    });
-  }
-
-  function suckSplats(keep: number): void {
-    while (splats.length > keep) {
-      const sp = splats.shift()!;
-      const g = sp.g;
-      tween(g, { x: CX, y: CY, scale: 0.1, alpha: 0.4 }, 360 + ctx.vfxRng.next() * 160, ease.inQuad, { onComplete: () => g.destroy() });
-    }
-  }
-
-  function burstSplats(): void {
-    for (const sp of splats) {
-      const g = sp.g;
-      const dx = g.x - CX;
-      const dy = g.y - CY;
-      tween(g, { x: g.x + dx * 1.4, y: g.y + dy * 1.2, scale: 1.6, alpha: 0 }, 700, ease.outCubic, { onComplete: () => g.destroy() });
-    }
-    splats = [];
-  }
-
   function clearViews(): void {
     for (const v of noteViews.values()) { v.g.destroy(); v.ribbon?.destroy(); }
     noteViews.clear();
-    for (const sp of splats) sp.g.destroy();
-    splats = [];
     overlay?.destroy(); overlay = null; overlayBuilt = false;
     hintC?.destroy(); hintC = null;
     bannerC?.destroy(); bannerC = null;
-    wellLevel = 0;
+    ink.reset();
     introFor = -1;
     musicSet = -1;
-    geyserT = 0;
     lastPages = -1;
     lastStickers = 0;
   }
@@ -282,9 +211,29 @@ export function createPrototype(): Prototype {
     const E = { x: CX + HW, y: CY };
     const S = { x: CX, y: CY + HH };
     const W = { x: CX - HW, y: CY };
-    const slab = new Graphics();
-    slab.poly([W.x, W.y, S.x, S.y, E.x, E.y, E.x, E.y + 30, S.x, S.y + 30, W.x, W.y + 30]).fill(C.ink).stroke({ width: 8, color: C.ink, join: 'round' });
-    slab.moveTo(W.x, W.y + 12).lineTo(S.x, S.y + 12).lineTo(E.x, E.y + 12).stroke({ width: 1.5, color: C.line, alpha: 0.5 });
+    ink = new InkView({
+      boardC,
+      get fxC() { return fxC; },
+      particles: { emit: (...a: Parameters<Particles['emit']>) => particles.emit(...a) } as unknown as Particles,
+      rnd: () => ctx.vfxRng.next(),
+      s,
+      stats: () => sim.stats(),
+      hooks: {
+        arrive: (amount) => { play('glug', { pitch: 0.9 + 0.5 * Math.min(1, s.ink / Math.max(1, sim.stats().inkMax)), volume: 0.4 + 0.5 * Math.min(1, amount) }); },
+        stampImpact: () => {
+          ringPulse(CX, CY + 20, 380, C.lime, 600, 12);
+          ringPulse(CX, CY + 20, 560, C.white, 800, 5);
+          flash(boardC, 0xffffff, 160, 0.3);
+          particles.emit('confetti', CX, CY, { count: 48, speed: 1.8 });
+          particles.emit('sparks', CX, CY, { count: 40, color: C.lime, speed: 2 });
+          shake(0.6);
+          play('stampBoom'); play('stampCrack');
+        },
+        spillPop: () => { play('spill'); play('spillDrop'); shake(1); flash(boardC, C.lime, 300, 0.4); particles.emit('debris', CX, CY - 60, { count: 60, color: C.lime, speed: 2.4, size: 1.3 }); },
+        sheetGone: () => { play('stick', { pitch: 0.7 }); shake(0.3); },
+        stampKey: () => glyph('rb'),
+      },
+    });
     const board = new Graphics();
     board.poly([N.x, N.y, E.x, E.y, S.x, S.y, W.x, W.y]).fill(C.board).stroke({ width: 10, color: C.ink, join: 'round' });
     const lattice = new Graphics();
@@ -324,13 +273,15 @@ export function createPrototype(): Prototype {
     const ring = new Graphics().ellipse(CX, CY, RING_RX, RING_RY).stroke({ width: 8, color: C.ink }).ellipse(CX, CY, RING_RX, RING_RY).stroke({ width: 2, color: C.tint, alpha: 0.8 });
     // the static board is baked into one sprite: a few dozen draw calls become one (the slow part of a software GL frame)
     const statics = new Container();
-    statics.addChild(slab, board, lattice, inner, lanes, ring);
+    statics.addChild(board, lattice, inner, lanes, ring);
     const crop = new Rectangle(100, 150, 1080, 600);
     const tex = (view.app as Application).renderer.generateTexture({ target: statics, frame: crop, resolution: 2, antialias: true });
     const baked = new Sprite(tex);
     baked.position.set(crop.x, crop.y);
     statics.destroy({ children: true });
+    ink.buildStack(boardC);
     boardC.addChild(baked, latticeFever);
+    ink.buildChannels(boardC);
     for (let l = 0; l < 4; l++) {
       const a = laneStart(l); const b = laneRing(l);
       const st = new Graphics();
@@ -358,60 +309,20 @@ export function createPrototype(): Prototype {
       boardC.addChild(lb);
     }
 
-    splatC = new Container();
+    ink.buildCreature(boardC);
     noteC = new Container();
     linkG = new Graphics();
-    boardC.addChild(splatC, linkG, noteC);
-
-    // the inkwell: a bottle with eyes at the middle of the board; its fill is the ink you carry
-    wellC = new Container();
-    wellC.position.set(CX, CY + 22);
-    wellC.scale.set(0.8);
-    const shadow = new Graphics().ellipse(0, 4, 54, 17).fill({ color: C.ink, alpha: 0.8 });
-    const inner2 = new Container();
-    const body = new Graphics();
-    body.roundRect(-40, -62, 80, 66, 20).fill(C.tint).stroke({ width: 8, color: C.ink, join: 'round' });
-    body.roundRect(-16, -86, 32, 28, 6).fill(C.tint).stroke({ width: 8, color: C.ink, join: 'round' });
-    body.roundRect(-20, -98, 40, 18, 6).fill(C.white).stroke({ width: 7, color: C.ink, join: 'round' });
-    body.moveTo(-28, -50).lineTo(-28, -22).stroke({ width: 3, color: C.white, alpha: 0.7, cap: 'round' });
-    wellFill = new Graphics();
-    wellFill.roundRect(-33, -56, 66, 56, 10).fill(C.lime).moveTo(-33, -56).lineTo(33, -56).stroke({ width: 4, color: C.ink });
-    wellFill.position.set(0, 0);
-    const quill = new Graphics();
-    quill.moveTo(10, -98).quadraticCurveTo(46, -150, 62, -176).stroke({ width: 10, color: C.ink, cap: 'round' });
-    quill.moveTo(10, -98).quadraticCurveTo(46, -150, 62, -176).stroke({ width: 4, color: C.white, cap: 'round' });
-    inner2.addChild(quill, body, wellFill);
-    eyes = new Eyes({ size: 9, color: C.white, pupil: C.ink });
-    eyes.container.position.set(0, -36);
-    inner2.addChild(eyes.container);
-    wellC.addChild(shadow, inner2);
-    wellSS = new SquashStretch(inner2);
-    boardC.addChild(wellC);
+    boardC.addChild(linkG, noteC);
+    ink.buildFlows(boardC);
 
     fxC = new Container();
     world.addChild(fxC);
     particles = new Particles(world, { confettiColors: [C.white, C.tint, C.lime, C.line] });
-    view.onFrame((dt) => { particles.update(dt); eyes.update(dt); wellSS.update(dt, 0, 0); frame(dt); });
+    view.onFrame((dt) => { particles.update(dt); ink.update(dt); frame(dt); });
 
-    dangerG = new Graphics();
-    dangerG.rect(8, 8, 1264, 784).stroke({ width: 14, color: C.lime });
-    dangerG.alpha = 0;
-    ui.addChild(dangerG);
   }
 
   function buildHud(): void {
-    // pages (top left)
-    const pl = label('PAGES', 20, C.tint, { anchor: [0, 0.5] });
-    pl.position.set(40, 30);
-    ui.addChild(pl);
-    pageIcons = [];
-    for (let i = 0; i < 6; i++) {
-      const g = new Graphics();
-      g.position.set(58 + i * 46, 78);
-      g.visible = false;
-      ui.addChild(g);
-      pageIcons.push(g);
-    }
     // set badge (top centre) with a progress rail
     const sb = sticker(480, 76, C.tint, 16);
     sb.position.set(CX, 48);
@@ -438,106 +349,19 @@ export function createPrototype(): Prototype {
     comboText.position.set(1150, 112);
     ui.addChild(comboText);
     multBadge = new Container();
-    const mb = sticker(78, 56, C.white, 16);
+    multBg = sticker(78, 56, C.white, 16);
     multText = label('x1', 32, C.ink, { weight: '900' });
-    multBadge.addChild(mb, multText);
+    multBadge.addChild(multBg, multText);
     multBadge.position.set(1208, 112);
     ui.addChild(multBadge);
-    // ink drops + stamp prompt (bottom): the currency sits beside where it is spent
-    dropsC = new Container();
-    ui.addChild(dropsC);
-    stampC = new Container();
-    stampC.position.set(900, 740);
-    ui.addChild(stampC);
-    railFever = new Graphics();
-    ui.addChild(railFever);
     stickerRow = new Container();
     stickerRow.position.set(46, 740);
     ui.addChild(stickerRow);
   }
 
-  function rebuildDrops(): void {
-    dropsMax = sim.stats().inkMax;
-    dropsC.removeChildren().forEach((c) => c.destroy());
-    dropGs = [];
-    const gap = Math.min(34, 460 / dropsMax);
-    const x0 = 430 - ((dropsMax - 1) * gap) / 2 + 40;
-    const lab = label('INK', 20, C.tint, { anchor: [1, 0.5] });
-    lab.position.set(x0 - 30, 742);
-    dropsC.addChild(lab);
-    for (let i = 0; i < dropsMax; i++) {
-      const g = new Graphics();
-      g.position.set(x0 + i * gap, 742);
-      dropsC.addChild(g);
-      dropGs.push(g);
-    }
-  }
-
-  let dropsKey = '';
-  function updateDrops(): void {
-    if (dropsMax !== sim.stats().inkMax) { rebuildDrops(); dropsKey = ''; }
-    const full = Math.floor(s.ink);
-    const cost = sim.stats().cost;
-    const ready = s.ink >= cost;
-    const part = Math.round((s.ink - full) * 4);
-    const key = `${full}|${part}|${cost}|${ready}`;
-    if (key === dropsKey) return; // Graphics rebuilds are costly: only redraw when something changed
-    dropsKey = key;
-    dropGs.forEach((g, i) => {
-      g.clear();
-      const filled = i < full;
-      drop(g, 36).fill(filled ? C.lime : C.board).stroke({ width: 7, color: C.ink, join: 'round' });
-      drop(g, 36).stroke({ width: 2, color: filled ? C.white : i < cost ? C.white : C.line, alpha: filled || i < cost ? 1 : 0.8, join: 'round' });
-      if (i === full && part > 0) drop(g, 36).fill({ color: C.lime, alpha: part * 0.18 });
-    });
-  }
-
-  function updateStamp(): void {
-    const st = sim.stats();
-    const fever = s.feverT > 0;
-    const locked = !fever && s.setT < s.stampLock;
-    const ready = !fever && !locked && s.ink >= st.cost && s.phase === 'play';
-    const key = `${fever ? 'f' : locked ? 'l' : ready ? 'r' : 'n'}|${glyph('rb')}|${st.cost}|${Math.round(bal('feverMult') * 10)}`;
-    if (key !== stampKey) {
-      stampKey = key;
-      stampC.removeChildren().forEach((c) => c.destroy());
-      let plate: Container;
-      if (fever) plate = hintPlate([`FEVER x${bal('feverMult')}`], 26, C.lime);
-      else if (locked) plate = hintPlate(['Ink drying...'], 22, C.board);
-      else plate = hintPlate([{ key: glyph('rb') }, ready ? 'STAMP!' : `STAMP at ${st.cost}`], 24, ready ? C.lime : C.board);
-      if (fever) { const t = plate.children[plate.children.length - 1] as ReturnType<typeof label>; t.style.fill = C.ink; }
-      if (ready) { const t = plate.children[plate.children.length - 1] as ReturnType<typeof label>; t.style.fill = C.ink; }
-      stampC.addChild(plate);
-    }
-    stampC.scale.set(ready ? 1 + 0.06 * Math.sin(time * 9) : 1);
-    railFever.clear();
-    if (fever) {
-      const w = 200 * (s.feverT / s.feverMax);
-      railFever.roundRect(800, 774, 200, 10, 5).fill(C.ink).roundRect(800, 774, Math.max(2, w), 10, 5).fill(C.lime);
-    }
-  }
-
   const bal = (id: string) => ctx.balance[id] ?? BALANCE.find((b) => b.id === id)!.default;
 
   function updateHud(): void {
-    // pages
-    const maxP = Math.min(6, s.pagesMax);
-    const pk = `${maxP}|${s.pages}`;
-    if (pk !== pagesKey) {
-      pagesKey = pk;
-      pageIcons.forEach((g, i) => {
-        g.visible = i < maxP;
-        if (!g.visible) return;
-        g.clear();
-        sheet(g, 30, 40, i < s.pages ? C.white : C.bg, i < s.pages);
-        g.alpha = i >= s.pages ? 0.55 : 1;
-      });
-    }
-    if (lastPages >= 0 && s.pages < lastPages) {
-      const g = pageIcons[s.pages];
-      if (g) { g.rotation = 0.5; g.y = 78; tween(g, { rotation: 0, y: 78 }, 500, ease.outBounce); }
-    }
-    lastPages = s.pages;
     const cfg = s.cfg;
     const t = `SET ${s.set + 1}/${SETS.length}  ${cfg.name.toUpperCase()}`;
     if (t !== lastLabels.s) { lastLabels.s = t; setText.text = t; infoText.text = cfg.info.toUpperCase(); }
@@ -561,7 +385,9 @@ export function createPrototype(): Prototype {
     const shown = Math.round(s.displayScore);
     if (shown !== scoreShown && (frameNo % 3 === 0 || s.displayScore === s.score)) { scoreShown = shown; scoreText.text = shown.toLocaleString('en-US'); }
     comboText.text = s.combo > 1 ? `COMBO ${s.combo}` : '';
-    multText.text = `x${s.mult}`;
+    const fv = s.feverT > 0;
+    multText.text = `x${Math.round(s.mult * (fv ? bal('feverMult') : 1) * 10) / 10}`;
+    if (fv !== multFever) { multFever = fv; stickerShape(multBg, 78, 56, fv ? C.lime : C.white, 16); }
     multBadge.alpha = 1;
   }
 
@@ -620,7 +446,8 @@ export function createPrototype(): Prototype {
           v.g.destroy(); v.ribbon?.destroy(); noteViews.delete(n.id);
           continue;
         }
-        v.fading = true; // missed or dropped: it drifts on and fades
+        if (n.state === 'missed') { v.g.destroy(); v.ribbon?.destroy(); noteViews.delete(n.id); continue; } // the miss turned into ink; the ink runs on (see ink.ts)
+        v.fading = true; // dropped hold: it drifts on and fades
         tween(v.g, { alpha: 0, scale: 0.3 }, 420, ease.inQuad, { onComplete: () => { v.g.destroy(); v.ribbon?.destroy(); noteViews.delete(n.id); } });
         if (v.ribbon) tween(v.ribbon, { alpha: 0 }, 300, ease.linear);
       }
@@ -660,20 +487,10 @@ export function createPrototype(): Prototype {
     time += dt;
     pulse = chase(pulse, 0, 0.12);
     boardC.scale.set(1 + 0.014 * pulse);
-    // well fill follows the ink; the level only moves toward it, so a blot arriving makes it rise
-    const target = Math.min(1, s.ink / Math.max(1, sim.stats().inkMax));
-    wellLevel = chase(wellLevel, target, target < wellLevel ? 0.12 : 0.2);
-    wellFill.visible = wellLevel > 0.01;
-    wellFill.scale.set(1 + 0.02 * Math.sin(time * 6) * s.inkBand, Math.max(0.05, wellLevel));
-    const danger = s.phase === 'play' && s.ink >= sim.stats().inkMax - 1.01 && s.ink > 0;
-    dangerG.alpha = danger ? 0.25 + 0.25 * Math.sin(time * 10) : chase(dangerG.alpha, 0, 0.2);
-    dangerG.visible = dangerG.alpha > 0.02;
     feverG.alpha = chase(feverG.alpha, s.feverT > 0 ? 0.5 + 0.5 * Math.sin(time * 12) * 0.4 : 0, 0.2);
     feverG.visible = feverG.alpha > 0.02;
     latticeFever.visible = latticeFever.alpha > 0.02;
     latticeFever.alpha = chase(latticeFever.alpha, s.feverT > 0 ? 0.7 + 0.3 * Math.sin(time * 10) : 0, 0.25);
-    wellC.rotation = danger ? Math.sin(time * 30) * 0.03 : Math.sin(time * 1.6) * 0.012;
-    if (s.inkBand >= 2) eyes.setMood('worried', 0.2); else if (s.feverT > 0) eyes.setMood('happy', 0.2);
     for (let l = 0; l < 4; l++) {
       const t = targetLabels[l]!;
       const g = laneGlyph(l);
@@ -683,10 +500,6 @@ export function createPrototype(): Prototype {
       targets[l]!.y = chase(targets[l]!.y, base + (down ? 5 : 0), 0.4);
     }
     for (const st of streaks) st.alpha = chase(st.alpha, 0, 0.2);
-    if (geyserT > 0) {
-      geyserT -= dt;
-      particles.emit('sparks', CX, CY - 40, { count: 5, color: ctx.vfxRng.next() < 0.5 ? C.lime : C.white, angle: -Math.PI / 2, spread: 0.7, speed: 2.4, size: 1.4 });
-    }
     // holds shower sparks
     for (let l = 0; l < 4; l++) {
       if (s.laneHold[l]! >= 0 && ctx.vfxRng.next() < 0.5) {
@@ -891,8 +704,8 @@ export function createPrototype(): Prototype {
       if (!auto) badgePop(grade.toUpperCase() + tag, x + d.x * 96, y + d.y * 70 - 6, grade === 'perfect' ? C.white : grade === 'good' ? C.tint : C.line, grade === 'ok' ? C.white : C.ink, grade === 'perfect' ? 24 : 20);
     };
     if (delay > 0) tween({ v: 0 }, { v: 1 }, delay, ease.linear, { onComplete: fire }); else fire();
-    wellSS.pop(0.1 + 0.1 * m, 'y');
-    if (grade === 'perfect') eyes.setMood('happy', 0.4);
+    ink.pop(0.1 + 0.1 * m, 'y');
+    if (grade === 'perfect') ink.eyes.setMood('happy', 0.4);
     shake(grade === 'perfect' ? 0.07 : 0.03);
   }
 
@@ -907,13 +720,13 @@ export function createPrototype(): Prototype {
           numberPop(world, String(Number(dd.beat) + Number(dd.bar) + 1), CX, CY - 150, { size: 72, color: C.white, stroke: C.ink, ms: Math.max(300, s.beatDur * 900), rise: 10, font: FONT });
         }
         else if (s.inkBand >= 3) play('warn', { volume: 0.6 });
-        wellSS.pop(0.08, 'y');
+        ink.pop(0.08, 'y');
         {
           const down = Number(dd.beat) % Number(dd.bar) === 0;
           const br = new Graphics().ellipse(0, 0, RING_RX, RING_RY).stroke({ width: down ? 4 : 2, color: down ? C.white : C.tint, alpha: down ? 0.7 : 0.45 });
           br.position.set(CX, CY);
           br.scale.set(1.7);
-          boardC.addChildAt(br, boardC.getChildIndex(splatC));
+          boardC.addChildAt(br, boardC.getChildIndex(linkG));
           tween(br, { scale: 1, alpha: 0 }, Math.max(200, s.beatDur * 900), ease.outCubic, { onComplete: () => br.destroy() });
         }
         break;
@@ -939,7 +752,7 @@ export function createPrototype(): Prototype {
         playKind(LANE_KIND[lane]!, freeMidi(LANE_KIND[lane]!), 0.3, D()[lane]!.x * 0.3);
         punch(targets[lane]!, 0.2);
         ringPulse(e.x ?? CX, e.y ?? CY, 46, C.line, 260, 3);
-        wellSS.pop(0.06, 'y');
+        ink.pop(0.06, 'y');
         break;
       }
       case 'stray': {
@@ -947,36 +760,26 @@ export function createPrototype(): Prototype {
         shake(0.12);
         punch(targets[Number(dd.lane)]!, -0.2);
         badgePop('STRAY', e.x ?? CX, (e.y ?? CY) - 28, C.board, C.white, 20);
-        eyes.setMood('frown', 0.4);
+        ink.source('tap', Number(dd.lane), e.x ?? CX, e.y ?? CY);
+        ink.eyes.setMood('frown', 0.4);
         break;
       }
       case 'miss': {
         const lane = Number(dd.lane);
         const free = Boolean(dd.free);
         play('splat', { volume: free ? 0.3 : 0.7, pan: D()[lane]!.x * 0.3, pitch: 1 - 0.05 * s.inkBand });
-        shake(0.14 + 0.05 * s.inkBand);
-        eyes.setMood('frown', 0.6);
-        wellSS.pop(0.2, 'x');
-        particles.emit('puff', e.x ?? CX, e.y ?? CY, { count: 8, color: C.lime, speed: 0.8 });
+        shake(0.1 + 0.05 * s.inkBand);
+        ink.eyes.setMood('frown', 0.6);
+        // the missed note turns into ink right where it died, and runs along its own lane into the creature
+        const nv = noteViews.get(Number(dd.id));
+        const pos = nv ? { x: nv.g.x, y: nv.g.y } : laneRing(lane);
+        if (nv) { nv.g.destroy(); nv.ribbon?.destroy(); noteViews.delete(Number(dd.id)); }
+        particles.emit('puff', pos.x, pos.y, { count: 8, color: C.lime, speed: 0.8 });
+        if (!free) ink.source('note', lane, pos.x, pos.y);
         break;
       }
-      case 'blot': {
-        const x = e.x ?? CX; const y = e.y ?? CY;
-        addSplat(x, y);
-        particles.emit('debris', x, y, { count: 12, color: C.lime, speed: 1.1, size: 0.9 });
-        flyDrop(x, y, 260, C.lime, () => { play('glug', { pitch: 1 + 0.06 * Math.floor(s.ink) }); wellSS.pop(0.25, 'y'); punch(wellC, 0.12); });
-        if (!seenFirstBlot) {
-          seenFirstBlot = true;
-          showHint([`A miss drops a blot. At ${sim.stats().cost} blots,`, { key: glyph('rb') }, 'STAMP it into a fever'], 5200);
-        }
-        break;
-      }
-      case 'drip': {
-        flyDrop(CX + (Number(dd.lane) - 1.5) * 40, 150, 0, C.lime, () => { play('glug', { pitch: 1.5 }); wellSS.pop(0.2, 'y'); });
-        play('warn', { pitch: 1.6 });
-        if (!seenDrip) { seenDrip = true; showHint(['The well is leaking now. Do not sit on a full well:', { key: glyph('rb') }, 'STAMP'], 5200); }
-        break;
-      }
+      case 'blot': break; // the ink is shown by its own flow (ink.ts), not by a splat
+      case 'drip': { ink.seep(); play('warn', { pitch: 1.6 }); play('glug', { pitch: 1.5, volume: 0.4 }); break; }
       case 'ink-band': syncMusic(); break;
       case 'combo-up': {
         const mult = Number(dd.mult);
@@ -987,62 +790,26 @@ export function createPrototype(): Prototype {
         break;
       }
       case 'combo-break': badgePop('combo lost', CX, CY + 140, C.board, C.tint, 22, 700, 16); break;
-      case 'dry': play('dry'); break;
+      case 'dry': play('dry'); particles.emit('puff', CX, CY - 40, { count: 6, color: C.white, speed: 0.6 }); break;
       case 'siphon': {
         play('glug', { pitch: 1.3 });
         particles.emit('sparks', e.x ?? CX, e.y ?? CY, { count: 14, color: C.lime, speed: 1.4 });
         badgePop('SIPHON', e.x ?? CX, (e.y ?? CY) - 44, C.lime, C.ink, 22, 700);
+        ink.source('tap', Number(dd.lane), e.x ?? CX, e.y ?? CY);
         break;
       }
       case 'stamp': {
-        const m = e.magnitude ?? 0.7;
-        play('stampBoom'); play('stampCrack'); play('stampRise');
-        shake(0.55 + 0.4 * m);
         // no hit-stop in a rhythm game: freezing the sim would slide every note off the music
-        const pad = new Container();
-        const pg = sticker(230, 130, C.lime, 28, C.ink);
-        const pt = label('STAMP!', 46, C.ink, { weight: '900' });
-        pad.addChild(pg, pt);
-        pad.position.set(CX, CY - 520);
-        pad.scale.set(1.8);
-        pad.rotation = -0.12;
-        fxC.addChild(pad);
-        tween(pad, { y: CY - 40, scale: 1, rotation: 0.03 }, 130, ease.inQuad, {
-          onComplete: () => {
-            ringPulse(CX, CY, 380, C.lime, 600, 12);
-            ringPulse(CX, CY, 560, C.white, 800, 5);
-            ringPulse(CX, CY, 250, C.lime, 480, 8);
-            flash(boardC, 0xffffff, 160, 0.3);
-            particles.emit('confetti', CX, CY, { count: 48, speed: 1.8 });
-            particles.emit('sparks', CX, CY, { count: 40, color: C.lime, speed: 2 });
-            tween(pad, { alpha: 0, y: CY - 60 }, 600, ease.outCubic, { delay: 350, onComplete: () => pad.destroy() });
-          },
-        });
-        suckSplats(0);
-        wellSS.pop(0.5, 'y');
-        eyes.setMood('happy', 1.4);
-        banner(`FEVER x${bal('feverMult')}`, C.lime, C.ink, 1100, 196, 'Misses cost half. Everything on the board is hit.');
+        play('stampRise');
+        ink.stamp(Number(dd.spent ?? 3) / Math.max(1, sim.stats().inkMax));
+        ink.eyes.setMood('happy', 1.4);
         syncMusic();
         break;
       }
       case 'fever-end': play('feverEnd'); syncMusic(); ringPulse(CX, CY, 140, C.tint, 400, 4); break;
       case 'spill': {
-        play('spill'); play('spillDrop');
-        shake(1);
-        flash(boardC, C.lime, 300, 0.4);
-        burstSplats();
-        particles.emit('debris', CX, CY, { count: 60, color: C.lime, speed: 2.4, size: 1.3 });
-        particles.emit('puff', CX, CY, { count: 20, color: C.lime, speed: 1.6, size: 1.6 });
-        const flood = new Graphics().poly([0, -HH, HW, 0, 0, HH, -HW, 0]).fill({ color: C.lime, alpha: 0.55 }).stroke({ width: 10, color: C.ink, join: 'round' });
-        flood.position.set(CX, CY);
-        flood.scale.set(0.1);
-        fxC.addChild(flood);
-        tween(flood, { scale: 1.02 }, 380, ease.outCubic);
-        tween(flood, { alpha: 0 }, 700, ease.inQuad, { delay: 380, onComplete: () => flood.destroy() });
-        wellSS.pop(0.6, 'x');
-        eyes.setMood('frown', 2);
-        const left = Number(dd.pages);
-        banner('PAGE RUINED', C.lime, C.ink, 1700, 196, left > 0 ? `${left} ${left === 1 ? 'page' : 'pages'} left. The ink is cleared.` : 'No pages left.');
+        ink.spill(Number(dd.pages));
+        ink.eyes.setMood('frown', 2);
         syncMusic();
         break;
       }
@@ -1075,10 +842,9 @@ export function createPrototype(): Prototype {
         music.stinger(stingerFor('win', s.set), { duck: 0.3 });
         play('stampBoom'); shake(0.7);
         for (let i = 0; i < 4; i++) tween({ v: 0 }, { v: 1 }, i * 260, ease.linear, { onComplete: () => particles.emit('confetti', CX + (i - 1.5) * 220, CY - 60, { count: 50, speed: 2 }) });
-        eyes.setMood('happy', 4);
-        wellSS.pop(0.7, 'y');
-        geyserT = 1.8;
-        tween(wellC, { scale: 1.3 }, 380, ease.outBack, { onComplete: () => tween(wellC, { scale: 0.8 }, 700, ease.outElastic) });
+        ink.eyes.setMood('happy', 4);
+        ink.pop(0.7, 'y');
+        ink.win();
         ringPulse(CX, CY, 520, C.white, 900, 6);
         ringPulse(CX, CY, 360, C.lime, 700, 10);
         tween({ v: 0 }, { v: 1 }, 700, ease.linear, { onComplete: () => { if (s.phase === 'won') buildEnd(true); } });
@@ -1116,7 +882,7 @@ export function createPrototype(): Prototype {
       void (v.app as Application);
       buildScene();
       buildHud();
-      unsubDevice = onDeviceChange(() => { stampKey = ''; });
+      unsubDevice = onDeviceChange(() => {});
     },
     render(alpha: number) {
       const tNow = (s.phase === 'play' ? s.setT - (1 - alpha) * FRAME_DT : s.setT) - bal('offset') / 1000;
@@ -1147,16 +913,10 @@ export function createPrototype(): Prototype {
       updateHud();
       frameNo++;
       updateScore();
-      updateDrops();
-      updateStamp();
       updateStickersRow();
       if (s.phase === 'pick') updatePick();
       if (s.phase === 'lost' && !overlayBuilt && s.endT2 > 1.6) buildEnd(false);
       updateEnd();
-      if (s.ink >= sim.stats().cost && !seenStampReady && seenFirstBlot) {
-        seenStampReady = true;
-        if (s.feverT <= 0) showHint([{ key: glyph('rb') }, 'STAMP now, or carry more ink for a longer fever'], 4200);
-      }
     },
     onEvent,
     telemetry: () => ({

@@ -4,8 +4,8 @@ export const CX = 640;
 export const CY = 436;
 export const HW = 520; // half width of the diamond
 export const HH = 262; // half height (2:1, isometric feel)
-export const RING_RX = 140;
-export const RING_RY = 58;
+export const RING_RX = 200;
+export const RING_RY = 100;
 
 export const LANE_DIR: ReadonlyArray<{ x: number; y: number }> = [
   { x: 0, y: -1 },

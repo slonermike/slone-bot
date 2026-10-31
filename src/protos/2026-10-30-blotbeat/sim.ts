@@ -429,7 +429,7 @@ export function createSim() {
         s.setMisses++;
         const p = laneRing(n.lane);
         breakCombo();
-        emit({ type: 'miss', magnitude: 0.5, x: p.x, y: p.y, data: { lane: n.lane, free: s.setT < s.graceUntil } });
+        emit({ type: 'miss', magnitude: 0.5, x: p.x, y: p.y, data: { lane: n.lane, free: s.setT < s.graceUntil, id: n.id } });
         addInk(1, n.lane);
         if (s.phase !== 'play') return;
       }

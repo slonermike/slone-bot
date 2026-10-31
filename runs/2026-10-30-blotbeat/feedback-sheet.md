@@ -5,6 +5,7 @@ Does a rhythm game where every miss becomes spendable ink make mistakes feel lik
 TARGET FEELING: cheeky, flowing controlled mess: the relief of a big stamp after nearly overflowing
 
 TARGETED QUESTIONS:
+0. With no one telling you: what did you think the ink was, where did it go, and what happened when the bottle got full? (Say what you understood on your first run, before reading anything.)
 1. Did a miss ever feel like fuel rather than punishment? When? (yes / kind of / no)
 2. Did you hold ink on purpose for a bigger fever, or stamp the moment it lit up? Did the leak (from set 3) change that?
 3. Could you tell what each note kind wanted (tap, hold, double) the first time you saw it?
